@@ -381,6 +381,7 @@ class UIManager {
         if (success) {
             this.showScreen('game');
             initializeGameMap();
+            setTimeout(() => initializeMinimap(), 100);
             this.updateHUD();
             audioManager.playMusic('battle_theme');
         }
@@ -394,6 +395,7 @@ class UIManager {
         if (result.success) {
             this.showScreen('game');
             initializeGameMap();
+            setTimeout(() => initializeMinimap(), 100);
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
         } else {
@@ -649,6 +651,7 @@ class UIManager {
         if (result.success) {
             this.showScreen('game');
             initializeGameMap();
+            setTimeout(() => initializeMinimap(), 100);
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
         }

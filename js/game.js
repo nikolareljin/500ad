@@ -125,6 +125,11 @@ class Game {
         // Render map if in game screen
         if (gameMap && uiManager.currentScreen === 'game') {
             gameMap.render();
+
+            // Update minimap viewport indicator
+            if (minimap) {
+                minimap.updateViewport();
+            }
         }
     }
 
@@ -140,6 +145,11 @@ class Game {
                 gameMap.canvas.height = container.clientHeight;
                 gameMap.render();
             }
+        }
+
+        if (minimap) {
+            minimap.resize();
+            minimap.render();
         }
     }
 }

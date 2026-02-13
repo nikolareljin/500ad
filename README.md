@@ -56,6 +56,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ### Gameplay
 - **Turn-Based Strategy**: Tactical combat with resource management
 - **Pan Navigation**: Drag to explore the massive map
+- **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
 - **Combat System**: Type advantages, terrain modifiers, and morale
 - **Resource Management**: Gold, manpower, and prestige
@@ -80,12 +81,15 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ### Controls
 - **Tap/Click**: Select units or tiles
 - **Drag Map**: Pan around the world map to explore
+- **Minimap Click/Drag**: Reposition the camera quickly to any world area
 - **Tap Unit**: View unit details
 - **Tap Empty Tile**: Move selected unit
 - **End Turn Button**: Complete your turn and generate resources
 
 ### Map Navigation
 - **Pan**: Click and drag anywhere on the map to move your view
+- **Minimap**: Top HUD minimap shows the entire world with current viewport highlighted
+- **Fast Travel**: Click or drag on the minimap to jump the visible map section
 - **Explore**: Move units to reveal fog of war
 - **Position**: Current map coordinates shown in top-left corner
 - **Byzantine Focus**: Map starts centered on Constantinople/Anatolia region
@@ -243,7 +247,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.0.0** - Initial Release
+**Version 1.1.0** - Top HUD minimap with highlighted viewport and click/drag navigation
 
 ## License
 
