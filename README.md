@@ -16,7 +16,8 @@ A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern
 ![Gameplay Map](docs/media/gameplay_map.png)
 
 ### Map Navigation
-![Map Panned](docs/media/map_panned.png)
+<img width="1341" height="611" alt="image" src="https://github.com/user-attachments/assets/3f1b685d-0429-421a-9a46-1f376294e16b" />
+
 
 ### 🎥 Video Walkthrough
 Watch the complete gameplay walkthrough showing map navigation, unit movement, and fog of war system:
