@@ -4,9 +4,9 @@
  */
 
 const MAP_CONFIG = {
-    width: 100,
-    height: 60,
-    tileSize: 30,
+    width: 200,
+    height: 120,
+    tileSize: 32,  // Larger tiles for better visibility
     hexSize: 25,
     viewportWidth: 30, // Number of tiles visible horizontally
     viewportHeight: 20 // Number of tiles visible vertically
@@ -67,6 +67,21 @@ class GameMap {
         this.tiles = [];
         this.canvas = null;
         this.ctx = null;
+
+        // Camera/viewport system (pan only, no zoom)
+        this.camera = {
+            x: 0,
+            y: 0
+        };
+
+        // Pan state
+        this.isPanning = false;
+        this.lastPanX = 0;
+        this.lastPanY = 0;
+
+        // Fog of war
+        this.fogOfWar = [];
+
         this.selectedTile = null;
         this.hoveredTile = null;
 
@@ -101,46 +116,47 @@ class GameMap {
     }
 
     /**
-     * Generate terrain based on position
-     * Mimics basic Mediterranean geography
+     * Generate terrain from detailed geographic heightmap
      */
     generateTerrain(x, y) {
-        // Simple noise-like landmass generation
-        const nx = x / this.width;
-        const ny = y / this.height;
+        // Use the detailed Mediterranean heightmap
+        if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
+            MEDITERRANEAN_HEIGHTMAP[y] &&
+            MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
+            return heightToTerrain(MEDITERRANEAN_HEIGHTMAP[y][x]);
+        }
 
-        // Define Mediterranean basin (water center)
-        const medX = 0.5;
-        const medY = 0.6;
-        const distToMed = Math.sqrt(Math.pow(nx - medX, 2) + Math.pow(ny - medY, 2));
-
-        // Land/Water mask
-        let isWater = distToMed < 0.25; // Main Med
-        if (nx > 0.6 && nx < 0.8 && ny > 0.4 && ny < 0.5) isWater = true; // Eastern Med/Cyprus area
-        if (nx > 0.3 && nx < 0.4 && ny > 0.2 && ny < 0.4) isWater = true; // Tyrrhenian Sea
-
-        // Add random coastline noise
-        if (Math.random() > 0.8) isWater = !isWater;
-
-        if (isWater) return 'water';
-
-        // Land terrain
-        const rand = Math.random();
-
-        // Northern mountains (Alps, Balkans, Caucasus)
-        if (ny < 0.3 && rand > 0.7) return 'mountains';
-        if (ny < 0.3 && rand > 0.5) return 'hills';
-
-        // Southern desert (Sahara, Arabia)
-        if (ny > 0.75) return rand > 0.8 ? 'mountains' : 'plains'; // simplified to plains for desert for now
-
-        // Forests in central areas
-        if (ny > 0.2 && ny < 0.5 && rand > 0.7) return 'forest';
-
-        if (rand > 0.8) return 'hills';
-        if (rand > 0.9) return 'mountains';
-
+        // Fallback
         return 'plains';
+    }
+
+    /**
+     * Check if coordinates are in Mediterranean Sea
+     */
+    isMediterranean(nx, ny) {
+        // Western Mediterranean
+        if (nx > 0.25 && nx < 0.42 && ny > 0.50 && ny < 0.65) return true;
+        // Central Mediterranean (around Italy)
+        if (nx > 0.35 && nx < 0.48 && ny > 0.45 && ny < 0.62) return true;
+        // Eastern Mediterranean
+        if (nx > 0.45 && nx < 0.68 && ny > 0.48 && ny < 0.68) return true;
+        // Aegean Sea
+        if (nx > 0.48 && nx < 0.58 && ny > 0.42 && ny < 0.52) return true;
+        return false;
+    }
+
+    /**
+     * Check if coordinates are in Black Sea
+     */
+    isBlackSea(nx, ny) {
+        return nx > 0.55 && nx < 0.72 && ny > 0.28 && ny < 0.38;
+    }
+
+    /**
+     * Check if coordinates are in Caspian Sea
+     */
+    isCaspianSea(nx, ny) {
+        return nx > 0.82 && nx < 0.92 && ny > 0.32 && ny < 0.48;
     }
 
     /**
@@ -160,15 +176,27 @@ class GameMap {
     }
 
     /**
-     * Initialize canvas
+     * Initialize canvas and controls
      */
     initializeCanvas(canvasElement) {
         this.canvas = canvasElement;
-        this.ctx = canvasElement.getContext('2d');
+        this.ctx = this.canvas.getContext('2d');
 
         // Set canvas size
-        this.canvas.width = this.width * MAP_CONFIG.tileSize;
-        this.canvas.height = this.height * MAP_CONFIG.tileSize;
+        this.canvas.width = this.canvas.offsetWidth;
+        this.canvas.height = this.canvas.offsetHeight;
+
+        // Center camera on Byzantine heartland (Constantinople/Anatolia region)
+        // Constantinople is approximately at x=110, y=50 in the 200x120 map
+        const constantinopleX = 110;
+        const constantinopleY = 50;
+        this.camera.x = (constantinopleX * MAP_CONFIG.tileSize) - (this.canvas.width / 2);
+        this.camera.y = (constantinopleY * MAP_CONFIG.tileSize) - (this.canvas.height / 2);
+
+        // Initialize fog of war (all tiles fogged initially)
+        this.initializeFogOfWar();
+
+        this.setupControls();
 
         // Add event listeners
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
@@ -177,26 +205,128 @@ class GameMap {
     }
 
     /**
-     * Render the map
+     * Initialize fog of war
+     */
+    initializeFogOfWar() {
+        this.fogOfWar = [];
+        for (let y = 0; y < this.height; y++) {
+            this.fogOfWar[y] = [];
+            for (let x = 0; x < this.width; x++) {
+                // Start with everything fogged
+                this.fogOfWar[y][x] = true;
+            }
+        }
+    }
+
+    /**
+     * Reveal area around a position (for units/cities)
+     */
+    revealArea(x, y, radius = 3) {
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= radius) {
+                        this.fogOfWar[ny][nx] = false;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if tile is fogged
+     */
+    isFoggedTile(x, y) {
+        if (!this.fogOfWar[y] || this.fogOfWar[y][x] === undefined) return false;
+        return this.fogOfWar[y][x];
+    }
+
+    /**
+     * Render the map with pan support and fog of war
      */
     render() {
         if (!this.ctx) return;
 
         // Clear canvas
-        this.ctx.fillStyle = '#0f1419';
+        this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw tiles
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                this.renderTile(x, y);
+        // Save context state
+        this.ctx.save();
+
+        // Apply camera transformation (pan only)
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+
+        // Calculate visible tile range
+        const tileSize = MAP_CONFIG.tileSize;
+        const startX = Math.max(0, Math.floor(this.camera.x / tileSize));
+        const startY = Math.max(0, Math.floor(this.camera.y / tileSize));
+        const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1);
+        const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1);
+
+        // Render visible tiles
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                const tile = this.tiles[y][x];
+                if (!tile) continue;
+
+                const px = x * tileSize;
+                const py = y * tileSize;
+
+                // Get color from heightmap if available
+                let terrainColor = TERRAIN_TYPES[tile.terrain].color;
+                if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
+                    MEDITERRANEAN_HEIGHTMAP[y] &&
+                    MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
+                    terrainColor = heightToColor(MEDITERRANEAN_HEIGHTMAP[y][x]);
+                }
+
+                // Draw terrain
+                this.ctx.fillStyle = terrainColor;
+                this.ctx.fillRect(px, py, tileSize, tileSize);
+
+                // Draw subtle grid
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(px, py, tileSize, tileSize);
+
+                // Draw ownership overlay
+                if (tile.owner) {
+                    this.ctx.fillStyle = tile.owner === 'player' ?
+                        'rgba(107, 44, 145, 0.25)' : 'rgba(139, 0, 0, 0.25)';
+                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                }
+
+                // Draw city/building icons
+                if (tile.building) {
+                    this.ctx.fillStyle = '#D4AF37';
+                    this.ctx.font = `${Math.floor(tileSize * 0.6)}px Arial`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    const icon = tile.building === 'capital' ? '⭐' : '🏛';
+                    this.ctx.fillText(icon, px + tileSize / 2, py + tileSize / 2);
+                }
+
+                // Fog of war for undiscovered areas
+                if (this.isFoggedTile(x, y)) {
+                    this.ctx.fillStyle = 'rgba(40, 40, 40, 0.7)';
+                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                }
             }
         }
 
-        // Draw units
-        gameState.units.forEach(unit => {
-            this.renderUnit(unit);
-        });
+        // Draw units (only visible ones)
+        if (gameState && gameState.units) {
+            gameState.units.forEach(unit => {
+                if (unit.position.x >= startX && unit.position.x < endX &&
+                    unit.position.y >= startY && unit.position.y < endY) {
+                    this.drawUnit(unit);
+                }
+            });
+        }
 
         // Draw selection
         if (this.selectedTile) {
@@ -207,94 +337,121 @@ class GameMap {
         if (this.hoveredTile) {
             this.renderHover(this.hoveredTile.x, this.hoveredTile.y);
         }
+
+        // Restore context
+        this.ctx.restore();
+
+        // Draw UI overlay
+        this.drawUI();
     }
 
     /**
-     * Render a single tile
+     * Setup pan controls (no zoom)
      */
-    renderTile(x, y) {
-        const tile = this.tiles[y][x];
-        const terrain = TERRAIN_TYPES[tile.terrain];
+    setupControls() {
+        // Pan with mouse drag
+        this.canvas.addEventListener('mousedown', (e) => {
+            this.isPanning = true;
+            this.lastPanX = e.clientX;
+            this.lastPanY = e.clientY;
+            this.canvas.style.cursor = 'grabbing';
+        });
 
-        const px = x * MAP_CONFIG.tileSize;
-        const py = y * MAP_CONFIG.tileSize;
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.isPanning) {
+                const dx = e.clientX - this.lastPanX;
+                const dy = e.clientY - this.lastPanY;
 
-        // Draw terrain
-        this.ctx.fillStyle = terrain.color;
-        this.ctx.fillRect(px, py, MAP_CONFIG.tileSize, MAP_CONFIG.tileSize);
+                this.camera.x -= dx;
+                this.camera.y -= dy;
 
-        // Draw grid
-        this.ctx.strokeStyle = 'rgba(212, 175, 55, 0.2)';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(px, py, MAP_CONFIG.tileSize, MAP_CONFIG.tileSize);
+                // Clamp camera to map bounds
+                const maxX = (this.width * MAP_CONFIG.tileSize) - this.canvas.width;
+                const maxY = (this.height * MAP_CONFIG.tileSize) - this.canvas.height;
+                this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+                this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
 
-        // Draw owner indicator
-        if (tile.owner === 'player') {
-            this.ctx.fillStyle = 'rgba(107, 44, 145, 0.3)';
-            this.ctx.fillRect(px, py, MAP_CONFIG.tileSize, MAP_CONFIG.tileSize);
-        } else if (tile.owner === 'enemy') {
-            this.ctx.fillStyle = 'rgba(139, 0, 0, 0.3)';
-            this.ctx.fillRect(px, py, MAP_CONFIG.tileSize, MAP_CONFIG.tileSize);
-        }
+                this.lastPanX = e.clientX;
+                this.lastPanY = e.clientY;
 
-        // Draw building
-        if (tile.building) {
-            this.ctx.fillStyle = '#D4AF37';
-            this.ctx.font = '20px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('🏛️', px + MAP_CONFIG.tileSize / 2, py + MAP_CONFIG.tileSize / 2);
-        }
+                this.render();
+            }
+        });
+
+        this.canvas.addEventListener('mouseup', () => {
+            this.isPanning = false;
+            this.canvas.style.cursor = 'default';
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            this.isPanning = false;
+            this.canvas.style.cursor = 'default';
+        });
+
+        // Prevent context menu
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     /**
-     * Render a unit on the map
+     * Draw UI overlay
      */
-    renderUnit(unit) {
-        const px = unit.position.x * MAP_CONFIG.tileSize;
-        const py = unit.position.y * MAP_CONFIG.tileSize;
+    drawUI() {
+        // Map coordinates display
+        const centerX = Math.floor((this.camera.x + this.canvas.width / 2) / MAP_CONFIG.tileSize);
+        const centerY = Math.floor((this.camera.y + this.canvas.height / 2) / MAP_CONFIG.tileSize);
 
-        // Draw unit circle
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(10, 10, 150, 30);
+        this.ctx.fillStyle = '#D4AF37';
+        this.ctx.font = '14px Crimson Text';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(`Position: ${centerX}, ${centerY}`, 20, 30);
+    }
+
+    /**
+     * Draw a unit
+     */
+    drawUnit(unit) {
+        const tileSize = MAP_CONFIG.tileSize;
+        const px = unit.position.x * tileSize;
+        const py = unit.position.y * tileSize;
+
+        // Unit circle
         this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
         this.ctx.beginPath();
         this.ctx.arc(
-            px + MAP_CONFIG.tileSize / 2,
-            py + MAP_CONFIG.tileSize / 2,
-            MAP_CONFIG.tileSize / 3,
+            px + tileSize / 2,
+            py + tileSize / 2,
+            tileSize / 3,
             0,
             Math.PI * 2
         );
         this.ctx.fill();
 
-        // Draw unit border
+        // Border
         this.ctx.strokeStyle = '#D4AF37';
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
 
-        // Draw unit icon (simplified)
+        // Icon
         this.ctx.fillStyle = '#F8F9FA';
-        this.ctx.font = 'bold 16px Arial';
+        this.ctx.font = `${Math.floor(tileSize * 0.4)}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
+        const icon = unit.type === 'cavalry' ? '🐎' : '⚔';
+        this.ctx.fillText(icon, px + tileSize / 2, py + tileSize / 2);
+    }
 
-        const icon = unit.type === 'cavalry' ? '🐎' : unit.type === 'infantry' ? '⚔️' : '🎯';
-        this.ctx.fillText(icon, px + MAP_CONFIG.tileSize / 2, py + MAP_CONFIG.tileSize / 2);
-
-        // Draw health bar
-        const healthPercent = unit.currentHealth / unit.stats.health;
-        const barWidth = MAP_CONFIG.tileSize - 8;
-        const barHeight = 4;
-
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        this.ctx.fillRect(px + 4, py + MAP_CONFIG.tileSize - 8, barWidth, barHeight);
-
-        this.ctx.fillStyle = healthPercent > 0.5 ? '#10B981' : healthPercent > 0.25 ? '#F59E0B' : '#EF4444';
-        this.ctx.fillRect(px + 4, py + MAP_CONFIG.tileSize - 8, barWidth * healthPercent, barHeight);
+    /**
+     * Render a unit on the map (legacy method)
+     */
+    renderUnit(unit) {
+        this.drawUnit(unit);
     }
 
     /**
      * Render selection highlight
-     */
+ */
     renderSelection(x, y) {
         const px = x * MAP_CONFIG.tileSize;
         const py = y * MAP_CONFIG.tileSize;

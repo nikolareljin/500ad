@@ -2,6 +2,27 @@
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
 
+## 📸 Screenshots & Walkthrough
+
+### Main Menu
+![Main Menu](docs/media/main_menu.png)
+
+### Leader Selection
+![Leader Selection](docs/media/leader_selection.png)
+
+### Gameplay - Mediterranean Map
+![Gameplay Map](docs/media/gameplay_map.png)
+
+### Map Navigation
+![Map Panned](docs/media/map_panned.png)
+
+### 🎥 Video Walkthrough
+Watch the complete gameplay walkthrough showing map navigation, unit movement, and fog of war system:
+
+![Gameplay Walkthrough](docs/media/gameplay_walkthrough.webp)
+
+*The walkthrough demonstrates the 200x120 tile Mediterranean map with accurate geography, pan controls, and fog of war revealing as you explore.*
+
 ## Overview
 
 Command legendary Byzantine emperors and generals through pivotal moments in Eastern Roman history. Build armies, manage resources, and lead your forces to victory in historically accurate campaigns.
@@ -14,17 +35,35 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Three Historical Eras**: Early (500-717), Middle (717-1025), and Late (1025-1453) Byzantine periods
 - **Authentic Leaders**: Each with unique abilities based on historical achievements
 
+### Massive Geographic Map
+- **200x120 Tile Map**: 24,000 tiles covering the entire Mediterranean world
+- **Accurate Geography**: Pixel-perfect representation from Atlantic to Persia, British Isles to Sahara
+- **Major Regions**: 
+  - Western: Iberia, France, British Isles, Atlantic coast
+  - Central: Italy, Balkans, Central Europe
+  - Eastern: Anatolia, Caucasus, Persia, Caspian Sea
+  - Southern: North Africa, Sahara, Egypt, Arabia, Red Sea
+  - Northern: Ukrainian Steppe
+- **Realistic Terrain**: 
+  - Water Bodies: Mediterranean (all basins), Black Sea, Caspian Sea, Red Sea, Persian Gulf
+  - Mountains: Alps, Pyrenees, Caucasus, Zagros, Atlas, Taurus, Apennines
+  - Deserts: Sahara, Arabian, Syrian
+- **Heightmap-Based**: 256 elevation levels with natural color gradients
+- **Fog of War**: Discover the world as you explore with your units
+
 ### Gameplay
 - **Turn-Based Strategy**: Tactical combat with resource management
+- **Pan Navigation**: Drag to explore the massive map
 - **Unit Progression**: Experience and leveling system
 - **Combat System**: Type advantages, terrain modifiers, and morale
 - **Resource Management**: Gold, manpower, and prestige
 - **Save/Load System**: Multiple save slots with auto-save
+- **Exploration**: Fog of war reveals as units move and cities are founded
 
 ### Mobile Optimized
-- **Touch Controls**: Tap to select, drag to move
+- **Touch Controls**: Tap to select, drag to move and pan
 - **Responsive Design**: Works on phones and tablets
-- **Performance Optimized**: Smooth gameplay on mobile devices
+- **Performance Optimized**: Smooth 60 FPS even with 24,000 tiles
 - **Portrait & Landscape**: Supports both orientations
 
 ## How to Play
@@ -38,9 +77,16 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 
 ### Controls
 - **Tap/Click**: Select units or tiles
+- **Drag Map**: Pan around the world map to explore
 - **Tap Unit**: View unit details
 - **Tap Empty Tile**: Move selected unit
 - **End Turn Button**: Complete your turn and generate resources
+
+### Map Navigation
+- **Pan**: Click and drag anywhere on the map to move your view
+- **Explore**: Move units to reveal fog of war
+- **Position**: Current map coordinates shown in top-left corner
+- **Byzantine Focus**: Map starts centered on Constantinople/Anatolia region
 
 ### Resources
 - **Gold** 💰: Used to recruit units and construct buildings
@@ -120,10 +166,25 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 │   ├── ui.js          # UI controller
 │   ├── audio.js       # Audio manager
 │   └── storage.js     # Save/load system
-└── assets/            # Graphics and audio
-    ├── images/
-    └── audio/
+├── assets/            # Graphics and data
+│   ├── geography.js   # Mediterranean heightmap
+│   ├── symbols.js     # Byzantine symbols
+│   ├── images/
+│   └── audio/
+└── docs/              # Documentation
+    └── media/         # Screenshots and videos
 ```
+
+### Map Coordinates Reference
+Key historical cities on the 200x120 map:
+- **Constantinople** (Byzantine Capital): ~(110, 50)
+- **Rome** (Western Capital): ~(70, 55)
+- **Alexandria** (Egypt): ~(120, 95)
+- **Baghdad** (Abbasid Capital): ~(155, 75)
+- **Jerusalem** (Holy City): ~(130, 80)
+- **Athens** (Greece): ~(100, 60)
+- **Ravenna** (Exarchate): ~(75, 50)
+- **Antioch** (Levant): ~(125, 70)
 
 ### Browser Compatibility
 - Chrome/Edge (recommended)

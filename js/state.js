@@ -77,23 +77,36 @@ class GameState {
             if (tile) {
                 tile.owner = 'player';
                 this.player.territories.push(tile.id || `${startPos.x}-${startPos.y}`);
+
+                // Reveal fog of war around starting city
+                gameMap.revealArea(startPos.x, startPos.y, 5);
             }
         }
 
-        const counts = [
-            { type: 'skutatoi', count: 3 },
-            { type: 'archers', count: 2 },
-            { type: 'kavallarioi', count: 2 }
+        // Create starting units
+        const startingUnits = [
+            { type: 'infantry', count: 3 },
+            { type: 'cavalry', count: 2 },
+            { type: 'archer', count: 2 }
         ];
 
-        counts.forEach(({ type, count }) => {
+        startingUnits.forEach(({ type, count }) => {
             for (let i = 0; i < count; i++) {
-                const x = startPos.x + (i % 3);
-                const y = startPos.y + 1 + Math.floor(i / 3);
-                const unit = createUnit(type, { x, y }, 'player');
+                const offset = { x: i % 3 - 1, y: Math.floor(i / 3) - 1 };
+                const unit = createUnit(
+                    type,
+                    { x: startPos.x + offset.x, y: startPos.y + offset.y },
+                    'player'
+                );
+
                 if (unit) {
                     this.units.push(unit);
                     this.player.unitsOwned.push(unit.id);
+
+                    // Reveal fog of war around each starting unit
+                    if (gameMap) {
+                        gameMap.revealArea(unit.position.x, unit.position.y, 3);
+                    }
                 }
             }
         });
@@ -226,6 +239,11 @@ class GameState {
         if (distance <= unit.currentMovement) {
             unit.position = newPosition;
             unit.currentMovement -= distance;
+
+            // Reveal fog of war around new position for player units
+            if (unit.owner === 'player' && gameMap) {
+                gameMap.revealArea(newPosition.x, newPosition.y, 3);
+            }
 
             // Check for territory capture
             this.captureTerritory(unit, newPosition);
