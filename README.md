@@ -2,6 +2,8 @@
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
 
+⚠️**Work in progress** - keep in mind this is far from being a polished product.
+
 <img width="1073" height="869" alt="image" src="https://github.com/user-attachments/assets/f737700d-48cc-43f1-a8bb-4cec39aa3567" />
 
 How to [run this locally](#run)?
