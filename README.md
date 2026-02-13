@@ -209,10 +209,14 @@ Key historical cities on the 200x120 map:
 ## Running Locally
 
 ### One-Liner (Clone + Run)
-Copy/paste this command:
+Copy/paste one of these commands:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nikolareljin/500ad/main/scripts/quickstart.sh | bash
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nikolareljin/500ad/main/scripts/quickstart.ps1 | iex"
 ```
 
 This will:
