@@ -23,7 +23,7 @@ Watch the complete gameplay walkthrough showing map navigation, unit movement, a
 
 ![Gameplay Walkthrough](docs/media/gameplay_walkthrough.webp)
 
-*The walkthrough demonstrates the 200x120 tile Mediterranean map with accurate geography, pan controls, and fog of war revealing as you explore.*
+*The walkthrough demonstrates the 200x120 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
 
 ## Overview
 
@@ -38,8 +38,8 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Authentic Leaders**: Each with unique abilities based on historical achievements
 
 ### Massive Geographic Map
-- **200x120 Tile Map**: 24,000 tiles covering the entire Mediterranean world
-- **Accurate Geography**: Pixel-perfect representation from Atlantic to Persia, British Isles to Sahara
+- **200x120 Tile Map**: 24,000 tiles covering Europe, the Mediterranean, Mesopotamia, Arabia, and Ethiopia
+- **Accurate Geography**: Historic-world projection from Atlantic approaches to Persia, and from Britain to the Horn of Africa
 - **Major Regions**: 
   - Western: Iberia, France, British Isles, Atlantic coast
   - Central: Italy, Balkans, Central Europe
@@ -80,7 +80,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 
 ### Controls
 - **Tap/Click**: Select units or tiles
-- **Drag Map**: Pan around the world map to explore
+- **Drag Map**: Pan around the historic world map to explore
 - **Minimap Click/Drag**: Reposition the camera quickly to any world area
 - **Tap Unit**: View unit details
 - **Tap Empty Tile**: Move selected unit
@@ -183,14 +183,13 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 
 ### Map Coordinates Reference
 Key historical cities on the 200x120 map:
-- **Constantinople** (Byzantine Capital): ~(110, 50)
-- **Rome** (Western Capital): ~(70, 55)
-- **Alexandria** (Egypt): ~(120, 95)
-- **Baghdad** (Abbasid Capital): ~(155, 75)
-- **Jerusalem** (Holy City): ~(130, 80)
-- **Athens** (Greece): ~(100, 60)
-- **Ravenna** (Exarchate): ~(75, 50)
-- **Antioch** (Levant): ~(125, 70)
+- **Constantinople** (Byzantine Capital): positioned from real lat/lon (28.97E, 41.01N)
+- **Rome** (Western Capital): positioned from real lat/lon (12.50E, 41.90N)
+- **Alexandria** (Egypt): positioned from real lat/lon (29.92E, 31.20N)
+- **Baghdad** (Abbasid Capital): positioned from real lat/lon (44.37E, 33.31N)
+- **Jerusalem** (Holy City): positioned from real lat/lon (35.22E, 31.78N)
+- **Mecca / Medina** (Arabian Peninsula): positioned from real lat/lon
+- **Axum / Adulis** (Ethiopia-Horn region): positioned from real lat/lon
 
 ### Browser Compatibility
 - Chrome/Edge (recommended)
@@ -200,8 +199,22 @@ Key historical cities on the 200x120 map:
 
 ## Running Locally
 
-### Simple Method
-1. Open `index.html` directly in your browser
+### Quick Start (Recommended)
+```bash
+./run
+```
+
+This starts a local server, opens the browser automatically, and runs `scripts/update.sh` first if `scripts/script-helpers` is not installed.
+
+### Update Helpers Submodule
+```bash
+./scripts/update.sh
+```
+
+Compatibility alias:
+```bash
+./script/update.sh
+```
 
 ### With Local Server (Recommended)
 ```bash

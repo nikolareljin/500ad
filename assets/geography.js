@@ -1,22 +1,24 @@
 /**
- * Geographic world heightmap for 500 A.D.
- * 200x120 equirectangular-style projection with deterministic terrain.
+ * Geography heightmap for 500 A.D.
  *
- * Height values:
- * 0-30: Deep ocean
- * 31-50: Shallow water/coastal seas/rivers
- * 51-80: Plains/lowlands
- * 81-120: Hills/highlands
- * 121-180: Mountains
- * 181-255: High mountains/ice peaks
+ * The map is focused on the Byzantine strategic theater:
+ * Europe, North Africa, Arabian Peninsula, Mesopotamia, and Ethiopia.
  */
 
 const WORLD_MAP_WIDTH = 200;
 const WORLD_MAP_HEIGHT = 120;
 
-/**
- * Deterministic hash-based noise
- */
+const GEOGRAPHY_BOUNDS = {
+  west: -12,
+  east: 56,
+  north: 58,
+  south: 8
+};
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function hash2D(x, y, seed = 1337) {
   let n = x * 374761393 + y * 668265263 + seed * 1013904223;
   n = (n ^ (n >> 13)) * 1274126177;
@@ -54,21 +56,17 @@ function valueNoise(x, y, scale = 1) {
 
 function fbm(x, y) {
   return (
-    valueNoise(x, y, 4) * 0.5 +
-    valueNoise(x, y, 8) * 0.25 +
-    valueNoise(x, y, 16) * 0.15 +
-    valueNoise(x, y, 32) * 0.1
+    valueNoise(x, y, 3) * 0.50 +
+    valueNoise(x, y, 7) * 0.25 +
+    valueNoise(x, y, 13) * 0.15 +
+    valueNoise(x, y, 25) * 0.10
   );
 }
 
-function gaussian2D(nx, ny, cx, cy, rx, ry) {
-  const dx = (nx - cx) / rx;
-  const dy = (ny - cy) / ry;
+function gaussian2D(lon, lat, cx, cy, rx, ry) {
+  const dx = (lon - cx) / rx;
+  const dy = (lat - cy) / ry;
   return Math.exp(-(dx * dx + dy * dy));
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 function distToSegment(px, py, ax, ay, bx, by) {
@@ -85,37 +83,31 @@ function distToSegment(px, py, ax, ay, bx, by) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-/**
- * Major world river paths in normalized world coordinates.
- * These are stylized to fit 200x120 gameplay resolution.
- */
-const WORLD_RIVER_PATHS = [
+const RIVER_PATHS = [
   // Nile
-  [[0.58, 0.70], [0.585, 0.66], [0.59, 0.62], [0.60, 0.58], [0.61, 0.55]],
-  // Amazon
-  [[0.33, 0.60], [0.30, 0.60], [0.27, 0.61], [0.24, 0.60], [0.21, 0.59]],
-  // Mississippi
-  [[0.20, 0.28], [0.21, 0.33], [0.21, 0.38], [0.22, 0.44], [0.23, 0.50]],
+  [[31, 25], [31, 22], [31, 19], [32, 16], [33, 13]],
   // Danube
-  [[0.50, 0.30], [0.52, 0.31], [0.54, 0.32], [0.56, 0.32]],
-  // Tigris-Euphrates (shared stylized basin)
-  [[0.63, 0.43], [0.64, 0.45], [0.65, 0.48], [0.66, 0.51], [0.67, 0.54]],
-  // Ganges
-  [[0.70, 0.42], [0.72, 0.43], [0.74, 0.44], [0.76, 0.45]],
-  // Yangtze
-  [[0.78, 0.36], [0.80, 0.37], [0.82, 0.38], [0.84, 0.39], [0.86, 0.40]],
-  // Yellow River
-  [[0.79, 0.30], [0.81, 0.31], [0.83, 0.32], [0.85, 0.33]]
+  [[9, 48], [14, 47], [19, 46], [24, 45], [29, 45]],
+  // Euphrates
+  [[38, 38], [40, 36], [42, 34], [44, 32]],
+  // Tigris
+  [[43, 38], [44, 36], [45, 34], [46, 31]],
+  // Po
+  [[8, 45], [10, 45], [12, 45]],
+  // Rhone
+  [[6, 46], [5, 44], [5, 43]],
+  // Dnieper
+  [[31, 52], [31, 49], [31, 46]]
 ];
 
-function isNearRiver(nx, ny) {
-  const riverWidth = 0.006;
+function isNearRiver(lon, lat) {
+  const riverWidthDeg = 0.38;
 
-  for (const river of WORLD_RIVER_PATHS) {
+  for (const river of RIVER_PATHS) {
     for (let i = 0; i < river.length - 1; i++) {
       const [ax, ay] = river[i];
       const [bx, by] = river[i + 1];
-      if (distToSegment(nx, ny, ax, ay, bx, by) <= riverWidth) {
+      if (distToSegment(lon, lat, ax, ay, bx, by) <= riverWidthDeg) {
         return true;
       }
     }
@@ -124,106 +116,113 @@ function isNearRiver(nx, ny) {
   return false;
 }
 
-function continentSignal(nx, ny) {
-  // Approximate major landmasses with gaussian blobs.
-  const northAmerica =
-    gaussian2D(nx, ny, 0.17, 0.30, 0.17, 0.18) +
-    gaussian2D(nx, ny, 0.22, 0.24, 0.12, 0.10) +
-    gaussian2D(nx, ny, 0.11, 0.36, 0.12, 0.14);
+function landSignal(lon, lat) {
+  let signal = 0;
 
-  const southAmerica =
-    gaussian2D(nx, ny, 0.28, 0.62, 0.09, 0.16) +
-    gaussian2D(nx, ny, 0.30, 0.74, 0.06, 0.13);
+  // Europe
+  signal += gaussian2D(lon, lat, -3, 40, 8, 7) * 1.35;   // Iberia
+  signal += gaussian2D(lon, lat, 3, 47, 12, 8) * 1.20;   // France + west Europe
+  signal += gaussian2D(lon, lat, 12, 43, 3, 8) * 1.25;   // Italy
+  signal += gaussian2D(lon, lat, 22, 44, 9, 6) * 1.25;   // Balkans
+  signal += gaussian2D(lon, lat, 31, 50, 18, 9) * 1.15;  // East Europe
+  signal += gaussian2D(lon, lat, -2, 54, 6, 5) * 1.05;   // British Isles
 
-  const europeAfrica =
-    gaussian2D(nx, ny, 0.48, 0.30, 0.13, 0.10) +
-    gaussian2D(nx, ny, 0.52, 0.56, 0.11, 0.18) +
-    gaussian2D(nx, ny, 0.60, 0.46, 0.07, 0.10);
+  // Byzantine core + Near East
+  signal += gaussian2D(lon, lat, 33, 39, 10, 6) * 1.40;  // Anatolia
+  signal += gaussian2D(lon, lat, 43, 34, 7, 5) * 1.10;   // Mesopotamia
+  signal += gaussian2D(lon, lat, 37, 33, 4, 5) * 1.05;   // Levant
+  signal += gaussian2D(lon, lat, 44, 23, 12, 10) * 1.25; // Arabian Peninsula
 
-  const asia =
-    gaussian2D(nx, ny, 0.68, 0.30, 0.23, 0.14) +
-    gaussian2D(nx, ny, 0.77, 0.35, 0.16, 0.11) +
-    gaussian2D(nx, ny, 0.73, 0.48, 0.13, 0.09);
+  // Africa
+  signal += gaussian2D(lon, lat, 11, 31, 29, 6) * 1.35;  // North Africa coast band
+  signal += gaussian2D(lon, lat, 39, 12, 9, 5) * 1.15;   // Ethiopia/Horn
+  signal += gaussian2D(lon, lat, 31, 28, 5, 8) * 1.05;   // Egypt + Nile valley
 
-  const australia = gaussian2D(nx, ny, 0.86, 0.72, 0.07, 0.05);
-  const greenland = gaussian2D(nx, ny, 0.34, 0.13, 0.06, 0.06);
-
-  // Antarctica as lower-latitude shelf.
-  const antarctica = ny > 0.90 ? (ny - 0.90) * 5.5 : 0;
-
-  return (
-    northAmerica +
-    southAmerica +
-    europeAfrica +
-    asia +
-    australia +
-    greenland +
-    antarctica
-  );
+  return signal;
 }
 
-function seaCutSignal(nx, ny) {
+function seaCutSignal(lon, lat) {
   let cut = 0;
 
-  // Mediterranean basin
-  cut += gaussian2D(nx, ny, 0.57, 0.43, 0.10, 0.06) * 1.0;
-  // Black Sea
-  cut += gaussian2D(nx, ny, 0.61, 0.33, 0.05, 0.03) * 0.9;
-  // Red Sea
-  cut += gaussian2D(nx, ny, 0.62, 0.57, 0.03, 0.10) * 0.9;
-  // Persian Gulf
-  cut += gaussian2D(nx, ny, 0.66, 0.50, 0.03, 0.03) * 0.8;
-  // Caribbean
-  cut += gaussian2D(nx, ny, 0.22, 0.42, 0.05, 0.03) * 0.7;
-  // Gulf of Mexico
-  cut += gaussian2D(nx, ny, 0.18, 0.43, 0.05, 0.04) * 0.8;
+  // Atlantic/ocean pressure from the west.
+  if (lon < -7) {
+    cut += ((-7 - lon) / 8) * 2.2;
+  }
+
+  // Key seas around the Mediterranean world.
+  cut += gaussian2D(lon, lat, 6, 38, 16, 5) * 1.85;   // Western Mediterranean
+  cut += gaussian2D(lon, lat, 17, 37, 13, 5) * 1.95;  // Central Mediterranean
+  cut += gaussian2D(lon, lat, 28, 35, 12, 5) * 2.05;  // Eastern Mediterranean
+  cut += gaussian2D(lon, lat, 21, 40, 4, 3) * 1.40;   // Adriatic
+  cut += gaussian2D(lon, lat, 25, 39, 5, 3) * 1.45;   // Aegean
+  cut += gaussian2D(lon, lat, 35, 44, 8, 3) * 1.75;   // Black Sea
+  cut += gaussian2D(lon, lat, 50, 41, 5, 7) * 1.35;   // Caspian
+  cut += gaussian2D(lon, lat, 40, 20, 3, 10) * 1.55;  // Red Sea
+  cut += gaussian2D(lon, lat, 50, 27, 4, 3) * 1.45;   // Persian Gulf
+
+  // English Channel / North Sea openings.
+  cut += gaussian2D(lon, lat, -2, 51, 4, 2) * 0.85;
+  cut += gaussian2D(lon, lat, 3, 54, 5, 3) * 0.65;
 
   return cut;
 }
 
+function mountainSignal(lon, lat) {
+  let mountains = 0;
+
+  mountains += gaussian2D(lon, lat, 10, 46, 4, 2) * 1.4;   // Alps
+  mountains += gaussian2D(lon, lat, 0, 43, 3, 2) * 1.2;    // Pyrenees
+  mountains += gaussian2D(lon, lat, 11, 42, 2, 5) * 0.9;   // Apennines
+  mountains += gaussian2D(lon, lat, -4, 32, 9, 3) * 1.0;   // Atlas
+  mountains += gaussian2D(lon, lat, 43, 42, 5, 2) * 1.45;  // Caucasus
+  mountains += gaussian2D(lon, lat, 35, 38, 6, 2) * 1.0;   // Taurus
+  mountains += gaussian2D(lon, lat, 46, 33, 5, 3) * 1.25;  // Zagros
+  mountains += gaussian2D(lon, lat, 39, 11, 4, 3) * 1.25;  // Ethiopian Highlands
+
+  return mountains;
+}
+
+function aridSignal(lon, lat) {
+  return Math.max(
+    gaussian2D(lon, lat, 10, 26, 24, 7), // Sahara edge
+    gaussian2D(lon, lat, 45, 23, 11, 7)  // Arabian desert
+  );
+}
+
 function generateWorldHeightmap() {
   const map = [];
+  const lonSpan = GEOGRAPHY_BOUNDS.east - GEOGRAPHY_BOUNDS.west;
+  const latSpan = GEOGRAPHY_BOUNDS.north - GEOGRAPHY_BOUNDS.south;
 
   for (let y = 0; y < WORLD_MAP_HEIGHT; y++) {
     const row = [];
     for (let x = 0; x < WORLD_MAP_WIDTH; x++) {
       const nx = x / (WORLD_MAP_WIDTH - 1);
       const ny = y / (WORLD_MAP_HEIGHT - 1);
+      const lon = GEOGRAPHY_BOUNDS.west + nx * lonSpan;
+      const lat = GEOGRAPHY_BOUNDS.north - ny * latSpan;
 
-      const lat = Math.abs((ny - 0.5) * 2); // 0 equator, 1 poles
       const n = fbm(nx, ny);
-      const continents = continentSignal(nx, ny);
-      const seas = seaCutSignal(nx, ny);
-      const landScore = continents - seas + (n - 0.5) * 0.45;
+      const land = landSignal(lon, lat);
+      const sea = seaCutSignal(lon, lat);
+      const mountains = mountainSignal(lon, lat);
+      const arid = aridSignal(lon, lat);
+
+      const landScore = land - sea + (n - 0.5) * 0.28;
 
       let elevation;
-
-      if (landScore < 0.72) {
-        // Ocean depth with continental shelf behavior.
-        const shelf = clamp((0.75 - landScore) * 140, 0, 120);
-        elevation = clamp(42 - shelf + n * 10, 2, 50);
+      if (landScore < 0.92) {
+        const shelf = clamp((0.95 - landScore) * 120, 0, 120);
+        elevation = clamp(44 - shelf + n * 10, 2, 50);
       } else {
-        // Land elevation with mountain ridges and polar ice.
-        const inland = clamp((landScore - 0.72) / 1.2, 0, 1);
-        const ridge = Math.pow(clamp((n - 0.45) * 1.8, 0, 1), 1.5);
-        elevation = 52 + inland * 68 + ridge * 120;
-
-        // Colder, higher terrain near poles.
-        if (lat > 0.82) {
-          elevation += (lat - 0.82) * 260;
-        }
-
-        // Major desert belts (Sahara/Arabia/Central Asia influences).
-        const desertBand = Math.max(
-          gaussian2D(nx, ny, 0.53, 0.63, 0.20, 0.08),
-          gaussian2D(nx, ny, 0.66, 0.58, 0.15, 0.07)
-        );
-        elevation += desertBand * 8;
+        const inland = clamp((landScore - 0.92) / 1.15, 0, 1);
+        elevation = 55 + inland * 52 + mountains * 72 + n * 8;
+        elevation += arid * 6;
       }
 
-      // Carve major rivers into lowland regions.
-      if (isNearRiver(nx, ny) && elevation > 52 && elevation < 150) {
-        elevation = Math.min(elevation, 47);
+      // River carving for inland lowlands.
+      if (isNearRiver(lon, lat) && elevation > 55 && elevation < 155) {
+        elevation = Math.min(elevation, 48);
       }
 
       row.push(Math.floor(clamp(elevation, 0, 255)));
@@ -234,31 +233,25 @@ function generateWorldHeightmap() {
   return map;
 }
 
-/**
- * Convert height to terrain type
- */
 function heightToTerrain(height) {
   if (height <= 50) return 'water';
-  if (height <= 85) return 'plains';
-  if (height <= 130) return 'hills';
+  if (height <= 95) return 'plains';
+  if (height <= 145) return 'hills';
   return 'mountains';
 }
 
-/**
- * Get color from height value
- */
 function heightToColor(height) {
-  if (height <= 12) return '#06273f';      // Abyssal ocean
-  if (height <= 24) return '#0b3f63';      // Deep ocean
-  if (height <= 38) return '#145f87';      // Open ocean
-  if (height <= 50) return '#3f8fba';      // Shelf/coast/waterways
-  if (height <= 65) return '#c9bf8e';      // Arid lowland
-  if (height <= 85) return '#95ad6e';      // Plains
-  if (height <= 110) return '#7f9b61';     // Uplands
-  if (height <= 130) return '#6f8850';     // Hills
-  if (height <= 165) return '#8a7a5f';     // Mountains
-  if (height <= 200) return '#6e6358';     // High mountains
-  return '#edf2f6';                         // Snow/ice peaks
+  // Historic-map inspired palette: muted seas + parchment earth tones.
+  if (height <= 12) return '#456f7a';      // Deep sea
+  if (height <= 24) return '#598791';      // Open sea
+  if (height <= 38) return '#76a19f';      // Coastal sea
+  if (height <= 50) return '#95b8ad';      // Shallow water/rivers
+  if (height <= 70) return '#d2c398';      // Coastal plains
+  if (height <= 95) return '#c4b282';      // Plains
+  if (height <= 120) return '#af9c73';     // Uplands
+  if (height <= 145) return '#9b8765';     // Hills
+  if (height <= 190) return '#7d6b55';     // Mountains
+  return '#d8d2c6';                         // Snow/high peaks
 }
 
 // Keep name for compatibility with existing game code.

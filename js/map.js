@@ -12,43 +12,76 @@ const MAP_CONFIG = {
     viewportHeight: 20 // Number of tiles visible vertically
 };
 
+const HISTORIC_MAP_BOUNDS = typeof GEOGRAPHY_BOUNDS !== 'undefined'
+    ? GEOGRAPHY_BOUNDS
+    : { west: -12, east: 56, north: 58, south: 8 };
+
+function toTileCoordinate(lon, lat) {
+    const xNorm = (lon - HISTORIC_MAP_BOUNDS.west) / (HISTORIC_MAP_BOUNDS.east - HISTORIC_MAP_BOUNDS.west);
+    const yNorm = (HISTORIC_MAP_BOUNDS.north - lat) / (HISTORIC_MAP_BOUNDS.north - HISTORIC_MAP_BOUNDS.south);
+
+    const x = Math.max(0, Math.min(MAP_CONFIG.width - 1, Math.round(xNorm * (MAP_CONFIG.width - 1))));
+    const y = Math.max(0, Math.min(MAP_CONFIG.height - 1, Math.round(yNorm * (MAP_CONFIG.height - 1))));
+
+    return { x, y };
+}
+
+function historicTown(id, name, lon, lat, type, importance, extra = {}) {
+    return {
+        id,
+        name,
+        ...toTileCoordinate(lon, lat),
+        lon,
+        lat,
+        type,
+        importance,
+        ...extra
+    };
+}
+
 const HISTORIC_TOWNS = [
     // Balkans & Greece
-    { id: 'constantinople', name: 'Constantinople', x: 116, y: 32, type: 'capital', importance: 10 },
-    { id: 'thessalonica', name: 'Thessalonica', x: 113, y: 33, type: 'city', importance: 8 },
-    { id: 'athens', name: 'Athens', x: 113, y: 34, type: 'town', importance: 6 },
-    { id: 'preslav', name: 'Preslav', x: 115, y: 31, type: 'city', importance: 7, faction: 'bulgar' },
+    historicTown('constantinople', 'Constantinople', 28.97, 41.01, 'capital', 10),
+    historicTown('thessalonica', 'Thessalonica', 22.95, 40.64, 'city', 8),
+    historicTown('athens', 'Athens', 23.73, 37.98, 'town', 6),
+    historicTown('preslav', 'Preslav', 26.82, 43.16, 'city', 7, { faction: 'bulgar' }),
 
     // Anatolia & Caucasus
-    { id: 'nicaea', name: 'Nicaea', x: 117, y: 33, type: 'city', importance: 7 },
-    { id: 'antioch', name: 'Antioch', x: 120, y: 36, type: 'city', importance: 9 },
-    { id: 'iconium', name: 'Iconium', x: 118, y: 35, type: 'city', importance: 7 },
-    { id: 'trapous', name: 'Trebizond', x: 122, y: 33, type: 'city', importance: 7 },
-    { id: 'tbilisi', name: 'Tbilisi', x: 124, y: 33, type: 'town', importance: 6 },
+    historicTown('nicaea', 'Nicaea', 29.72, 40.43, 'city', 7),
+    historicTown('antioch', 'Antioch', 36.20, 36.20, 'city', 9),
+    historicTown('iconium', 'Iconium', 32.49, 37.87, 'city', 7),
+    historicTown('trebizond', 'Trebizond', 39.72, 41.00, 'city', 7),
+    historicTown('tbilisi', 'Tbilisi', 44.80, 41.70, 'town', 6),
 
-    // Middle East
-    { id: 'jerusalem', name: 'Jerusalem', x: 119, y: 39, type: 'city', importance: 10 },
-    { id: 'damascus', name: 'Damascus', x: 120, y: 38, type: 'city', importance: 8 },
-    { id: 'baghdad', name: 'Baghdad', x: 124, y: 38, type: 'capital', importance: 10, faction: 'arab' },
-    { id: 'ctesiphon', name: 'Ctesiphon', x: 124, y: 39, type: 'capital', importance: 10, faction: 'sassanid' },
+    // Levant, Mesopotamia & Arabia
+    historicTown('jerusalem', 'Jerusalem', 35.22, 31.78, 'city', 10),
+    historicTown('damascus', 'Damascus', 36.29, 33.51, 'city', 8),
+    historicTown('baghdad', 'Baghdad', 44.37, 33.31, 'capital', 10, { faction: 'arab' }),
+    historicTown('ctesiphon', 'Ctesiphon', 44.58, 33.09, 'capital', 10, { faction: 'sassanid' }),
+    historicTown('medina', 'Medina', 39.61, 24.47, 'city', 7, { faction: 'arab' }),
+    historicTown('mecca', 'Mecca', 39.86, 21.39, 'city', 8, { faction: 'arab' }),
+    historicTown('sanaa', "Sana'a", 44.20, 15.35, 'town', 6),
 
-    // North Africa
-    { id: 'alexandria', name: 'Alexandria', x: 117, y: 39, type: 'city', importance: 9 },
-    { id: 'carthage', name: 'Carthage', x: 106, y: 35, type: 'city', importance: 8 },
-    { id: 'leptis_magna', name: 'Leptis Magna', x: 108, y: 39, type: 'town', importance: 6 },
+    // North Africa & Ethiopia
+    historicTown('alexandria', 'Alexandria', 29.92, 31.20, 'city', 9),
+    historicTown('fustat', 'Fustat', 31.24, 30.03, 'city', 7),
+    historicTown('carthage', 'Carthage', 10.33, 36.86, 'city', 8),
+    historicTown('leptis_magna', 'Leptis Magna', 14.29, 32.64, 'town', 6),
+    historicTown('axum', 'Axum', 38.72, 14.13, 'city', 7),
+    historicTown('adulis', 'Adulis', 39.45, 15.30, 'town', 6),
 
-    // Italy & Western Med
-    { id: 'rome', name: 'Rome', x: 107, y: 32, type: 'capital', importance: 10 },
-    { id: 'ravenna', name: 'Ravenna', x: 107, y: 31, type: 'city', importance: 8 },
-    { id: 'venice', name: 'Venice', x: 107, y: 30, type: 'city', importance: 7 },
-    { id: 'naples', name: 'Naples', x: 108, y: 33, type: 'town', importance: 6 },
-    { id: 'cartagena', name: 'Cartagena', x: 99, y: 35, type: 'town', importance: 6 },
+    // Italy & Western Mediterranean
+    historicTown('rome', 'Rome', 12.50, 41.90, 'capital', 10),
+    historicTown('ravenna', 'Ravenna', 12.20, 44.42, 'city', 8),
+    historicTown('venice', 'Venice', 12.33, 45.44, 'city', 7),
+    historicTown('naples', 'Naples', 14.27, 40.85, 'town', 6),
+    historicTown('cartagena', 'Cartagena', -0.98, 37.60, 'town', 6),
 
     // Central & Northern Europe
-    { id: 'aachen', name: 'Aachen', x: 103, y: 27, type: 'city', importance: 8, faction: 'frank' },
-    { id: 'paris', name: 'Paris', x: 101, y: 27, type: 'city', importance: 7 },
-    { id: 'london', name: 'London', x: 100, y: 26, type: 'city', importance: 7 },
-    { id: 'kiev', name: 'Kiev', x: 117, y: 27, type: 'city', importance: 7 }
+    historicTown('aachen', 'Aachen', 6.08, 50.78, 'city', 8, { faction: 'frank' }),
+    historicTown('paris', 'Paris', 2.35, 48.86, 'city', 7),
+    historicTown('london', 'London', -0.13, 51.50, 'city', 7),
+    historicTown('kiev', 'Kiev', 30.52, 50.45, 'city', 7)
 ];
 
 const TERRAIN_TYPES = {
