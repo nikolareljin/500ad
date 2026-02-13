@@ -111,6 +111,21 @@ class UIManager {
             this.showGameMenu();
         });
 
+        document.getElementById('btn-recruit')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.recruitAtSelectedCity();
+        });
+
+        document.getElementById('btn-build')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.buildInSelectedCity();
+        });
+
+        document.getElementById('btn-tech')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.researchTechnology();
+        });
+
         // Close modal on overlay click
         this.modalOverlay?.addEventListener('click', (e) => {
             if (e.target === this.modalOverlay) {
@@ -416,7 +431,126 @@ class UIManager {
             storageManager.autoSave();
         }
 
-        this.showNotification(`Turn ${result.turn} - Income: ${result.income.gold} gold`, 'success');
+        this.showNotification(
+            `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
+            'success'
+        );
+    }
+
+    recruitAtSelectedCity() {
+        if (!gameMap?.selectedTile) {
+            this.showNotification('Select a city tile to recruit', 'error');
+            return;
+        }
+
+        const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
+        if (!tile?.cityData || tile.owner !== 'player') {
+            this.showNotification('Recruitment requires a player-owned city', 'error');
+            return;
+        }
+
+        const recruitType = tile.cityData.infrastructure.industry >= 3 ? 'kavallarioi' : 'skutatoi';
+        const spawnTile = this.findRecruitSpawnTile(tile);
+        if (!spawnTile) {
+            this.showNotification('No open adjacent tile for recruitment', 'error');
+            return;
+        }
+
+        const unit = gameState.recruitUnit(recruitType, spawnTile);
+        if (!unit) {
+            this.showNotification(`Not enough resources to recruit ${recruitType}`, 'error');
+            return;
+        }
+
+        this.updateHUD();
+        gameMap.render();
+        this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+    }
+
+    findRecruitSpawnTile(cityTile) {
+        const offsets = [
+            { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
+            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+        ];
+
+        for (const offset of offsets) {
+            const x = cityTile.x + offset.x;
+            const y = cityTile.y + offset.y;
+            const mapTile = gameMap.getTile(x, y);
+            if (!mapTile || mapTile.terrain === 'water') continue;
+
+            const occupied = gameState.units.some(u => u.position.x === x && u.position.y === y);
+            if (occupied) continue;
+            return { x, y };
+        }
+
+        return null;
+    }
+
+    buildInSelectedCity() {
+        if (!gameMap?.selectedTile) {
+            this.showNotification('Select a city tile to build', 'error');
+            return;
+        }
+
+        const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
+        if (!tile?.cityData || tile.owner !== 'player') {
+            this.showNotification('Build actions require a player-owned city', 'error');
+            return;
+        }
+
+        const infra = tile.cityData.infrastructure;
+        const infraLevel = infra.roads + infra.agriculture + infra.industry;
+        const buildCost = {
+            gold: 80 + infraLevel * 25,
+            manpower: 20 + infraLevel * 10
+        };
+        if (!gameState.spendResources(buildCost.gold, buildCost.manpower, 0)) {
+            this.showNotification('Insufficient resources for city development', 'error');
+            return;
+        }
+
+        const cycle = ['agriculture', 'industry', 'roads'];
+        const target = cycle[(gameState.turn + tile.importance) % cycle.length];
+        infra[target] = Math.min(infra[target] + 1, 5);
+        tile.cityData.population = Math.min(tile.cityData.population + 1, 12);
+
+        if (target === 'agriculture') tile.cityData.production.food += 1;
+        if (target === 'industry') tile.cityData.production.industry += 1;
+        if (target === 'roads') tile.cityData.production.gold += 1;
+
+        if (!tile.cityData.wonder && tile.cityData.kind === 'capital' && infra.industry >= 4) {
+            tile.cityData.wonder = 'Imperial Forum';
+            tile.cityData.production.gold += 1;
+        }
+
+        this.updateHUD();
+        gameMap.render();
+        this.showNotification(
+            `${tile.cityData.name}: improved ${target} (-${buildCost.gold}g/-${buildCost.manpower}m)`,
+            'success'
+        );
+    }
+
+    researchTechnology() {
+        const cost = { gold: 220, prestige: 30 };
+        if (!gameState.spendResources(cost.gold, 0, cost.prestige)) {
+            this.showNotification('Not enough gold/prestige for research', 'error');
+            return;
+        }
+
+        if (!gameState.player.techResearched.includes('logistics')) {
+            gameState.player.techResearched.push('logistics');
+            // Logistics boosts city output.
+            gameMap?.getCityTiles('player').forEach(tile => {
+                tile.cityData.production.food += 1;
+                tile.cityData.production.industry += 1;
+            });
+        }
+
+        this.updateHUD();
+        gameMap?.render();
+        this.showNotification('Technology researched: Imperial Logistics', 'success');
     }
 
     /**

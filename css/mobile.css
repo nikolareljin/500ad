@@ -66,39 +66,27 @@
 
     /* Game HUD Mobile */
     .hud-top {
-        flex-wrap: wrap;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-sm);
+        flex-wrap: nowrap;
+        gap: var(--spacing-xs);
+        padding: 0;
     }
 
     .hud-minimap {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--spacing-xs);
-        padding: 0 var(--spacing-sm) var(--spacing-sm);
-    }
-
-    .minimap-header {
-        min-width: 0;
-    }
-
-    .minimap-title {
-        font-size: 0.85rem;
-    }
-
-    .minimap-hint {
-        font-size: 0.72rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 0;
+        padding: 0;
     }
 
     .minimap-container {
-        width: 100%;
-        max-width: 280px;
-        margin: 0 auto;
+        width: min(145px, 32vw);
+        max-width: none;
+        margin: 0;
     }
 
     .hud-resources {
-        gap: var(--spacing-sm);
-        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+        flex-wrap: nowrap;
     }
 
     .resource {

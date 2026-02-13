@@ -69,7 +69,7 @@ class GameState {
     createStartingUnits(century, faction) {
         // Find historical starting town for this faction
         const town = HISTORIC_TOWNS.find(t => t.faction === faction || (faction === 'byzantine' && t.id === 'constantinople'));
-        const startPos = town ? { x: town.x, y: town.y } : { x: 55, y: 25 };
+        const startPos = town ? { x: town.x, y: town.y } : { x: 116, y: 32 };
 
         // Take ownership of starting city
         if (gameMap) {
@@ -85,9 +85,9 @@ class GameState {
 
         // Create starting units
         const startingUnits = [
-            { type: 'infantry', count: 3 },
-            { type: 'cavalry', count: 2 },
-            { type: 'archer', count: 2 }
+            { type: 'skutatoi', count: 3 },
+            { type: 'kavallarioi', count: 2 },
+            { type: 'archers', count: 2 }
         ];
 
         startingUnits.forEach(({ type, count }) => {
@@ -118,6 +118,9 @@ class GameState {
     createEnemyUnits(century, playerFaction) {
         const factions = getFactionsByCentury(century);
         const rivals = factions.filter(f => f !== playerFaction);
+        if (rivals.length === 0) {
+            rivals.push('arab');
+        }
 
         rivals.forEach(rival => {
             const town = HISTORIC_TOWNS.find(t => t.faction === rival);
@@ -236,6 +239,19 @@ class GameState {
         const distance = Math.abs(newPosition.x - unit.position.x) +
             Math.abs(newPosition.y - unit.position.y);
 
+        // Cannot move onto occupied tile.
+        const occupied = this.units.some(u =>
+            u.id !== unit.id &&
+            u.position.x === newPosition.x &&
+            u.position.y === newPosition.y
+        );
+        if (occupied) return false;
+
+        // Terrain restrictions.
+        const destination = gameMap?.getTile(newPosition.x, newPosition.y);
+        if (!destination) return false;
+        if (destination.terrain === 'water' && unit.type !== 'special') return false;
+
         if (distance <= unit.currentMovement) {
             unit.position = newPosition;
             unit.currentMovement -= distance;
@@ -318,11 +334,16 @@ class GameState {
         // Territory bonus
         const territoryBonus = this.player.territories.length * 20;
 
+        const cityProduction = this.calculateCityProduction('player');
+
         this.addResources(
             Math.floor(baseGold * goldBonus) + territoryBonus,
-            Math.floor(baseManpower * manpowerBonus),
+            Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
             basePrestige
         );
+
+        // City gold output
+        this.addResources(cityProduction.gold, 0, 0);
 
         // Reset unit movement
         this.units.forEach(unit => {
@@ -351,12 +372,32 @@ class GameState {
         return {
             turn: this.turn,
             income: {
-                gold: Math.floor(baseGold * goldBonus) + territoryBonus,
-                manpower: Math.floor(baseManpower * manpowerBonus),
+                gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold,
+                manpower: Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
                 prestige: basePrestige
             },
-            upkeep: totalUpkeep
+            upkeep: totalUpkeep,
+            cityProduction
         };
+    }
+
+    calculateCityProduction(owner = 'player') {
+        if (!gameMap) return { gold: 0, manpower: 0, food: 0 };
+
+        const cityTiles = gameMap.getCityTiles(owner);
+        const totals = { gold: 0, manpower: 0, food: 0 };
+
+        cityTiles.forEach(tile => {
+            const p = tile.cityData?.production;
+            const infra = tile.cityData?.infrastructure;
+            const pop = tile.cityData?.population || 4;
+            if (!p) return;
+            totals.food += p.food;
+            totals.gold += Math.floor(p.gold + (infra?.roads || 0) * 0.8 + pop * 0.35);
+            totals.manpower += Math.floor((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6);
+        });
+
+        return totals;
     }
 
     /**
@@ -367,7 +408,8 @@ class GameState {
         const enemyUnits = this.units.filter(u => u.owner === 'enemy');
 
         // Loss: No units left or lost Constantinople
-        const constantinople = gameMap.tiles[7][10]; // Assuming center is capital
+        const constTown = HISTORIC_TOWNS.find(t => t.id === 'constantinople');
+        const constantinople = constTown ? gameMap.getTile(constTown.x, constTown.y) : null;
         if (playerUnits.length === 0 || (constantinople && constantinople.owner === 'enemy')) {
             if (window.uiManager) uiManager.showGameOver(false);
             return 'loss';
