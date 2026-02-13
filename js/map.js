@@ -205,6 +205,20 @@ class GameMap {
     placeHistoricalTowns() {
         HISTORIC_TOWNS.forEach(town => {
             if (town.y < this.height && town.x < this.width) {
+                // Ensure city surroundings are not isolated in open water due to coastline rasterization.
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const nx = town.x + dx;
+                        const ny = town.y + dy;
+                        if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                        const neighbor = this.tiles[ny][nx];
+                        if (!neighbor) continue;
+                        if (neighbor.terrain === 'water') {
+                            neighbor.terrain = Math.abs(dx) + Math.abs(dy) === 2 ? 'hills' : 'plains';
+                        }
+                    }
+                }
+
                 const tile = this.tiles[town.y][town.x];
                 tile.terrain = 'city';
                 tile.building = town.type === 'capital' ? 'capital' : 'town';
