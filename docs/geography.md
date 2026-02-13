@@ -1,0 +1,45 @@
+# Geography Model
+
+The `500ad` map uses a 200x120 tile projection of a fixed historic theater centered on Byzantine-era strategy regions.
+
+## Bounds and Projection
+
+- West: `-12` (Atlantic approaches west of Iberia)
+- East: `56` (Mesopotamia / Persian Gulf edge)
+- North: `58` (British Isles / northern Europe)
+- South: `8` (Horn of Africa / southern Arabia)
+
+Coordinates are converted using an equirectangular-style transform:
+
+- `x = (lon - west) / (east - west) * (width - 1)`
+- `y = (north - lat) / (north - south) * (height - 1)`
+
+## Land and Sea Generation
+
+`assets/geography.js` builds terrain from:
+
+- Explicit coastline/land polygons for Europe, North Africa, Anatolia, Levant, Mesopotamia, Arabia, and Ethiopia/Horn.
+- Distance-to-coast logic for shelf vs deep water outside polygons.
+- Regional mountain signals (Alps, Caucasus, Taurus, Zagros, Atlas, Ethiopian Highlands).
+- River carving (Nile, Danube, Tigris/Euphrates, Po, Rhone, Dnieper).
+- Historic-map inspired terrain palette.
+
+This replaces the prior synthetic continent-blob model that could place key cities on water.
+
+## Historical Town Placement
+
+`js/map.js` defines towns with `lon/lat` and maps them to tile coordinates at startup.
+
+Safeguard behavior:
+
+- When placing each town, nearby `water` tiles in a 3x3 area are converted to land terrain.
+- This prevents city centers such as Constantinople from appearing in isolated open-water cells due to rasterized coastline edges.
+
+## Extending Geography
+
+When adding regions/towns:
+
+1. Extend `GEOGRAPHY_BOUNDS` only if absolutely necessary.
+2. Add or refine `LAND_POLYGONS` first.
+3. Add town via `historicTown(id, name, lon, lat, type, importance, extra)`.
+4. Verify key cities render on land and near correct coastlines.

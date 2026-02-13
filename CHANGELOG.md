@@ -15,6 +15,8 @@ All notable changes to this project are documented in this file.
 - Added working action-bar interactions for `Recruit`, `Build`, and `Technology`.
 - Added dynamic city-based per-turn production integration (gold/manpower).
 - Added recruitment spawn search for nearest valid adjacent tile.
+- Added a polygon-based landmask geography model for Europe, Mediterranean, Mesopotamia, Arabia, and Ethiopia.
+- Added city-adjacent terrain safety conversion to prevent key cities from ending up in isolated open-water tiles.
 
 ### Changed
 - Moved minimap placement into the top interface area for constant visibility during play.
@@ -26,11 +28,14 @@ All notable changes to this project are documented in this file.
 - Updated starting unit composition to valid unit IDs so game actions work correctly from turn 1.
 - Updated win/loss Constantinople check to use city lookup instead of hardcoded coordinates.
 - Rebalanced city economy and build progression costs for slower, more controllable scaling.
+- Reworked map generation to follow real regional coastlines instead of synthetic continent blobs.
+- Updated terrain rendering to a historic-map style color palette.
 
 ### Fixed
 - Fixed player movement/action flow where clicks targeted wrong tiles after camera panning.
 - Fixed action bar no-op behavior by wiring recruit/build/tech handlers.
 - Fixed empty-player-army issue caused by invalid initial unit type IDs.
+- Fixed regression where Constantinople could render in ocean terrain due to geography mismatch.
 
 ### Known Issues
-- Global terrain quality still needs another realism pass (coastline precision, inland hydrography, and biome fidelity).
+- Coastline detail still uses simplified polygons; fine-grained shoreline/island fidelity can be improved further.

@@ -72,7 +72,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ## How to Play
 
 ### Starting the Game
-1. Open `index.html` in a web browser
+1. Run `./run`
 2. Select "New Campaign" from the main menu
 3. Choose your era (Early, Middle, or Late Byzantine)
 4. Select a leader
@@ -158,6 +158,12 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ```
 500ad/
 ├── index.html          # Main entry point
+├── run                 # Starts local server + opens browser
+├── script/             # Compatibility utility wrappers
+├── scripts/
+│   ├── update.sh       # Updates/pins script-helpers submodule
+│   ├── runner.sh       # Runtime launcher for local play
+│   └── script-helpers/ # Git submodule (branch: production)
 ├── css/                # Stylesheets
 │   ├── main.css       # Core design system
 │   ├── ui.css         # UI components
@@ -173,11 +179,13 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 │   ├── audio.js       # Audio manager
 │   └── storage.js     # Save/load system
 ├── assets/            # Graphics and data
-│   ├── geography.js   # Mediterranean heightmap
+│   ├── geography.js   # Polygon-driven historic theater heightmap
+│   ├── favicon.svg    # Byzantine four-beta cross icon
 │   ├── symbols.js     # Byzantine symbols
 │   ├── images/
 │   └── audio/
 └── docs/              # Documentation
+    ├── geography.md   # Geography model and coordinate system
     └── media/         # Screenshots and videos
 ```
 
@@ -239,6 +247,12 @@ Edit `js/units.js` and add unit types with stats and bonuses.
 ### Customizing Appearance
 Modify CSS variables in `css/main.css` to change colors and styling.
 
+### Geography and City Coordinates
+See `docs/geography.md` for:
+- map bounds and projection
+- land/sea generation approach
+- how city lon/lat values map to 200x120 tile coordinates
+
 ## Historical Notes
 
 The Byzantine Empire, also known as the Eastern Roman Empire, lasted from 330 AD (founding of Constantinople) to 1453 AD (Fall of Constantinople). This game focuses on the period from 500-1453 AD, covering:
@@ -260,7 +274,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.1.0** - Top HUD minimap with highlighted viewport and click/drag navigation
+**Version 1.2.0 (in progress)** - Real coastline-based geography and corrected historical city land placement
 
 ## License
 
