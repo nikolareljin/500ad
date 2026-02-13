@@ -116,14 +116,16 @@
 }
 
 .century-tabs,
-.faction-tabs {
+.faction-tabs,
+.scenario-tabs {
     display: flex;
     gap: var(--spacing-sm);
     flex-wrap: wrap;
 }
 
 .century-tab,
-.faction-tab {
+.faction-tab,
+.scenario-tab {
     padding: var(--spacing-sm) var(--spacing-md);
     font-family: var(--font-body);
     font-weight: 700;
@@ -136,12 +138,14 @@
 }
 
 .century-tab:hover,
-.faction-tab:hover {
+.faction-tab:hover,
+.scenario-tab:hover {
     background: var(--gold);
 }
 
 .century-tab.active,
-.faction-tab.active {
+.faction-tab.active,
+.scenario-tab.active {
     background: var(--byzantine-purple);
     color: white;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
@@ -457,8 +461,9 @@
 .unit-panel {
     position: absolute;
     right: var(--spacing-lg);
-    top: 100px;
+    top: 96px;
     width: 300px;
+    max-height: min(70vh, 560px);
     background: var(--bg-card);
     border: 2px solid var(--imperial-gold);
     border-radius: var(--radius-lg);
@@ -468,7 +473,8 @@
 }
 
 .unit-panel.active {
-    display: block;
+    display: flex;
+    flex-direction: column;
     animation: slideInRight 0.3s ease-out;
 }
 
@@ -494,6 +500,9 @@
 
 .unit-panel-header h3 {
     font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .close-btn {
@@ -512,12 +521,15 @@
 }
 
 .unit-panel-content {
+    flex: 1 1 auto;
     padding: var(--spacing-md);
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .unit-portrait {
     width: 100%;
-    aspect-ratio: 1;
+    height: 120px;
     background: linear-gradient(135deg, var(--byzantine-purple-dark), var(--deep-blue));
     border-radius: var(--radius-md);
     border: 2px solid var(--imperial-gold);

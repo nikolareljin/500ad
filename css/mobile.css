@@ -116,6 +116,7 @@
         bottom: 80px;
         width: calc(100% - var(--spacing-md));
         max-width: 350px;
+        max-height: 62vh;
     }
 
     /* Action Bar Mobile */
@@ -224,6 +225,7 @@ button:active,
         bottom: auto;
         right: var(--spacing-sm);
         width: 280px;
+        max-height: 58vh;
     }
 
     .action-bar {
