@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="500 A.D. - Byzantine Empire Strategy Game">
+    <meta name="theme-color" content="#6B2C91">
+    <title>500 A.D. - Byzantine Empire</title>
+
+    <!-- Preload critical fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/ui.css">
+    <link rel="stylesheet" href="css/mobile.css">
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen active">
+        <div class="loading-content">
+            <div class="byzantine-emblem"></div>
+            <h1 class="game-title">500 A.D.</h1>
+            <p class="game-subtitle">Byzantine Empire</p>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+            <p class="loading-text" id="loading-text">Loading assets...</p>
+        </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="screen">
+        <div class="menu-background"></div>
+        <div class="menu-content">
+            <h1 class="game-title">500 A.D.</h1>
+            <p class="game-subtitle">The Byzantine Empire</p>
+
+            <nav class="main-menu-nav">
+                <button class="menu-btn primary" id="btn-new-game">
+                    <span class="btn-icon">⚔️</span>
+                    <span class="btn-text">New Campaign</span>
+                </button>
+                <button class="menu-btn" id="btn-continue">
+                    <span class="btn-icon">📜</span>
+                    <span class="btn-text">Continue</span>
+                </button>
+                <button class="menu-btn" id="btn-load-game">
+                    <span class="btn-icon">💾</span>
+                    <span class="btn-text">Load Game</span>
+                </button>
+                <button class="menu-btn" id="btn-settings">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Settings</span>
+                </button>
+                <button class="menu-btn" id="btn-about">
+                    <span class="btn-icon">📖</span>
+                    <span class="btn-text">About</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Leader Selection Screen -->
+    <div id="leader-selection" class="screen">
+        <div class="screen-header">
+            <button class="back-btn" id="btn-back-from-leaders">← Back</button>
+            <h2>Choose Your Leader</h2>
+        </div>
+
+        <div class="selection-steps">
+            <div class="selection-step">
+                <h3>1. Select Century</h3>
+                <div class="century-tabs">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="selection-step">
+                <h3>2. Select Faction</h3>
+                <div class="faction-tabs">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="selection-step">
+                <h3>3. Choose Leader</h3>
+                <div class="leaders-grid" id="leaders-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <div class="leader-detail" id="leader-detail">
+            <div class="leader-portrait-large" id="leader-portrait-large"></div>
+            <div class="leader-info">
+                <h3 id="leader-name"></h3>
+                <p class="leader-title" id="leader-title"></p>
+                <p class="leader-years" id="leader-years"></p>
+                <div class="leader-stats" id="leader-stats"></div>
+                <p class="leader-bio" id="leader-bio"></p>
+                <div class="leader-abilities" id="leader-abilities"></div>
+                <button class="btn-primary btn-large" id="btn-select-leader">Begin Campaign</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- HUD -->
+        <div class="game-hud">
+            <div class="hud-top">
+                <div class="hud-resources">
+                    <div class="resource">
+                        <span class="resource-icon">💰</span>
+                        <span class="resource-value" id="resource-gold">1000</span>
+                    </div>
+                    <div class="resource">
+                        <span class="resource-icon">👥</span>
+                        <span class="resource-value" id="resource-manpower">500</span>
+                    </div>
+                    <div class="resource">
+                        <span class="resource-icon">⭐</span>
+                        <span class="resource-value" id="resource-prestige">100</span>
+                    </div>
+                </div>
+
+                <div class="hud-turn">
+                    <span class="turn-label">Turn</span>
+                    <span class="turn-value" id="turn-number">1</span>
+                </div>
+
+                <div class="hud-actions">
+                    <button class="hud-btn" id="btn-menu" title="Menu">☰</button>
+                    <button class="hud-btn" id="btn-save" title="Save">💾</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Map -->
+        <div class="game-map-container">
+            <canvas id="game-map" width="800" height="600"></canvas>
+        </div>
+
+        <!-- Unit Panel -->
+        <div class="unit-panel" id="unit-panel">
+            <div class="unit-panel-header">
+                <h3 id="selected-unit-name">No Unit Selected</h3>
+                <button class="close-btn" id="btn-close-unit-panel" onclick="uiManager.closeUnitPanel()">×</button>
+            </div>
+            <div class="unit-panel-content">
+                <div class="unit-portrait" id="selected-unit-portrait"></div>
+                <div class="unit-stats-grid">
+                    <div class="stat">
+                        <span class="stat-label">Health</span>
+                        <div class="stat-bar">
+                            <div class="stat-bar-fill" id="unit-health-bar"></div>
+                        </div>
+                        <span class="stat-value" id="unit-health-value">100/100</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Attack</span>
+                        <span class="stat-value" id="unit-attack">10</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Defense</span>
+                        <span class="stat-value" id="unit-defense">8</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Movement</span>
+                        <span class="stat-value" id="unit-movement">3/3</span>
+                    </div>
+                </div>
+                <div class="unit-actions">
+                    <button class="action-btn" id="btn-move-unit">Move</button>
+                    <button class="action-btn" id="btn-attack-unit">Attack</button>
+                    <button class="action-btn" id="btn-fortify-unit">Fortify</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button class="action-bar-btn" id="btn-recruit">
+                <span class="btn-icon">⚔️</span>
+                <span class="btn-label">Recruit</span>
+            </button>
+            <button class="action-bar-btn" id="btn-build">
+                <span class="btn-icon">🏛️</span>
+                <span class="btn-label">Build</span>
+            </button>
+            <button class="action-bar-btn" id="btn-tech">
+                <span class="btn-icon">📚</span>
+                <span class="btn-label">Technology</span>
+            </button>
+            <button class="action-bar-btn primary" id="btn-end-turn">
+                <span class="btn-icon">⏭️</span>
+                <span class="btn-label">End Turn</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Overlays -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal" id="modal-content">
+            <!-- Modal content will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Scripts -->
+    <script src="assets/symbols.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/leaders.js"></script>
+    <script src="js/units.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/combat.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>
