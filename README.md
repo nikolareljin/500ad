@@ -208,6 +208,17 @@ Key historical cities on the 200x120 map:
 
 ## Running Locally
 
+### One-Liner (Clone + Run)
+Copy/paste this command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nikolareljin/500ad/main/scripts/quickstart.sh | bash
+```
+
+This will:
+1. Clone `500ad` to `~/500ad` (or update it if already cloned)
+2. Run `./run` automatically
+
 ### Quick Start (Recommended)
 ```bash
 ./run
