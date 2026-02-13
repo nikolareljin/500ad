@@ -128,7 +128,11 @@ class Game {
 
             // Update minimap viewport indicator
             if (minimap) {
-                minimap.updateViewport();
+                if (gameMap.territoryControlDirty) {
+                    minimap.render();
+                } else {
+                    minimap.updateViewport();
+                }
             }
         }
     }

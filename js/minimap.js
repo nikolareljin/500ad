@@ -141,6 +141,19 @@ class Minimap {
 
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(px, py, sizeX, sizeY);
+
+                // Territory ownership overlay on minimap.
+                const controlOwner = tile.owner || this.gameMap.getTerritoryOwnerAt(x, y);
+                if (controlOwner && tile.terrain !== 'water') {
+                    if (controlOwner === 'player') {
+                        this.ctx.fillStyle = 'rgba(122, 52, 167, 0.55)';
+                    } else if (controlOwner === 'enemy') {
+                        this.ctx.fillStyle = 'rgba(152, 14, 14, 0.55)';
+                    } else {
+                        this.ctx.fillStyle = 'rgba(54, 128, 88, 0.5)';
+                    }
+                    this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
             }
         }
 
@@ -150,7 +163,11 @@ class Minimap {
                 const px = town.x * MAP_CONFIG.tileSize * this.scaleX;
                 const py = town.y * MAP_CONFIG.tileSize * this.scaleY;
 
-                this.ctx.fillStyle = '#D4AF37';
+                const tile = this.gameMap.getTile(town.x, town.y);
+                if (tile?.owner === 'player') this.ctx.fillStyle = '#f4d03f';
+                else if (tile?.owner === 'enemy') this.ctx.fillStyle = '#ff9f9f';
+                else if (tile?.owner === 'neutral') this.ctx.fillStyle = '#9cd3b0';
+                else this.ctx.fillStyle = '#D4AF37';
                 this.ctx.fillRect(px - 1, py - 1, 3, 3);
             });
         }
