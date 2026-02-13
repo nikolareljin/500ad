@@ -4,6 +4,8 @@ A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern
 
 <img width="1073" height="869" alt="image" src="https://github.com/user-attachments/assets/f737700d-48cc-43f1-a8bb-4cec39aa3567" />
 
+How to [run this locally](#run)?
+
 ## 📸 Screenshots & Walkthrough
 
 ### Main Menu
@@ -206,14 +208,19 @@ Key historical cities on the 200x120 map:
 - Safari
 - Mobile browsers (Chrome, Firefox, Safari)
 
+<a name="run" />
 ## Running Locally
 
 ### One-Liner (Clone + Run)
 Copy/paste one of these commands:
 
+- Linux/Mac:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nikolareljin/500ad/main/scripts/quickstart.sh | bash
 ```
+
+- Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/nikolareljin/500ad/main/scripts/quickstart.ps1 | iex"
