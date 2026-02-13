@@ -208,7 +208,7 @@ Key historical cities on the 200x120 map:
 - Safari
 - Mobile browsers (Chrome, Firefox, Safari)
 
-<a name="run" />
+<a name="run"></a>
 ## Running Locally
 
 ### One-Liner (Clone + Run)
