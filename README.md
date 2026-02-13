@@ -2,6 +2,9 @@
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
 
+<img width="1073" height="869" alt="image" src="https://github.com/user-attachments/assets/f737700d-48cc-43f1-a8bb-4cec39aa3567" />
+
+
 ## Overview
 
 Command legendary Byzantine emperors and generals through pivotal moments in Eastern Roman history. Build armies, manage resources, and lead your forces to victory in historically accurate campaigns.
