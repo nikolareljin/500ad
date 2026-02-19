@@ -625,7 +625,7 @@ class UIManager {
         document.getElementById('selected-unit-name').textContent = unit.name;
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
-            const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.type === 'archer' ? '🏹' : '⚔️');
+            const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
             portrait.innerHTML = `
                 <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;color:#f4d03f;gap:0.6rem;">
                     <span>${unitIcon}</span>

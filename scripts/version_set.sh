@@ -22,7 +22,16 @@ cat > "$ROOT_DIR/assets/version.js" <<EOT
 window.APP_VERSION = '$NEW_VERSION';
 EOT
 
-sed -i -E "s/\*\*Version [0-9]+\.[0-9]+\.[0-9]+\*\*/**Version ${NEW_VERSION}**/" "$ROOT_DIR/README.md"
-sed -i -E "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '${NEW_VERSION}'/" "$ROOT_DIR/js/state.js"
+replace_in_file() {
+  local sed_expr="$1"
+  local target_file="$2"
+  local tmp_file
+  tmp_file="$(mktemp "${target_file}.tmp.XXXXXX")"
+  sed -E "$sed_expr" "$target_file" > "$tmp_file"
+  mv "$tmp_file" "$target_file"
+}
+
+replace_in_file "s/\*\*Version [0-9]+\.[0-9]+\.[0-9]+\*\*/**Version ${NEW_VERSION}**/" "$ROOT_DIR/README.md"
+replace_in_file "s/version: '[0-9]+\.[0-9]+\.[0-9]+'/version: '${NEW_VERSION}'/" "$ROOT_DIR/js/state.js"
 
 echo "Version synchronized to $NEW_VERSION"
