@@ -142,6 +142,7 @@ class GameState {
 
     setupScenarioTowns(playerFaction, scenario) {
         const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
+        const startingTownId = this.getStartingTownForFaction(playerFaction).id;
 
         HISTORIC_TOWNS.forEach((town) => {
             const tile = gameMap.getTile(town.x, town.y);
@@ -157,20 +158,7 @@ class GameState {
             tile.cityData.historicalStance = historical.stance;
             tile.faction = historical.civilization;
             tile.owner = null;
-        });
-
-        if (scenario === SCENARIOS.empire) {
-            this.player.resources.gold += 650;
-            this.player.resources.manpower += 500;
-            this.player.resources.prestige += 80;
-        }
-
-        HISTORIC_TOWNS.forEach((town) => {
-            const tile = gameMap.getTile(town.x, town.y);
-            if (!tile?.cityData) return;
-
-            const historical = HISTORICAL_TOWN_CONTROL[town.id] || { civilization: 'neutral', stance: 'neutral' };
-            const isPlayerCoreTown = playerEmpireCore.has(town.id) || (scenario === SCENARIOS.building && town.id === this.getStartingTownForFaction(playerFaction).id);
+            const isPlayerCoreTown = playerEmpireCore.has(town.id) || (scenario === SCENARIOS.building && town.id === startingTownId);
 
             if (isPlayerCoreTown) {
                 this.applyTownOwner(town, 'player', playerFaction);
@@ -195,6 +183,12 @@ class GameState {
                 }
             }
         });
+
+        if (scenario === SCENARIOS.empire) {
+            this.player.resources.gold += 650;
+            this.player.resources.manpower += 500;
+            this.player.resources.prestige += 80;
+        }
     }
 
     applyTownOwner(town, owner, faction) {
@@ -649,11 +643,44 @@ class GameState {
             if (saved) {
                 tile.owner = saved.owner || null;
                 if (saved.faction) tile.faction = saved.faction;
+
+                // Mark consumed entries so we can detect stale/unmatched save data.
+                if (saved.id && byId.get(saved.id) === saved) {
+                    byId.delete(saved.id);
+                }
+                if (Number.isInteger(saved.x) && Number.isInteger(saved.y)) {
+                    const coordKey = `${saved.x}_${saved.y}`;
+                    if (byCoords.get(coordKey) === saved) {
+                        byCoords.delete(coordKey);
+                    }
+                }
                 return;
             }
 
             tile.owner = this.player?.territories?.includes(town.id) ? 'player' : null;
         });
+
+        if (byId.size > 0 || byCoords.size > 0) {
+            const unmatched = [];
+            byId.forEach((city) => {
+                if (city && !unmatched.includes(city)) unmatched.push(city);
+            });
+            byCoords.forEach((city) => {
+                if (city && !unmatched.includes(city)) unmatched.push(city);
+            });
+            if (unmatched.length > 0) {
+                console.warn(
+                    'Some saved city ownership entries could not be restored:',
+                    unmatched.map(city => ({
+                        id: city.id,
+                        x: city.x,
+                        y: city.y,
+                        owner: city.owner,
+                        faction: city.faction
+                    }))
+                );
+            }
+        }
 
         if (this.player) {
             this.player.territories = gameMap
