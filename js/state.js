@@ -90,7 +90,7 @@ class GameState {
             return false;
         }
 
-        const civilization = this.resolveCivilization(faction, leader);
+        const civilization = this.resolveCivilization(faction);
         this.selectedLeader = leader;
         this.selectedCentury = century;
         this.selectedFaction = civilization;
@@ -122,7 +122,7 @@ class GameState {
         return true;
     }
 
-    resolveCivilization(faction, leader) {
+    resolveCivilization(faction) {
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
         return normalizedFaction;
     }
@@ -657,7 +657,15 @@ class GameState {
                 return;
             }
 
-            tile.owner = this.player?.territories?.includes(town.id) ? 'player' : null;
+            const territories = Array.isArray(this.player?.territories) ? this.player.territories : [];
+            const coordKeyUnderscore = `${town.x}_${town.y}`;
+            const coordKeyDash = `${town.x}-${town.y}`;
+            const hasTerritory = territories.some((entry) => {
+                if (entry === town.id) return true;
+                if (typeof entry !== 'string') return false;
+                return entry === coordKeyUnderscore || entry === coordKeyDash;
+            });
+            tile.owner = hasTerritory ? 'player' : null;
         });
 
         if (byId.size > 0 || byCoords.size > 0) {

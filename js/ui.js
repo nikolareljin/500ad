@@ -626,12 +626,27 @@ class UIManager {
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
             const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
-            portrait.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;color:#f4d03f;gap:0.6rem;">
-                    <span>${unitIcon}</span>
-                    <span style="font-size:1rem;opacity:0.9;">${unit.name}</span>
-                </div>
-            `;
+            portrait.textContent = '';
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
+            container.style.height = '100%';
+            container.style.fontSize = '2rem';
+            container.style.color = '#f4d03f';
+            container.style.gap = '0.6rem';
+
+            const iconSpan = document.createElement('span');
+            iconSpan.textContent = unitIcon;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.style.fontSize = '1rem';
+            nameSpan.style.opacity = '0.9';
+            nameSpan.textContent = unit.name;
+
+            container.appendChild(iconSpan);
+            container.appendChild(nameSpan);
+            portrait.appendChild(container);
         }
         document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
         document.getElementById('unit-attack').textContent = unit.stats.attack;

@@ -201,8 +201,16 @@ let minimap = null;
  * Initialize minimap
  */
 function initializeMinimap() {
-    if (gameMap) {
-        minimap = new Minimap(gameMap);
-        minimap.initialize();
+    if (!gameMap) return;
+
+    const canvas = document.getElementById('minimap-canvas');
+    if (minimap && minimap.canvas === canvas) {
+        minimap.gameMap = gameMap;
+        minimap.resize();
+        minimap.render();
+        return;
     }
+
+    minimap = new Minimap(gameMap);
+    minimap.initialize();
 }
