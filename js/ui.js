@@ -678,11 +678,12 @@ class UIManager {
     /**
      * Show game over screen
      */
-    showGameOver(isVictory) {
+    showGameOver(isVictory, customMessage = '') {
         const title = isVictory ? 'Victory!' : 'Defeat!';
-        const message = isVictory
+        const defaultMessage = isVictory
             ? 'For the Glory of Constantinople! The Empire is secure.'
             : 'Constantinople has fallen. The legacy of Rome ends here.';
+        const message = customMessage || defaultMessage;
         const icon = isVictory ? '👑' : '🏚️';
 
         const content = `
@@ -819,7 +820,7 @@ class UIManager {
                     on actual Byzantine history.
                 </p>
                 <p style="margin-bottom:1.5rem;">
-                    <strong>Version:</strong> ${window.APP_VERSION || '1.1.0'}
+                    <strong>Version:</strong> ${window.APP_VERSION || 'dev'}
                 </p>
                 <button class="btn-primary" onclick="uiManager.closeModal()">Close</button>
             </div>

@@ -158,7 +158,8 @@ class GameState {
             tile.cityData.historicalStance = historical.stance;
             tile.faction = historical.civilization;
             tile.owner = null;
-            const isPlayerCoreTown = playerEmpireCore.has(town.id) || (scenario === SCENARIOS.building && town.id === startingTownId);
+            const isPlayerCoreTown = (scenario === SCENARIOS.empire && playerEmpireCore.has(town.id))
+                || (scenario === SCENARIOS.building && town.id === startingTownId);
 
             if (isPlayerCoreTown) {
                 this.applyTownOwner(town, 'player', playerFaction);
@@ -423,7 +424,7 @@ class GameState {
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
 
         // Neutral towns can join peacefully or resist based on diplomacy.
-        if (oldOwner === 'neutral' && unit.owner === 'player') {
+        if ((oldOwner === 'neutral' || oldOwner == null) && unit.owner === 'player') {
             const diplomacy = this.selectedLeader?.stats?.diplomacy || 5;
             const joinChance = Math.min(0.85, 0.38 + diplomacy * 0.05);
             if (Math.random() <= joinChance) {
@@ -579,8 +580,16 @@ class GameState {
 
         // Loss: No units left or no player-controlled capital.
         const playerCapitals = gameMap?.getCityTiles('player').filter(tile => tile.cityData?.kind === 'capital') || [];
-        if (playerUnits.length === 0 || playerCapitals.length === 0) {
-            if (window.uiManager) uiManager.showGameOver(false);
+        const hasNoUnits = playerUnits.length === 0;
+        const hasNoCapitals = playerCapitals.length === 0;
+        if (hasNoUnits || hasNoCapitals) {
+            if (window.uiManager) {
+                if (hasNoCapitals) {
+                    uiManager.showGameOver(false, 'Your empire has lost its last capital.');
+                } else {
+                    uiManager.showGameOver(false);
+                }
+            }
             return 'loss';
         }
 
@@ -638,6 +647,15 @@ class GameState {
         HISTORIC_TOWNS.forEach((town) => {
             const tile = gameMap.getTile(town.x, town.y);
             if (!tile?.cityData) return;
+            const historical = HISTORICAL_TOWN_CONTROL[town.id] || {
+                tribe: 'Local tribe',
+                civilization: 'neutral',
+                stance: 'neutral'
+            };
+            tile.cityData.tribe = historical.tribe;
+            tile.cityData.historicalCivilization = historical.civilization;
+            tile.cityData.historicalStance = historical.stance;
+            if (!tile.faction) tile.faction = historical.civilization;
 
             const saved = byId.get(town.id) || byCoords.get(`${town.x}_${town.y}`);
             if (saved) {
