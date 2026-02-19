@@ -124,12 +124,6 @@ class GameState {
 
     resolveCivilization(faction, leader) {
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
-        if (normalizedFaction !== 'byzantine') {
-            return normalizedFaction;
-        }
-        // Fallback: infer broad civilization from leader title metadata if available.
-        const title = `${leader?.title || ''} ${leader?.name || ''}`.toLowerCase();
-        if (title.includes('bulgar')) return 'bulgar';
         return normalizedFaction;
     }
 
@@ -620,8 +614,60 @@ class GameState {
             selectedScenario: this.selectedScenario,
             units: this.units,
             buildings: this.buildings,
-            territories: this.territories
+            territories: this.territories,
+            cityOwnership: this.captureCityOwnership()
         };
+    }
+
+    captureCityOwnership() {
+        if (!gameMap) return [];
+        return gameMap.getCityTiles().map(tile => ({
+            id: tile.cityData?.id || tile.cityId || `${tile.x}_${tile.y}`,
+            x: tile.x,
+            y: tile.y,
+            owner: tile.owner || null,
+            faction: tile.faction || null
+        }));
+    }
+
+    restoreCityOwnership(cityOwnership = []) {
+        if (!gameMap) return;
+
+        const byId = new Map(cityOwnership
+            .filter(city => city?.id)
+            .map(city => [city.id, city]));
+
+        const byCoords = new Map(cityOwnership
+            .filter(city => Number.isInteger(city?.x) && Number.isInteger(city?.y))
+            .map(city => [`${city.x}_${city.y}`, city]));
+
+        HISTORIC_TOWNS.forEach((town) => {
+            const tile = gameMap.getTile(town.x, town.y);
+            if (!tile?.cityData) return;
+
+            const saved = byId.get(town.id) || byCoords.get(`${town.x}_${town.y}`);
+            if (saved) {
+                tile.owner = saved.owner || null;
+                if (saved.faction) tile.faction = saved.faction;
+                return;
+            }
+
+            tile.owner = this.player?.territories?.includes(town.id) ? 'player' : null;
+        });
+
+        if (this.player) {
+            this.player.territories = gameMap
+                .getCityTiles('player')
+                .map(tile => tile.cityData?.id)
+                .filter(Boolean);
+        }
+
+        gameMap.getCityTiles('player').forEach(tile => gameMap.revealArea(tile.x, tile.y, 4));
+        this.units
+            .filter(unit => unit.owner === 'player')
+            .forEach(unit => gameMap.revealArea(unit.position.x, unit.position.y, 3));
+
+        gameMap.markTerritoryDirty();
     }
 
     /**
@@ -630,6 +676,10 @@ class GameState {
     deserialize(data) {
         if (!data || (data.version !== '1.0' && data.version !== '1.1' && data.version !== '1.1.0')) {
             console.error('Invalid save data');
+            return false;
+        }
+        if (!gameMap) {
+            console.error('Map must be initialized before loading save data');
             return false;
         }
 
@@ -641,6 +691,7 @@ class GameState {
         this.units = data.units;
         this.buildings = data.buildings;
         this.territories = data.territories;
+        this.restoreCityOwnership(data.cityOwnership || []);
         this.initialized = true;
 
         return true;

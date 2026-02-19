@@ -454,15 +454,16 @@ class UIManager {
      * Continue last game
      */
     continueGame() {
+        this.showScreen('game');
+        initializeGameMap();
         const result = storageManager.loadGame(0);
         if (result.success) {
-            this.showScreen('game');
-            initializeGameMap();
             gameMap?.markTerritoryDirty();
             this.initializeGameView();
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
         } else {
+            this.showScreen('mainMenu');
             this.showNotification('No save game found', 'error');
         }
     }
@@ -840,14 +841,17 @@ class UIManager {
      * Load from slot
      */
     loadFromSlot(slotNumber) {
+        this.showScreen('game');
+        initializeGameMap();
         const result = storageManager.loadGame(slotNumber);
         if (result.success) {
-            this.showScreen('game');
-            initializeGameMap();
             gameMap?.markTerritoryDirty();
             this.initializeGameView();
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
+        } else {
+            this.showScreen('mainMenu');
+            this.showNotification(result.message, 'error');
         }
         this.closeModal();
     }
