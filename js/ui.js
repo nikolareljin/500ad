@@ -454,6 +454,12 @@ class UIManager {
      * Continue last game
      */
     continueGame() {
+        const slotInfo = storageManager.getSaveSlotInfo(0);
+        if (!slotInfo) {
+            this.showNotification('No save game found', 'error');
+            return;
+        }
+
         this.showScreen('game');
         initializeGameMap();
         const result = storageManager.loadGame(0);
@@ -857,6 +863,13 @@ class UIManager {
      * Load from slot
      */
     loadFromSlot(slotNumber) {
+        const slotInfo = storageManager.getSaveSlotInfo(slotNumber);
+        if (!slotInfo) {
+            this.showNotification('No save data found', 'error');
+            this.closeModal();
+            return;
+        }
+
         this.showScreen('game');
         initializeGameMap();
         const result = storageManager.loadGame(slotNumber);

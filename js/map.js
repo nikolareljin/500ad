@@ -966,10 +966,18 @@ let gameMap = null;
  * Initialize game map
  */
 function initializeGameMap() {
-    gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
     const canvas = document.getElementById('game-map');
-    if (canvas) {
-        gameMap.initializeCanvas(canvas);
+    if (!canvas) return;
+
+    // Reuse the existing map/canvas instance to avoid duplicating event listeners.
+    if (gameMap && gameMap.canvas === canvas) {
+        gameMap.initializeMap();
+        gameMap.markTerritoryDirty();
         gameMap.render();
+        return;
     }
+
+    gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
+    gameMap.initializeCanvas(canvas);
+    gameMap.render();
 }

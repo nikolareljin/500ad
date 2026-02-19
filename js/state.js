@@ -111,7 +111,6 @@ class GameState {
         this.turn = 1;
         this.units = [];
         this.buildings = [];
-        gameMap.initializeMap();
         this.setupScenarioTowns(civilization, scenario);
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(civilization, scenario);
@@ -635,6 +634,10 @@ class GameState {
 
     restoreCityOwnership(cityOwnership = []) {
         if (!gameMap) return;
+        const scenario = this.selectedScenario || SCENARIOS.building;
+        const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
+        const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
+        const startingTownId = this.getStartingTownForFaction(playerFaction).id;
 
         const byId = new Map(cityOwnership
             .filter(city => city?.id)
@@ -683,7 +686,22 @@ class GameState {
                 if (typeof entry !== 'string') return false;
                 return entry === coordKeyUnderscore || entry === coordKeyDash;
             });
-            tile.owner = hasTerritory ? 'player' : null;
+            if (hasTerritory) {
+                tile.owner = 'player';
+                return;
+            }
+
+            if (scenario === SCENARIOS.empire) {
+                if (playerEmpireCore.has(town.id) || (historical.civilization === playerFaction && historical.stance !== 'hostile')) {
+                    tile.owner = 'player';
+                } else if (historical.stance === 'neutral') {
+                    tile.owner = 'neutral';
+                } else {
+                    tile.owner = 'enemy';
+                }
+            } else {
+                tile.owner = town.id === startingTownId ? 'player' : (historical.stance === 'hostile' ? 'enemy' : 'neutral');
+            }
         });
 
         if (byId.size > 0 || byCoords.size > 0) {
