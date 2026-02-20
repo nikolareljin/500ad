@@ -270,12 +270,21 @@ class GameMap {
     rebuildTerritoryControl() {
         const control = [];
         const strength = [];
+        const citySources = [];
+        const nonCitySources = [];
         for (let y = 0; y < this.height; y++) {
             control[y] = [];
             strength[y] = [];
             for (let x = 0; x < this.width; x++) {
                 control[y][x] = null;
                 strength[y][x] = -1;
+                const tile = this.tiles[y][x];
+                if (!tile || tile.terrain === 'water' || !tile.owner) continue;
+                if (tile.cityData) {
+                    citySources.push(tile);
+                } else {
+                    nonCitySources.push(tile);
+                }
             }
         }
 
@@ -301,7 +310,7 @@ class GameMap {
         };
 
         // Cities define the primary area of control.
-        this.getCityTiles().forEach((cityTile) => {
+        citySources.forEach((cityTile) => {
             if (!cityTile.owner) return;
             const radius = cityTile.cityData?.kind === 'capital' ? 7 : 4 + Math.floor((cityTile.importance || 5) / 3);
             const base = cityTile.cityData?.kind === 'capital' ? 10 : 7;
@@ -309,14 +318,9 @@ class GameMap {
         });
 
         // Explicitly owned non-city tiles still project minimal control.
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                const tile = this.tiles[y][x];
-                if (!tile?.owner || tile.cityData) continue;
-                if (tile.terrain === 'water') continue;
-                applyInfluence(x, y, tile.owner, 1, 2);
-            }
-        }
+        nonCitySources.forEach((tile) => {
+            applyInfluence(tile.x, tile.y, tile.owner, 1, 2);
+        });
 
         this.territoryControl = control;
         this.territoryControlDirty = false;

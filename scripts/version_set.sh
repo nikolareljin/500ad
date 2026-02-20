@@ -26,8 +26,15 @@ replace_in_file() {
   local sed_expr="$1"
   local target_file="$2"
   local tmp_file
-  tmp_file="$(mktemp "${target_file}.tmp.XXXXXX")"
-  sed -E "$sed_expr" "$target_file" > "$tmp_file"
+  if ! tmp_file="$(mktemp)"; then
+    echo "Failed to create temporary file for $target_file" >&2
+    exit 1
+  fi
+  if ! sed -E "$sed_expr" "$target_file" > "$tmp_file"; then
+    rm -f "$tmp_file"
+    echo "Failed to update $target_file" >&2
+    exit 1
+  fi
   mv "$tmp_file" "$target_file"
 }
 

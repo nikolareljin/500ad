@@ -423,7 +423,7 @@ class GameState {
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
 
         // Neutral towns can join peacefully or resist based on diplomacy.
-        if ((oldOwner === 'neutral' || oldOwner == null) && unit.owner === 'player') {
+        if ((oldOwner === 'neutral' || oldOwner === null) && unit.owner === 'player') {
             const diplomacy = this.selectedLeader?.stats?.diplomacy || 5;
             const joinChance = Math.min(0.85, 0.38 + diplomacy * 0.05);
             if (Math.random() <= joinChance) {
