@@ -634,20 +634,14 @@ class UIManager {
             const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
             portrait.textContent = '';
             const container = document.createElement('div');
-            container.style.display = 'flex';
-            container.style.alignItems = 'center';
-            container.style.justifyContent = 'center';
-            container.style.height = '100%';
-            container.style.fontSize = '2rem';
-            container.style.color = '#f4d03f';
-            container.style.gap = '0.6rem';
+            container.className = 'unit-portrait-content';
 
             const iconSpan = document.createElement('span');
+            iconSpan.className = 'unit-portrait-icon';
             iconSpan.textContent = unitIcon;
 
             const nameSpan = document.createElement('span');
-            nameSpan.style.fontSize = '1rem';
-            nameSpan.style.opacity = '0.9';
+            nameSpan.className = 'unit-portrait-name';
             nameSpan.textContent = unit.name;
 
             container.appendChild(iconSpan);

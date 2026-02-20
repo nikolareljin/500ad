@@ -981,6 +981,8 @@ function initializeGameMap() {
         && gameMap.canvas === canvas
         && gameMap.width === MAP_CONFIG.width
         && gameMap.height === MAP_CONFIG.height) {
+        gameMap.canvas.width = gameMap.canvas.offsetWidth;
+        gameMap.canvas.height = gameMap.canvas.offsetHeight;
         gameMap.initializeMap();
         gameMap.initializeFogOfWar();
         gameMap.selectedTile = null;

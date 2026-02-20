@@ -60,6 +60,36 @@ const EMPIRE_CORE_TOWNS = {
     sassanid: ['ctesiphon', 'tbilisi']
 };
 
+const SAVE_VERSION = '1.1.0';
+
+function parseSemver(version) {
+    const raw = String(version || '').trim();
+    const parts = raw.split('.');
+    if (parts.length !== 3) return null;
+    const [majorStr, minorStr, patchStr] = parts;
+    const major = Number.parseInt(majorStr, 10);
+    const minor = Number.parseInt(minorStr, 10);
+    const patch = Number.parseInt(patchStr, 10);
+    if (
+        !Number.isInteger(major) || String(major) !== majorStr
+        || !Number.isInteger(minor) || String(minor) !== minorStr
+        || !Number.isInteger(patch) || String(patch) !== patchStr
+    ) {
+        return null;
+    }
+    return { major, minor, patch };
+}
+
+function isSupportedSaveVersion(version) {
+    const parsed = parseSemver(version);
+    const current = parseSemver(SAVE_VERSION);
+    if (!parsed || !current) return false;
+    if (parsed.major !== current.major) return false;
+    if (parsed.minor > current.minor) return false;
+    if (parsed.minor < 0 || parsed.patch < 0) return false;
+    return true;
+}
+
 class GameState {
     constructor() {
         this.initialized = false;
@@ -142,6 +172,7 @@ class GameState {
     setupScenarioTowns(playerFaction, scenario) {
         const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
         const startingTownId = this.getStartingTownForFaction(playerFaction).id;
+        this.player.territories = [];
 
         HISTORIC_TOWNS.forEach((town) => {
             const tile = gameMap.getTile(town.x, town.y);
@@ -235,8 +266,8 @@ class GameState {
 
         for (let radius = 1; radius <= maxRadius; radius++) {
             for (let dy = -radius; dy <= radius; dy++) {
-                for (let dx = -radius; dx <= radius; dx++) {
-                    if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                const remaining = radius - Math.abs(dy);
+                for (let dx = -remaining; dx <= remaining; dx++) {
                     const x = originX + dx;
                     const y = originY + dy;
                     if (this.isSpawnTileAvailable(x, y)) {
@@ -306,11 +337,11 @@ class GameState {
     spawnFactionArmyAtTown(town, owner, faction, unitCount = 2) {
         const baseTypes = ['skutatoi', 'archers', 'kavallarioi'];
         for (let i = 0; i < unitCount; i++) {
-            const x = town.x + (i % 2);
-            const y = town.y + 1 + Math.floor(i / 2);
-            if (!this.isSpawnTileAvailable(x, y)) continue;
+            const preferredOffset = { x: i % 2, y: 1 + Math.floor(i / 2) };
+            const spawnPos = this.findAvailableSpawnPosition(town.x, town.y, [preferredOffset], 3);
+            if (!spawnPos) continue;
             const unitType = baseTypes[i % baseTypes.length];
-            const unit = createUnit(unitType, { x, y }, owner);
+            const unit = createUnit(unitType, spawnPos, owner);
             if (!unit) continue;
             unit.faction = faction;
             this.units.push(unit);
@@ -486,6 +517,7 @@ class GameState {
                 }
             } else {
                 tile.owner = 'enemy';
+                tile.faction = tile.faction || 'tribal';
                 this.spawnFactionArmyAtTown(
                     { x: tile.x, y: tile.y, id: cityId },
                     'enemy',
@@ -654,7 +686,7 @@ class GameState {
      */
     serialize() {
         return {
-            version: '1.1.0',
+            version: SAVE_VERSION,
             timestamp: Date.now(),
             selectedLeader: this.selectedLeader,
             player: this.player,
@@ -797,16 +829,7 @@ class GameState {
      * Load game state from saved data
      */
     deserialize(data) {
-        const version = String(data?.version || '').trim();
-        const versionParts = version.split('.').map(part => Number.parseInt(part, 10));
-        const major = versionParts[0];
-        const minor = versionParts[1];
-        const isSupportedVersion = Number.isInteger(major)
-            && Number.isInteger(minor)
-            && major === 1
-            && (minor === 0 || minor === 1);
-
-        if (!data || !isSupportedVersion) {
+        if (!data || !isSupportedSaveVersion(data.version)) {
             console.error('Invalid save data');
             return false;
         }

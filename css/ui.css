@@ -536,6 +536,25 @@
     margin-bottom: var(--spacing-md);
 }
 
+.unit-portrait-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 2rem;
+    color: #f4d03f;
+    gap: 0.6rem;
+}
+
+.unit-portrait-icon {
+    line-height: 1;
+}
+
+.unit-portrait-name {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
 .unit-stats-grid {
     display: flex;
     flex-direction: column;
