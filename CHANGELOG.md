@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-02-13
+## [1.1.0] - 2026-02-20
 
 ### Added
 - Added a top-HUD minimap that shows the full world map with a highlighted viewport rectangle.

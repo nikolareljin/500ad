@@ -470,7 +470,7 @@ class UIManager {
             this.showNotification('Game loaded', 'success');
         } else {
             this.showScreen('mainMenu');
-            this.showNotification('No save game found', 'error');
+            this.showNotification(result.message || 'No save game found', 'error');
         }
     }
 

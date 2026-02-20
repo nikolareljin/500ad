@@ -208,6 +208,38 @@ class GameState {
         }
     }
 
+    isSpawnTileAvailable(x, y) {
+        const tile = gameMap?.getTile(x, y);
+        if (!tile || tile.terrain === 'water') return false;
+        const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
+        return !occupied;
+    }
+
+    findAvailableSpawnPosition(originX, originY, preferredOffsets = [], maxRadius = 3) {
+        for (const offset of preferredOffsets) {
+            const x = originX + offset.x;
+            const y = originY + offset.y;
+            if (this.isSpawnTileAvailable(x, y)) {
+                return { x, y };
+            }
+        }
+
+        for (let radius = 1; radius <= maxRadius; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                    const x = originX + dx;
+                    const y = originY + dy;
+                    if (this.isSpawnTileAvailable(x, y)) {
+                        return { x, y };
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     createStartingUnits(faction, scenario) {
         const playerCities = gameMap.getCityTiles('player');
         if (playerCities.length === 0) return;
@@ -228,8 +260,10 @@ class GameState {
 
         baseUnits.forEach(({ type, count }) => {
             for (let i = 0; i < count; i++) {
-                const offset = { x: i % 3 - 1, y: Math.floor(i / 3) - 1 };
-                const unit = createUnit(type, { x: startPos.x + offset.x, y: startPos.y + offset.y }, 'player');
+                const preferredOffset = { x: i % 3 - 1, y: Math.floor(i / 3) - 1 };
+                const spawnPos = this.findAvailableSpawnPosition(startPos.x, startPos.y, [preferredOffset], 4);
+                if (!spawnPos) continue;
+                const unit = createUnit(type, spawnPos, 'player');
                 if (!unit) continue;
                 unit.faction = faction;
                 this.units.push(unit);
@@ -243,7 +277,14 @@ class GameState {
             playerCities.forEach((city, idx) => {
                 if (idx === 0) return;
                 const garrisonType = idx % 2 === 0 ? 'skutatoi' : 'archers';
-                const garrison = createUnit(garrisonType, { x: city.x, y: city.y + 1 }, 'player');
+                const spawnPos = this.findAvailableSpawnPosition(
+                    city.x,
+                    city.y,
+                    [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: -1 }],
+                    3
+                );
+                if (!spawnPos) return;
+                const garrison = createUnit(garrisonType, spawnPos, 'player');
                 if (!garrison) return;
                 garrison.faction = faction;
                 this.units.push(garrison);
@@ -258,10 +299,7 @@ class GameState {
         for (let i = 0; i < unitCount; i++) {
             const x = town.x + (i % 2);
             const y = town.y + 1 + Math.floor(i / 2);
-            const tile = gameMap.getTile(x, y);
-            if (!tile || tile.terrain === 'water') continue;
-            const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
-            if (occupied) continue;
+            if (!this.isSpawnTileAvailable(x, y)) continue;
             const unitType = baseTypes[i % baseTypes.length];
             const unit = createUnit(unitType, { x, y }, owner);
             if (!unit) continue;
