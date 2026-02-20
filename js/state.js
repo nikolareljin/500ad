@@ -77,7 +77,7 @@ class GameState {
     }
 
     /**
-     * Initialize a new game with selected leader, century, and faction
+     * Initialize a new game with selected leader, century, faction, and scenario
      */
     initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.building) {
         const leader = getLeaderById(leaderId);
@@ -189,6 +189,12 @@ class GameState {
             this.player.resources.manpower += 500;
             this.player.resources.prestige += 80;
         }
+
+        // Rebuild territories from authoritative map ownership to keep state consistent.
+        const playerCityTiles = gameMap?.getCityTiles('player') || [];
+        this.player.territories = playerCityTiles
+            .map(tile => tile.cityData?.id)
+            .filter(Boolean);
     }
 
     applyTownOwner(town, owner, faction) {
@@ -209,6 +215,9 @@ class GameState {
     }
 
     isSpawnTileAvailable(x, y) {
+        if (!gameMap || x < 0 || x >= gameMap.width || y < 0 || y >= gameMap.height) {
+            return false;
+        }
         const tile = gameMap?.getTile(x, y);
         if (!tile || tile.terrain === 'water') return false;
         const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
@@ -676,6 +685,11 @@ class GameState {
         const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
         const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
         const startingTownId = this.getStartingTownForFaction(playerFaction).id;
+        const hasSavedOwnership = Array.isArray(cityOwnership) && cityOwnership.length > 0;
+
+        if (!hasSavedOwnership) {
+            console.warn('City ownership data missing in save; restoring ownership from scenario defaults and known player territories.');
+        }
 
         const byId = new Map(cityOwnership
             .filter(city => city?.id)
@@ -783,7 +797,16 @@ class GameState {
      * Load game state from saved data
      */
     deserialize(data) {
-        if (!data || (data.version !== '1.0' && data.version !== '1.1' && data.version !== '1.1.0')) {
+        const version = String(data?.version || '').trim();
+        const versionParts = version.split('.').map(part => Number.parseInt(part, 10));
+        const major = versionParts[0];
+        const minor = versionParts[1];
+        const isSupportedVersion = Number.isInteger(major)
+            && Number.isInteger(minor)
+            && major === 1
+            && (minor === 0 || minor === 1);
+
+        if (!data || !isSupportedVersion) {
             console.error('Invalid save data');
             return false;
         }

@@ -598,6 +598,9 @@ class GameMap {
      */
     render() {
         if (!this.ctx) return;
+        if (this.territoryControlDirty) {
+            this.rebuildTerritoryControl();
+        }
 
         // Clear canvas
         this.ctx.fillStyle = '#0a0a0a';
@@ -974,7 +977,10 @@ function initializeGameMap() {
     if (!canvas) return;
 
     // Reuse the existing map/canvas instance to avoid duplicating event listeners.
-    if (gameMap && gameMap.canvas === canvas) {
+    if (gameMap
+        && gameMap.canvas === canvas
+        && gameMap.width === MAP_CONFIG.width
+        && gameMap.height === MAP_CONFIG.height) {
         gameMap.initializeMap();
         gameMap.initializeFogOfWar();
         gameMap.selectedTile = null;
