@@ -113,7 +113,7 @@ class GameState {
         this.buildings = [];
         this.setupScenarioTowns(civilization, scenario);
         this.createStartingUnits(civilization, scenario);
-        this.createEnemyUnits(civilization, scenario);
+        this.createEnemyUnits(scenario);
         gameMap.markTerritoryDirty();
         gameMap.render();
 
@@ -317,7 +317,7 @@ class GameState {
         }
     }
 
-    createEnemyUnits(playerFaction, scenario) {
+    createEnemyUnits(scenario) {
         const enemyCities = gameMap.getCityTiles('enemy');
         const neutralCities = gameMap.getCityTiles('neutral');
 
