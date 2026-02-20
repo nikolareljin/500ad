@@ -976,6 +976,14 @@ function initializeGameMap() {
     // Reuse the existing map/canvas instance to avoid duplicating event listeners.
     if (gameMap && gameMap.canvas === canvas) {
         gameMap.initializeMap();
+        gameMap.initializeFogOfWar();
+        gameMap.selectedTile = null;
+        gameMap.hoveredTile = null;
+        const constantinople = HISTORIC_TOWNS.find(t => t.id === 'constantinople');
+        const constantinopleX = constantinople ? constantinople.x : Math.floor(gameMap.width * 0.58);
+        const constantinopleY = constantinople ? constantinople.y : Math.floor(gameMap.height * 0.36);
+        gameMap.camera.x = (constantinopleX * MAP_CONFIG.tileSize) - (canvas.width / 2);
+        gameMap.camera.y = (constantinopleY * MAP_CONFIG.tileSize) - (canvas.height / 2);
         gameMap.markTerritoryDirty();
         gameMap.render();
         return;

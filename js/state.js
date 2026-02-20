@@ -615,14 +615,14 @@ class GameState {
         const playerUnits = this.units.filter(u => u.owner === 'player');
         const enemyUnits = this.units.filter(u => u.owner === 'enemy');
 
-        // Loss: No units left or no player-controlled capital.
-        const playerCapitals = gameMap?.getCityTiles('player').filter(tile => tile.cityData?.kind === 'capital') || [];
+        // Loss: No units left or no player-controlled cities.
+        const playerCities = gameMap?.getCityTiles('player') || [];
         const hasNoUnits = playerUnits.length === 0;
-        const hasNoCapitals = playerCapitals.length === 0;
-        if (hasNoUnits || hasNoCapitals) {
+        const hasNoCities = playerCities.length === 0;
+        if (hasNoUnits || hasNoCities) {
             if (window.uiManager) {
-                if (hasNoCapitals) {
-                    uiManager.showGameOver(false, 'Your empire has lost its last capital.');
+                if (hasNoCities) {
+                    uiManager.showGameOver(false, 'Your empire has lost its last city.');
                 } else {
                     uiManager.showGameOver(false);
                 }
