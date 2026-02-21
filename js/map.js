@@ -914,6 +914,19 @@ class GameMap {
         this.centerOn(avgX, avgY);
     }
 
+    centerOn(tileX, tileY) {
+        if (!this.canvas) return;
+        const tx = Number.isFinite(tileX) ? tileX : 0;
+        const ty = Number.isFinite(tileY) ? tileY : 0;
+        this.camera.x = Math.floor((tx * MAP_CONFIG.tileSize) - (this.canvas.width / 2));
+        this.camera.y = Math.floor((ty * MAP_CONFIG.tileSize) - (this.canvas.height / 2));
+        const maxX = Math.max(0, (this.width * MAP_CONFIG.tileSize) - this.canvas.width);
+        const maxY = Math.max(0, (this.height * MAP_CONFIG.tileSize) - this.canvas.height);
+        this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
+        this.requestRender();
+    }
+
     /**
      * Setup pan controls (no zoom)
      */

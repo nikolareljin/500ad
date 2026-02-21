@@ -489,8 +489,16 @@ class UIManager {
      */
     async endTurn() {
         const result = await gameState.endTurn();
+        if (!result) {
+            this.showNotification('Turn did not complete', 'error');
+            return;
+        }
+        if (result.paused) {
+            this.showNotification('Please wait, turn is already processing', 'info');
+            return;
+        }
         this.updateHUD();
-        gameMap?.render();
+        gameMap?.requestRender();
 
         // Auto-save
         if (storageManager.settings.autoSave) {

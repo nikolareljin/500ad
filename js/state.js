@@ -1213,7 +1213,9 @@ class GameState {
      * End current turn
      */
     async endTurn() {
-        if (this.isPaused) return;
+        if (this.isPaused) {
+            return { paused: true };
+        }
 
         // If it was player's turn, now it's enemy's turn
         console.log(`Ending turn ${this.turn}`);
@@ -1221,8 +1223,13 @@ class GameState {
         // 1. Process Enemy Turn
         if (typeof aiManager !== 'undefined' && aiManager) {
             this.isPaused = true; // Pause player input
-            await aiManager.processTurn();
-            this.isPaused = false;
+            try {
+                await aiManager.processTurn();
+            } catch (error) {
+                console.error('AI turn failed:', error);
+            } finally {
+                this.isPaused = false;
+            }
         }
 
         // 2. Start New Turn for Player
