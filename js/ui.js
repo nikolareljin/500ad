@@ -830,6 +830,13 @@ class UIManager {
     showCombatResult(result) {
         const attacker = gameState.units.find(u => u.id === result.attacker.id);
         const defender = gameState.units.find(u => u.id === result.defender.id);
+        if (gameMap) {
+            gameMap.focusOnBattleUnits(attacker, defender);
+            const highlighted = [];
+            if (attacker && attacker.currentHealth < attacker.stats.health) highlighted.push(attacker.id);
+            if (defender && defender.currentHealth < defender.stats.health) highlighted.push(defender.id);
+            gameMap.setBattleHealthHighlights(highlighted, 3500);
+        }
         const battlePosition = defender?.position || attacker?.position;
         let locationText = '';
         if (battlePosition && gameMap) {
@@ -856,6 +863,8 @@ class UIManager {
             document.body.classList.add('hit-shake');
             setTimeout(() => document.body.classList.remove('hit-shake'), 500);
         }
+
+        gameMap?.requestRender();
     }
 
     /**

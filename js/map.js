@@ -166,6 +166,7 @@ class GameMap {
         };
         this.fogAlphaCache = [];
         this.renderQueued = false;
+        this.battleHealthHighlights = new Map();
 
         this.initializeMap();
         this.initializeReferenceMap();
@@ -882,6 +883,37 @@ class GameMap {
         });
     }
 
+    setBattleHealthHighlights(unitIds = [], durationMs = 3000) {
+        const now = Date.now();
+        const expiresAt = now + Math.max(300, durationMs);
+        unitIds.forEach((unitId) => {
+            if (!unitId) return;
+            this.battleHealthHighlights.set(unitId, expiresAt);
+        });
+        this.requestRender();
+    }
+
+    shouldRenderBattleHealth(unit) {
+        if (!unit) return false;
+        if (unit.currentHealth >= unit.stats.health) return false;
+        const expiresAt = this.battleHealthHighlights.get(unit.id);
+        if (!expiresAt) return false;
+        if (Date.now() > expiresAt) {
+            this.battleHealthHighlights.delete(unit.id);
+            return false;
+        }
+        return true;
+    }
+
+    focusOnBattleUnits(attacker, defender) {
+        if (!this.canvas) return;
+        const units = [attacker, defender].filter(Boolean);
+        if (units.length === 0) return;
+        const avgX = units.reduce((sum, unit) => sum + unit.position.x, 0) / units.length;
+        const avgY = units.reduce((sum, unit) => sum + unit.position.y, 0) / units.length;
+        this.centerOn(avgX, avgY);
+    }
+
     /**
      * Setup pan controls (no zoom)
      */
@@ -973,21 +1005,22 @@ class GameMap {
         const py = unit.position.y * tileSize;
         const cx = px + tileSize / 2;
         const cy = py + tileSize / 2;
-        const healthRatio = Math.max(0, Math.min(1, unit.currentHealth / Math.max(1, unit.stats.health)));
-        const healthColor = this.getUnitHealthColor(healthRatio);
-
-        // Health ring (green high -> red low).
-        this.ctx.strokeStyle = healthColor;
-        this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
-        this.ctx.beginPath();
-        this.ctx.arc(
-            cx,
-            cy,
-            tileSize * 0.44,
-            0,
-            Math.PI * 2
-        );
-        this.ctx.stroke();
+        if (this.shouldRenderBattleHealth(unit)) {
+            const healthRatio = Math.max(0, Math.min(1, unit.currentHealth / Math.max(1, unit.stats.health)));
+            const healthColor = this.getUnitHealthColor(healthRatio);
+            // Battle-only health ring overlay.
+            this.ctx.strokeStyle = healthColor;
+            this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
+            this.ctx.beginPath();
+            this.ctx.arc(
+                cx,
+                cy,
+                tileSize * 0.44,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.stroke();
+        }
 
         // Unit circle
         this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
