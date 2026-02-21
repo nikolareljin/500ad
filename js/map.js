@@ -978,15 +978,6 @@ class GameMap {
         if (unit.category === 'support') icon = '⛪';
         if (unit.category === 'economic') icon = '🐪';
         this.ctx.fillText(icon, cx, cy);
-
-        // Unit health value for quick tactical readability.
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'alphabetic';
-        this.ctx.font = `${Math.max(8, Math.floor(tileSize * 0.28))}px Crimson Text`;
-        this.ctx.fillStyle = '#111';
-        this.ctx.fillRect(px + tileSize * 0.2, py + tileSize * 0.82, tileSize * 0.6, tileSize * 0.16);
-        this.ctx.fillStyle = healthColor;
-        this.ctx.fillText(`${Math.max(0, Math.round(unit.currentHealth))}`, cx, py + tileSize * 0.96);
     }
 
     getUnitHealthColor(ratio) {
@@ -1042,8 +1033,10 @@ class GameMap {
     handleMouseMove(event) {
         const tile = this.screenToTile(event.clientX, event.clientY);
         if (tile) {
-            this.hoveredTile = tile;
-            this.render();
+            if (!this.hoveredTile || this.hoveredTile.x !== tile.x || this.hoveredTile.y !== tile.y) {
+                this.hoveredTile = tile;
+                this.render();
+            }
         }
     }
 
