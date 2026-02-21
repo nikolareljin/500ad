@@ -124,11 +124,17 @@ class Game {
     render() {
         // Render map if in game screen
         if (gameMap && uiManager.currentScreen === 'game') {
+            const territoryChangedThisFrame = gameMap.territoryControlDirty;
             gameMap.render();
+            const minimapNeedsRender = territoryChangedThisFrame;
 
             // Update minimap viewport indicator
             if (minimap) {
-                minimap.updateViewport();
+                if (minimapNeedsRender) {
+                    minimap.render();
+                } else {
+                    minimap.updateViewport();
+                }
             }
         }
     }

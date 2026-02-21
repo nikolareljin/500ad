@@ -10,6 +10,7 @@ class UIManager {
         this.modals = {};
         this.selectedCentury = '6';
         this.selectedFaction = 'byzantine';
+        this.selectedScenario = SCENARIOS.building;
         this.selectedLeaderCard = null;
     }
 
@@ -156,7 +157,44 @@ class UIManager {
     showLeaderSelection() {
         this.showScreen('leaderSelection');
         this.populateCenturies();
+        this.populateScenarios();
         this.switchCentury(this.selectedCentury);
+    }
+
+    populateScenarios() {
+        const container = document.getElementById('scenario-tabs');
+        if (!container) return;
+
+        const scenarios = [
+            {
+                id: SCENARIOS.building,
+                title: 'Building the Civilization',
+                description: 'Start with one core town; local tribes around historic cities may join you or resist.'
+            },
+            {
+                id: SCENARIOS.empire,
+                title: 'Managing an Empire',
+                description: 'Start with historically established towns, garrisons, and stronger economy.'
+            }
+        ];
+
+        container.innerHTML = '';
+        scenarios.forEach((scenario) => {
+            const btn = document.createElement('button');
+            btn.className = `scenario-tab ${this.selectedScenario === scenario.id ? 'active' : ''}`;
+            btn.dataset.scenario = scenario.id;
+            btn.title = scenario.description;
+            btn.textContent = scenario.title;
+            btn.addEventListener('click', () => this.switchScenario(scenario.id));
+            container.appendChild(btn);
+        });
+    }
+
+    switchScenario(scenarioId) {
+        this.selectedScenario = scenarioId;
+        document.querySelectorAll('.scenario-tab').forEach((tab) => {
+            tab.classList.toggle('active', tab.dataset.scenario === scenarioId);
+        });
     }
 
     /**
@@ -391,14 +429,24 @@ class UIManager {
             return;
         }
 
-        // Initialize game
-        const success = gameState.initializeGame(this.selectedLeaderCard.id);
+        this.showScreen('game');
+        initializeGameMap();
+        const success = gameState.initializeGame(
+            this.selectedLeaderCard.id,
+            this.selectedCentury,
+            this.selectedFaction,
+            this.selectedScenario
+        );
         if (success) {
-            this.showScreen('game');
-            initializeGameMap();
-            setTimeout(() => initializeMinimap(), 100);
+            this.initializeGameView();
             this.updateHUD();
             audioManager.playMusic('battle_theme');
+            this.showNotification(
+                `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`,
+                'info'
+            );
+        } else {
+            this.showScreen('leaderSelection');
         }
     }
 
@@ -406,15 +454,23 @@ class UIManager {
      * Continue last game
      */
     continueGame() {
+        const slotInfo = storageManager.getSaveSlotInfo(0);
+        if (!slotInfo) {
+            this.showNotification('No save game found', 'error');
+            return;
+        }
+
+        this.showScreen('game');
+        initializeGameMap();
         const result = storageManager.loadGame(0);
         if (result.success) {
-            this.showScreen('game');
-            initializeGameMap();
-            setTimeout(() => initializeMinimap(), 100);
+            gameMap?.markTerritoryDirty();
+            this.initializeGameView();
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
         } else {
-            this.showNotification('No save game found', 'error');
+            this.showScreen('mainMenu');
+            this.showNotification(result.message || 'No save game found', 'error');
         }
     }
 
@@ -573,6 +629,25 @@ class UIManager {
         panel.classList.add('active');
 
         document.getElementById('selected-unit-name').textContent = unit.name;
+        const portrait = document.getElementById('selected-unit-portrait');
+        if (portrait) {
+            const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
+            portrait.textContent = '';
+            const container = document.createElement('div');
+            container.className = 'unit-portrait-content';
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'unit-portrait-icon';
+            iconSpan.textContent = unitIcon;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'unit-portrait-name';
+            nameSpan.textContent = unit.name;
+
+            container.appendChild(iconSpan);
+            container.appendChild(nameSpan);
+            portrait.appendChild(container);
+        }
         document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
         document.getElementById('unit-attack').textContent = unit.stats.attack;
         document.getElementById('unit-defense').textContent = unit.stats.defense;
@@ -603,11 +678,12 @@ class UIManager {
     /**
      * Show game over screen
      */
-    showGameOver(isVictory) {
+    showGameOver(isVictory, customMessage = '') {
         const title = isVictory ? 'Victory!' : 'Defeat!';
-        const message = isVictory
+        const defaultMessage = isVictory
             ? 'For the Glory of Constantinople! The Empire is secure.'
             : 'Constantinople has fallen. The legacy of Rome ends here.';
+        const message = customMessage || defaultMessage;
         const icon = isVictory ? '👑' : '🏚️';
 
         const content = `
@@ -744,7 +820,7 @@ class UIManager {
                     on actual Byzantine history.
                 </p>
                 <p style="margin-bottom:1.5rem;">
-                    <strong>Version:</strong> 1.0.0
+                    <strong>Version:</strong> ${window.APP_VERSION || 'dev'}
                 </p>
                 <button class="btn-primary" onclick="uiManager.closeModal()">Close</button>
             </div>
@@ -781,15 +857,35 @@ class UIManager {
      * Load from slot
      */
     loadFromSlot(slotNumber) {
+        const slotInfo = storageManager.getSaveSlotInfo(slotNumber);
+        if (!slotInfo) {
+            this.showNotification('No save data found', 'error');
+            this.closeModal();
+            return;
+        }
+
+        this.showScreen('game');
+        initializeGameMap();
         const result = storageManager.loadGame(slotNumber);
         if (result.success) {
-            this.showScreen('game');
-            initializeGameMap();
-            setTimeout(() => initializeMinimap(), 100);
+            gameMap?.markTerritoryDirty();
+            this.initializeGameView();
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
+        } else {
+            this.showScreen('mainMenu');
+            this.showNotification(result.message, 'error');
         }
         this.closeModal();
+    }
+
+    initializeGameView() {
+        // Ensure layout is visible before sizing canvases.
+        requestAnimationFrame(() => {
+            window.game?.handleResize();
+            initializeMinimap();
+            gameMap?.render();
+        });
     }
 
     /**

@@ -249,6 +249,21 @@ Compatibility alias:
 ./script/update.sh
 ```
 
+### Version Management (Single Source of Truth)
+- `VERSION` is the canonical release version used for checks and tagging.
+- Set/sync a new version:
+```bash
+./scripts/version_set.sh 1.1.0
+```
+- Verify version consistency:
+```bash
+./scripts/check_release_version.sh
+```
+- Create annotated release tag from `VERSION`:
+```bash
+./scripts/tag_release.sh
+```
+
 ### With Local Server (Recommended)
 ```bash
 cd 500ad
@@ -299,7 +314,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.0 (in progress)** - Real coastline-based geography and corrected historical city land placement
+**Version 1.1.0** - Scenario system, territorial control overlays, and corrected historical city land placement
 
 ## License
 

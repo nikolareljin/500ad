@@ -124,6 +124,8 @@ class GameMap {
 
         this.selectedTile = null;
         this.hoveredTile = null;
+        this.territoryControl = [];
+        this.territoryControlDirty = true;
 
         this.initializeMap();
     }
@@ -150,6 +152,7 @@ class GameMap {
 
         // Place historical towns
         this.placeHistoricalTowns();
+        this.markTerritoryDirty();
 
         // Ensure Constantinople is correctly set up as default start center if needed
         // but generally initialization should be handled by scenario in state.js
@@ -258,6 +261,76 @@ class GameMap {
             }
         }
         return cities;
+    }
+
+    markTerritoryDirty() {
+        this.territoryControlDirty = true;
+    }
+
+    rebuildTerritoryControl() {
+        const control = [];
+        const strength = [];
+        const citySources = [];
+        const nonCitySources = [];
+        for (let y = 0; y < this.height; y++) {
+            control[y] = [];
+            strength[y] = [];
+            for (let x = 0; x < this.width; x++) {
+                control[y][x] = null;
+                strength[y][x] = -1;
+                const tile = this.tiles[y][x];
+                if (!tile || tile.terrain === 'water' || !tile.owner) continue;
+                if (tile.cityData) {
+                    citySources.push(tile);
+                } else {
+                    nonCitySources.push(tile);
+                }
+            }
+        }
+
+        const applyInfluence = (originX, originY, owner, radius, baseStrength) => {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    const x = originX + dx;
+                    const y = originY + dy;
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+                    const tile = this.tiles[y][x];
+                    if (!tile || tile.terrain === 'water') continue;
+
+                    const dist = Math.abs(dx) + Math.abs(dy);
+                    if (dist > radius) continue;
+
+                    const influence = baseStrength - dist;
+                    if (influence > strength[y][x]) {
+                        strength[y][x] = influence;
+                        control[y][x] = owner;
+                    }
+                }
+            }
+        };
+
+        // Cities define the primary area of control.
+        citySources.forEach((cityTile) => {
+            if (!cityTile.owner) return;
+            const radius = cityTile.cityData?.kind === 'capital' ? 7 : 4 + Math.floor((cityTile.importance || 5) / 3);
+            const base = cityTile.cityData?.kind === 'capital' ? 10 : 7;
+            applyInfluence(cityTile.x, cityTile.y, cityTile.owner, radius, base);
+        });
+
+        // Explicitly owned non-city tiles still project minimal control.
+        nonCitySources.forEach((tile) => {
+            applyInfluence(tile.x, tile.y, tile.owner, 1, 2);
+        });
+
+        this.territoryControl = control;
+        this.territoryControlDirty = false;
+    }
+
+    getTerritoryOwnerAt(x, y) {
+        if (this.territoryControlDirty) {
+            this.rebuildTerritoryControl();
+        }
+        return this.territoryControl[y]?.[x] || null;
     }
 
     /**
@@ -480,7 +553,8 @@ class GameMap {
                 const px = x * tileSize + tileSize / 2;
                 const py = y * tileSize;
                 const isEnemy = tile.owner === 'enemy';
-                const cityColor = isEnemy ? '#ff9f9f' : '#f4d03f';
+                const isNeutral = tile.owner === 'neutral';
+                const cityColor = isEnemy ? '#ff9f9f' : (isNeutral ? '#9cd3b0' : '#f4d03f');
 
                 this.drawCityInfrastructure(tile, tileSize);
 
@@ -524,6 +598,9 @@ class GameMap {
      */
     render() {
         if (!this.ctx) return;
+        if (this.territoryControlDirty) {
+            this.rebuildTerritoryControl();
+        }
 
         // Clear canvas
         this.ctx.fillStyle = '#0a0a0a';
@@ -570,10 +647,16 @@ class GameMap {
                     this.ctx.strokeRect(px, py, tileSize, tileSize);
                 }
 
-                // Draw ownership overlay
-                if (tile.owner) {
-                    this.ctx.fillStyle = tile.owner === 'player' ?
-                        'rgba(107, 44, 145, 0.25)' : 'rgba(139, 0, 0, 0.25)';
+                // Draw territory control overlay.
+                const controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y);
+                if (controlOwner && tile.terrain !== 'water') {
+                    if (controlOwner === 'player') {
+                        this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
+                    } else if (controlOwner === 'enemy') {
+                        this.ctx.fillStyle = 'rgba(139, 0, 0, 0.28)';
+                    } else {
+                        this.ctx.fillStyle = 'rgba(56, 114, 84, 0.24)';
+                    }
                     this.ctx.fillRect(px, py, tileSize, tileSize);
                 }
 
@@ -702,6 +785,25 @@ class GameMap {
         this.ctx.font = '14px Crimson Text';
         this.ctx.textAlign = 'left';
         this.ctx.fillText(`Position: ${centerX}, ${centerY}`, 20, 30);
+
+        // Territory legend for quick readability.
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+        this.ctx.fillRect(10, 45, 248, 24);
+
+        this.ctx.fillStyle = 'rgba(107, 44, 145, 0.9)';
+        this.ctx.fillRect(18, 53, 12, 10);
+        this.ctx.fillStyle = '#f3df95';
+        this.ctx.fillText('Player', 34, 62);
+
+        this.ctx.fillStyle = 'rgba(139, 0, 0, 0.9)';
+        this.ctx.fillRect(94, 53, 12, 10);
+        this.ctx.fillStyle = '#f3df95';
+        this.ctx.fillText('Hostile', 110, 62);
+
+        this.ctx.fillStyle = 'rgba(56, 114, 84, 0.9)';
+        this.ctx.fillRect(182, 53, 12, 10);
+        this.ctx.fillStyle = '#f3df95';
+        this.ctx.fillText('Neutral', 198, 62);
     }
 
     /**
@@ -836,8 +938,9 @@ class GameMap {
         } else if (tile?.cityData && window.uiManager) {
             const p = tile.cityData.production;
             const wonderText = tile.cityData.wonder ? ` | Wonder: ${tile.cityData.wonder}` : '';
+            const tribeText = tile.cityData.tribe ? ` | Tribe: ${tile.cityData.tribe}` : '';
             window.uiManager.showNotification(
-                `${tile.cityData.name} (${tile.owner || 'neutral'}) - F${p.food} I${p.industry} G${p.gold}${wonderText}`,
+                `${tile.cityData.name} (${tile.owner || 'neutral'}) - F${p.food} I${p.industry} G${p.gold}${tribeText}${wonderText}`,
                 'info'
             );
         }
@@ -870,10 +973,31 @@ let gameMap = null;
  * Initialize game map
  */
 function initializeGameMap() {
-    gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
     const canvas = document.getElementById('game-map');
-    if (canvas) {
-        gameMap.initializeCanvas(canvas);
+    if (!canvas) return;
+
+    // Reuse the existing map/canvas instance to avoid duplicating event listeners.
+    if (gameMap
+        && gameMap.canvas === canvas
+        && gameMap.width === MAP_CONFIG.width
+        && gameMap.height === MAP_CONFIG.height) {
+        gameMap.canvas.width = gameMap.canvas.offsetWidth;
+        gameMap.canvas.height = gameMap.canvas.offsetHeight;
+        gameMap.initializeMap();
+        gameMap.initializeFogOfWar();
+        gameMap.selectedTile = null;
+        gameMap.hoveredTile = null;
+        const constantinople = HISTORIC_TOWNS.find(t => t.id === 'constantinople');
+        const constantinopleX = constantinople ? constantinople.x : Math.floor(gameMap.width * 0.58);
+        const constantinopleY = constantinople ? constantinople.y : Math.floor(gameMap.height * 0.36);
+        gameMap.camera.x = (constantinopleX * MAP_CONFIG.tileSize) - (canvas.width / 2);
+        gameMap.camera.y = (constantinopleY * MAP_CONFIG.tileSize) - (canvas.height / 2);
+        gameMap.markTerritoryDirty();
         gameMap.render();
+        return;
     }
+
+    gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
+    gameMap.initializeCanvas(canvas);
+    gameMap.render();
 }

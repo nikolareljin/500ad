@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-20
+
 ### Added
 - Added a top-HUD minimap that shows the full world map with a highlighted viewport rectangle.
 - Added minimap click and drag navigation to jump the main camera to any area quickly.
@@ -17,6 +19,15 @@ All notable changes to this project are documented in this file.
 - Added recruitment spawn search for nearest valid adjacent tile.
 - Added a polygon-based landmask geography model for Europe, Mediterranean, Mesopotamia, Arabia, and Ethiopia.
 - Added city-adjacent terrain safety conversion to prevent key cities from ending up in isolated open-water tiles.
+- Added scenario selection with two modes: `Building the Civilization` and `Managing an Empire`.
+- Added historical tribe metadata and town ownership setup for scenario initialization.
+- Added territory-control overlays and legend on both main map and minimap (player/hostile/neutral).
+- Added a root `VERSION` file as canonical release version source.
+- Added release scripts:
+  - `scripts/version_set.sh`
+  - `scripts/check_release_version.sh`
+  - `scripts/tag_release.sh`
+- Added generated runtime version asset: `assets/version.js`.
 
 ### Changed
 - Moved minimap placement into the top interface area for constant visibility during play.
@@ -30,12 +41,19 @@ All notable changes to this project are documented in this file.
 - Rebalanced city economy and build progression costs for slower, more controllable scaling.
 - Reworked map generation to follow real regional coastlines instead of synthetic continent blobs.
 - Updated terrain rendering to a historic-map style color palette.
+- Updated game start/load flow to initialize the map only after the game screen is visible, preventing zero-size canvas rendering.
+- Updated save serialization version to `1.1.0` while keeping backward compatibility with older save versions.
+- Updated README and in-game About modal to show `1.1.0`.
+- Updated selected-unit panel layout to keep content visible with bounded height and internal scrolling.
 
 ### Fixed
 - Fixed player movement/action flow where clicks targeted wrong tiles after camera panning.
 - Fixed action bar no-op behavior by wiring recruit/build/tech handlers.
 - Fixed empty-player-army issue caused by invalid initial unit type IDs.
 - Fixed regression where Constantinople could render in ocean terrain due to geography mismatch.
+- Fixed large map not rendering in some flows due to hidden-screen canvas initialization timing.
+- Fixed selected-unit panel overflow where stats/actions were pushed below the visible area.
+- Fixed town information visibility by adding tribe labels in city notifications.
 
 ### Known Issues
 - Coastline detail still uses simplified polygons; fine-grained shoreline/island fidelity can be improved further.
