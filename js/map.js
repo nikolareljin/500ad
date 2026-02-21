@@ -936,7 +936,7 @@ class GameMap {
 
         // Health ring (green high -> red low).
         this.ctx.strokeStyle = healthColor;
-        this.ctx.lineWidth = Math.max(2, tileSize * 0.12);
+        this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
         this.ctx.beginPath();
         this.ctx.arc(
             cx,
