@@ -1,0 +1,12 @@
+name: Auto Tag Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  tag:
+    uses: nikolareljin/ci-helpers/.github/workflows/auto-tag-release.yml@production
+
