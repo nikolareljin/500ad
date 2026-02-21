@@ -21,7 +21,7 @@ grep -Fq "**Version $VERSION**" README.md || {
   exit 1
 }
 
-grep -Fq "version: '$VERSION'" js/state.js || {
+grep -Fq "const SAVE_VERSION = '$VERSION';" js/state.js || {
   echo "Save format version in js/state.js is not synced to VERSION=$VERSION" >&2
   exit 1
 }
