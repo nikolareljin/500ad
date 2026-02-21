@@ -255,6 +255,24 @@ class GameState {
         this.units = [];
         this.buildings = [];
         this.setupScenarioTowns(civilization, scenario);
+        if (scenario === SCENARIOS.empire) {
+            const empireStartTechs = [
+                'military_logistics',
+                'siegecraft',
+                'naval_architecture',
+                'cavalry_tactics',
+                'caravan_routes',
+                'irrigation_systems',
+                'monastic_scholarship'
+            ];
+            empireStartTechs.forEach((techId) => {
+                if (!this.player.techResearched.includes(techId)) {
+                    this.player.techResearched.push(techId);
+                    this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+                }
+            });
+            this.seedAdvancedEmpireInfrastructure();
+        }
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(scenario);
         gameMap.markTerritoryDirty();
@@ -267,6 +285,27 @@ class GameState {
     resolveCivilization(faction) {
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
         return normalizedFaction;
+    }
+
+    seedAdvancedEmpireInfrastructure() {
+        const playerCities = gameMap?.getCityTiles('player') || [];
+        playerCities.forEach((tile, index) => {
+            if (!tile?.cityData) return;
+            const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
+            infra.roads = Math.max(infra.roads || 1, 3);
+            infra.agriculture = Math.max(infra.agriculture || 1, 3);
+            infra.industry = Math.max(infra.industry || 1, 3);
+            if (index === 0) tile.cityData.monastery = true;
+
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(tile.x + offset.x, tile.y + offset.y)?.terrain === 'water');
+            if (nearWater) {
+                tile.cityData.port = true;
+                tile.cityData.navalYard = true;
+            }
+        });
     }
 
     getStartingTownForFaction(faction) {
@@ -608,6 +647,14 @@ class GameState {
     recruitUnit(unitTypeId, position) {
         const unitType = getUnitById(unitTypeId);
         if (!unitType) return null;
+        const tile = gameMap?.getTile(position?.x, position?.y);
+        if (!tile) return null;
+        const occupied = this.units.some(u => u.position.x === position.x && u.position.y === position.y);
+        if (occupied) return null;
+
+        const waterCapable = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
+        if (tile.terrain === 'water' && !waterCapable) return null;
+        if (tile.terrain !== 'water' && waterCapable && unitType.type === 'naval') return null;
 
         // Check if player can afford
         if (!this.canAfford(unitType.cost.gold, unitType.cost.manpower)) {
@@ -633,14 +680,18 @@ class GameState {
         const researched = new Set(this.player?.techResearched || []);
         const options = ['skutatoi', 'archers', 'kavallarioi'];
 
-        if ((infra.industry || 0) >= 3) options.push('engineers', 'mangonel');
+        if ((infra.industry || 0) >= 2) options.push('engineers');
+        if ((infra.industry || 0) >= 3 || researched.has('siegecraft')) options.push('mangonel');
         if ((infra.agriculture || 0) >= 2) options.push('camel_riders');
-        if ((infra.roads || 0) >= 3) options.push('explorer', 'spy');
-        if ((infra.roads || 0) >= 4 || researched.has('caravan_routes')) options.push('caravan');
-        if ((infra.industry || 0) >= 4 && researched.has('siegecraft')) options.push('war_elephants');
-        if ((infra.industry || 0) >= 2 && researched.has('naval_architecture')) options.push('transport', 'dromon');
+        if ((infra.roads || 0) >= 2) options.push('explorer');
+        if ((infra.roads || 0) >= 3 || researched.has('monastic_scholarship')) options.push('spy');
+        if ((infra.roads || 0) >= 3 || researched.has('caravan_routes')) options.push('caravan');
+        if ((infra.industry || 0) >= 3 && (infra.agriculture || 0) >= 3 && researched.has('cavalry_tactics')) options.push('war_elephants');
+        if (cityTile.cityData.port || cityTile.cityData.navalYard) options.push('transport');
+        if ((cityTile.cityData.port || cityTile.cityData.navalYard) && researched.has('naval_architecture')) options.push('dromon');
+        if ((infra.industry || 0) >= 4 && researched.has('naval_architecture')) options.push('greekfire');
         if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
-        if ((infra.industry || 0) >= 4) options.push('priests');
+        if (cityTile.cityData.monastery || researched.has('monastic_scholarship') || (infra.industry || 0) >= 4) options.push('priests');
 
         const unique = [];
         options.forEach((unitId) => {

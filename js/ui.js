@@ -529,14 +529,19 @@ class UIManager {
             `Recruit at ${tile.cityData.name}`,
             choices,
             (unitId) => {
-                const spawnTile = this.findRecruitSpawnTile(tile);
+                const spawnTile = this.findRecruitSpawnTile(tile, unitId);
                 if (!spawnTile) {
-                    this.showNotification('No open adjacent tile for recruitment', 'error');
+                    const unit = getUnitById(unitId);
+                    const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
+                    this.showNotification(
+                        isNaval ? 'No valid adjacent water tile for naval recruitment' : 'No open adjacent land tile for recruitment',
+                        'error'
+                    );
                     return;
                 }
                 const unit = gameState.recruitUnit(unitId, spawnTile);
                 if (!unit) {
-                    this.showNotification('Not enough resources for that unit', 'error');
+                    this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
                     return;
                 }
                 this.updateHUD();
@@ -546,7 +551,10 @@ class UIManager {
         );
     }
 
-    findRecruitSpawnTile(cityTile) {
+    findRecruitSpawnTile(cityTile, unitId) {
+        const unitType = getUnitById(unitId);
+        if (!unitType) return null;
+        const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
         const offsets = [
             { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
             { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
@@ -556,7 +564,9 @@ class UIManager {
             const x = cityTile.x + offset.x;
             const y = cityTile.y + offset.y;
             const mapTile = gameMap.getTile(x, y);
-            if (!mapTile || mapTile.terrain === 'water') continue;
+            if (!mapTile) continue;
+            if (wantsWater && mapTile.terrain !== 'water') continue;
+            if (!wantsWater && mapTile.terrain === 'water') continue;
 
             const occupied = gameState.units.some(u => u.position.x === x && u.position.y === y);
             if (occupied) continue;
@@ -587,7 +597,7 @@ class UIManager {
         }));
 
         this.showChoiceModal(
-            `Build in ${tile.cityData.name}`,
+            `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
             choices,
             (actionId) => {
                 const result = gameState.applyCityBuildAction(tile, actionId);
@@ -597,7 +607,7 @@ class UIManager {
                 }
                 this.updateHUD();
                 gameMap.render();
-                this.showNotification(`${tile.cityData.name}: ${result.actionName}`, 'success');
+                this.showNotification(`${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`, 'success');
             }
         );
     }
