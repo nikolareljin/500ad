@@ -170,6 +170,10 @@ class GameMap {
     }
 
     initializeReferenceMap() {
+        if (typeof Image === 'undefined') {
+            this.referenceMapReady = false;
+            return;
+        }
         const image = new Image();
         image.onload = () => {
             this.referenceMapImage = image;
@@ -702,12 +706,19 @@ class GameMap {
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                // Get color from heightmap if available
                 let terrainColor = TERRAIN_TYPES[tile.terrain].color;
-                if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
+                if (
+                    typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
                     MEDITERRANEAN_HEIGHTMAP[y] &&
-                    MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
-                    terrainColor = heightToColor(MEDITERRANEAN_HEIGHTMAP[y][x]);
+                    MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined
+                ) {
+                    const h = MEDITERRANEAN_HEIGHTMAP[y][x];
+                    const generatedTerrain = heightToTerrain(h);
+                    // Respect runtime overrides (city placement/coast fixes) instead of repainting
+                    // everything from raw heightmap values.
+                    if (generatedTerrain === tile.terrain) {
+                        terrainColor = heightToColor(h);
+                    }
                 }
 
                 // Draw terrain

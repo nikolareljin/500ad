@@ -936,7 +936,7 @@ class GameState {
         console.log(`Ending turn ${this.turn}`);
 
         // 1. Process Enemy Turn
-        if (window.aiManager) {
+        if (typeof aiManager !== 'undefined' && aiManager) {
             this.isPaused = true; // Pause player input
             await aiManager.processTurn();
             this.isPaused = false;
