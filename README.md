@@ -63,7 +63,10 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
-- **Combat System**: Type advantages, terrain modifiers, and morale
+- **Combat System**: Type advantages, terrain modifiers, morale, and fortification modifiers
+- **Unit Vitality UI**: Every unit shows a map health ring (green -> red) and live HP number
+- **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
+- **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
 - **Resource Management**: Gold, manpower, and prestige
 - **Save/Load System**: Multiple save slots with auto-save
 - **Exploration**: Fog of war reveals as units move and cities are founded
@@ -149,6 +152,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Greek Fire Siphon**: Devastating incendiary weapon
 - **Siege Engineers**: Fortification specialists
 - **Orthodox Priests**: Morale and healing support
+- **Field Healer**: Dedicated battlefield medical unit with strong adjacent healing
 
 ## Technical Details
 
@@ -191,6 +195,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 │   └── audio/
 └── docs/              # Documentation
     ├── geography.md   # Geography model and coordinate system
+    ├── gameplay-systems.md # Unit health, healing, and fortifications
     └── media/         # Screenshots and videos
 ```
 

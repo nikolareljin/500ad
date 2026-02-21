@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added per-unit health rings on the map (green at high health, grading to red at low health) plus numeric HP labels on each unit.
+- Added a new recruitable support unit: `Field Healer` (`healer`) with high adjacent healing output.
+- Added unit-built permanent fortifications on map tiles via unit fortify action.
+- Added fortification persistence to save/load data.
+
+### Changed
+- Updated `Fortify` action to create/maintain defensive forts, apply fortified stance, and feed turn-based healing.
+- Updated combat messaging to include the nearest town context for battle location readability.
+
+### Fixed
+- Fixed unit healing flow by supporting recovery from friendly towns, fortified positions, and adjacent healer/support units.
+- Fixed enemy-fort tile movement by requiring assault resolution before entering undefended enemy forts.
+
 ## [1.1.0] - 2026-02-20
 
 ### Added
