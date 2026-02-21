@@ -87,6 +87,11 @@ function isSupportedSaveVersion(version) {
     if (!parsed || !current) return false;
     if (parsed.major !== current.major) return false;
     if (parsed.minor > current.minor) return false;
+    if (parsed.minor === current.minor && parsed.patch > current.patch) {
+        console.warn(
+            `Loading save from newer patch version ${version} (current ${SAVE_VERSION}); compatibility is not guaranteed.`
+        );
+    }
     return true;
 }
 
@@ -253,7 +258,7 @@ class GameState {
         if (!gameMap || x < 0 || x >= gameMap.width || y < 0 || y >= gameMap.height) {
             return false;
         }
-        const tile = gameMap?.getTile(x, y);
+        const tile = gameMap.getTile(x, y);
         if (!tile || tile.terrain === 'water' || tile.terrain === 'city') return false;
         const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
         return !occupied;
@@ -344,6 +349,8 @@ class GameState {
             const preferredOffset = { x: i % 2, y: 1 + Math.floor(i / 2) };
             const spawnPos = this.findAvailableSpawnPosition(town.x, town.y, [preferredOffset], 3);
             if (!spawnPos) continue;
+            // Defensive guard: never allow spawning on the town tile itself.
+            if (spawnPos.x === town.x && spawnPos.y === town.y) continue;
             const unitType = baseTypes[i % baseTypes.length];
             const unit = createUnit(unitType, spawnPos, owner);
             if (!unit) continue;
