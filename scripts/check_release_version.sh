@@ -6,7 +6,7 @@ cd "$ROOT_DIR"
 
 VERSION="$(tr -d ' \t\n\r' < VERSION)"
 
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
   echo "VERSION is invalid: $VERSION" >&2
   exit 1
 fi

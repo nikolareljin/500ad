@@ -10,8 +10,8 @@ if [[ -z "$NEW_VERSION" ]]; then
   exit 2
 fi
 
-if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "Invalid version: $NEW_VERSION (expected X.Y.Z)" >&2
+if ! [[ "$NEW_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+  echo "Invalid version: $NEW_VERSION (expected canonical semver X.Y.Z)" >&2
   exit 2
 fi
 
