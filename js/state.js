@@ -254,7 +254,7 @@ class GameState {
             return false;
         }
         const tile = gameMap?.getTile(x, y);
-        if (!tile || tile.terrain === 'water') return false;
+        if (!tile || tile.terrain === 'water' || tile.terrain === 'city') return false;
         const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
         return !occupied;
     }
