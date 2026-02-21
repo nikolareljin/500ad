@@ -199,6 +199,7 @@ class GameMap {
                     terrain: this.generateTerrain(x, y),
                     unit: null,
                     building: null,
+                    fort: null,
                     road: false,
                     owner: null,
                     visible: true,
@@ -768,6 +769,26 @@ class GameMap {
                     }
                 }
 
+                if (tile.fort && tile.terrain !== 'water') {
+                    const cx = px + tileSize / 2;
+                    const cy = py + tileSize / 2;
+                    const size = tileSize * 0.25;
+                    this.ctx.fillStyle = tile.fort.owner === 'player'
+                        ? 'rgba(107, 44, 145, 0.8)'
+                        : 'rgba(139, 0, 0, 0.8)';
+                    this.ctx.strokeStyle = '#d9be6a';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cx, cy - size);
+                    this.ctx.lineTo(cx + size * 0.9, cy - size * 0.15);
+                    this.ctx.lineTo(cx + size * 0.7, cy + size);
+                    this.ctx.lineTo(cx - size * 0.7, cy + size);
+                    this.ctx.lineTo(cx - size * 0.9, cy - size * 0.15);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+
                 if (tile.road && tile.terrain !== 'water') {
                     this.ctx.strokeStyle = 'rgba(190, 160, 95, 0.8)';
                     this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
@@ -908,13 +929,30 @@ class GameMap {
         const tileSize = MAP_CONFIG.tileSize;
         const px = unit.position.x * tileSize;
         const py = unit.position.y * tileSize;
+        const cx = px + tileSize / 2;
+        const cy = py + tileSize / 2;
+        const healthRatio = Math.max(0, Math.min(1, unit.currentHealth / Math.max(1, unit.stats.health)));
+        const healthColor = this.getUnitHealthColor(healthRatio);
+
+        // Health ring (green high -> red low).
+        this.ctx.strokeStyle = healthColor;
+        this.ctx.lineWidth = Math.max(2, tileSize * 0.12);
+        this.ctx.beginPath();
+        this.ctx.arc(
+            cx,
+            cy,
+            tileSize * 0.44,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.stroke();
 
         // Unit circle
         this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
         this.ctx.beginPath();
         this.ctx.arc(
-            px + tileSize / 2,
-            py + tileSize / 2,
+            cx,
+            cy,
             tileSize / 3,
             0,
             Math.PI * 2
@@ -939,7 +977,23 @@ class GameMap {
         if (unit.category === 'intel') icon = '🕵';
         if (unit.category === 'support') icon = '⛪';
         if (unit.category === 'economic') icon = '🐪';
-        this.ctx.fillText(icon, px + tileSize / 2, py + tileSize / 2);
+        this.ctx.fillText(icon, cx, cy);
+
+        // Unit health value for quick tactical readability.
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'alphabetic';
+        this.ctx.font = `${Math.max(8, Math.floor(tileSize * 0.28))}px Crimson Text`;
+        this.ctx.fillStyle = '#111';
+        this.ctx.fillRect(px + tileSize * 0.2, py + tileSize * 0.82, tileSize * 0.6, tileSize * 0.16);
+        this.ctx.fillStyle = healthColor;
+        this.ctx.fillText(`${Math.max(0, Math.round(unit.currentHealth))}`, cx, py + tileSize * 0.96);
+    }
+
+    getUnitHealthColor(ratio) {
+        const clamped = Math.max(0, Math.min(1, ratio));
+        const red = Math.floor(230 * (1 - clamped));
+        const green = Math.floor(220 * clamped);
+        return `rgb(${red}, ${green}, 40)`;
     }
 
     /**

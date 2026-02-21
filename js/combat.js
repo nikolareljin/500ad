@@ -96,6 +96,19 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
         attackerDamage = Math.floor(attackerDamage * 0.75);
     }
 
+    if (defender.fortified) {
+        attackerDamage = Math.floor(attackerDamage * 0.8);
+        defenderDamage = Math.floor(defenderDamage * 1.15);
+    }
+
+    const defenderTile = gameMap?.getTile(defender.position.x, defender.position.y);
+    if (defenderTile?.fort && defenderTile.fort.owner === defender.owner) {
+        const defenseBonus = defenderTile.fort.defenseBonus || 0;
+        const garrisonBonus = defenderTile.fort.garrisonBonus || 0;
+        attackerDamage = Math.floor(attackerDamage * (1 - Math.max(0, Math.min(0.45, defenseBonus))));
+        defenderDamage = Math.floor(defenderDamage * (1 + Math.max(0, Math.min(0.35, garrisonBonus))));
+    }
+
     if (attacker.type === 'cavalry') {
         attackerDamage = Math.floor(attackerDamage * (attackerEffects.cavalryAttackMultiplier || 1));
     }
@@ -159,6 +172,8 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
     const adjustedDamage = applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseDamage);
     let attackerDamage = adjustedDamage.attackerDamage;
     let defenderDamage = adjustedDamage.defenderDamage;
+
+    attacker.fortified = false;
 
     const attackerRetreat = maybeRetreat(attacker, defender, 'attacker', options);
     if (attackerRetreat.success) {

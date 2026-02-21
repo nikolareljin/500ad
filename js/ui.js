@@ -712,9 +712,13 @@ class UIManager {
             this.showNotification('Select one of your units first', 'error');
             return;
         }
-        selected.currentMovement = 0;
-        selected.morale = Math.min(100, selected.morale + 12);
-        this.showNotification(`${selected.name} fortified (+morale)`, 'success');
+        const result = gameState.fortifyUnit(selected.id);
+        if (!result?.success) {
+            this.showNotification(result?.message || 'Cannot fortify here', 'error');
+            return;
+        }
+        this.showNotification(result.message, 'success');
+        this.showUnitPanel(selected);
         this.updateHUD();
         gameMap.render();
     }
@@ -826,8 +830,25 @@ class UIManager {
     showCombatResult(result) {
         const attacker = gameState.units.find(u => u.id === result.attacker.id);
         const defender = gameState.units.find(u => u.id === result.defender.id);
+        const battlePosition = defender?.position || attacker?.position;
+        let locationText = '';
+        if (battlePosition && gameMap) {
+            let nearestTown = null;
+            let nearestDistance = Number.POSITIVE_INFINITY;
+            const cityTiles = gameMap.getCityTiles() || [];
+            cityTiles.forEach((tile) => {
+                const distance = Math.abs(tile.x - battlePosition.x) + Math.abs(tile.y - battlePosition.y);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestTown = tile.cityData?.name || tile.name || null;
+                }
+            });
+            if (nearestTown && Number.isFinite(nearestDistance) && nearestDistance <= 8) {
+                locationText = ` near ${nearestTown}`;
+            }
+        }
 
-        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}. Target health: ${result.defender.health}`;
+        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}${locationText}. Target health: ${result.defender.health}`;
         this.showNotification(message, 'info');
 
         // Flash the screen if player was attacked

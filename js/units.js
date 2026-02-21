@@ -435,6 +435,32 @@ const UNIT_TYPES = {
             icon: 'priests.png'
         },
 
+        healer: {
+            id: 'healer',
+            name: 'Field Healer',
+            type: 'special',
+            category: 'support',
+            description: 'Dedicated medical support unit for rapid battlefield recovery',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 120,
+                manpower: 45
+            },
+            upkeep: 6,
+            stats: {
+                health: 45,
+                attack: 2,
+                defense: 5,
+                movement: 3,
+                range: 1
+            },
+            bonuses: {
+                healingRate: 16,
+                moraleBoost: 1.2
+            },
+            icon: 'healer.png'
+        },
+
         caravan: {
             id: 'caravan',
             name: 'Caravan',

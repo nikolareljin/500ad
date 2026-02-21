@@ -475,6 +475,10 @@ class GameState {
         const defenderAlive = this.units.some(u => u.id === defender.id);
         if (attackerAlive && !defenderAlive) {
             attacker.position = destination;
+            if (tile?.fort && tile.fort.owner !== attacker.owner) {
+                tile.fort.owner = attacker.owner;
+                tile.fort.health = Math.max(20, Math.floor((tile.fort.maxHealth || 90) * 0.45));
+            }
             this.captureTerritory(attacker, destination);
         }
 
@@ -596,6 +600,125 @@ class GameState {
 
         if (safety >= 2048) return Infinity;
         return total;
+    }
+
+    fortifyUnit(unitId) {
+        const unit = this.units.find(u => u.id === unitId);
+        if (!unit) return { success: false, message: 'Unit not found' };
+
+        const tile = gameMap?.getTile(unit.position.x, unit.position.y);
+        if (!tile) return { success: false, message: 'Invalid tile' };
+        if (tile.terrain === 'water') return { success: false, message: 'Cannot fortify at sea' };
+
+        unit.fortified = true;
+        unit.currentMovement = 0;
+        unit.morale = Math.min(100, unit.morale + 10);
+
+        let created = false;
+        if (!tile.fort) {
+            tile.fort = {
+                id: `fort_${tile.x}_${tile.y}`,
+                owner: unit.owner,
+                health: 90,
+                maxHealth: 90,
+                defenseBonus: 0.22,
+                attack: 10,
+                garrisonBonus: 0.12,
+                builtTurn: this.turn
+            };
+            created = true;
+        } else if (tile.fort.owner === unit.owner) {
+            tile.fort.health = Math.min(tile.fort.maxHealth || 90, (tile.fort.health || 0) + 12);
+        }
+
+        return {
+            success: true,
+            created,
+            message: created ? `${unit.name} established a fortification` : `${unit.name} fortified the position`
+        };
+    }
+
+    resolveFortAssault(attacker, destinationTile) {
+        const fort = destinationTile?.fort;
+        if (!fort) return { success: true, destroyed: false };
+
+        const attackerIsSiege = attacker.category === 'siege';
+        const attackerPower = attacker.stats.attack * (attackerIsSiege ? 1.45 : 1);
+        const defenderPower = (fort.attack || 8) + Math.floor((fort.health || 50) * 0.05);
+        const damageToFort = Math.max(6, Math.floor(attackerPower * (0.55 + Math.random() * 0.35)));
+        const damageToUnit = Math.max(3, Math.floor(defenderPower * (0.65 + Math.random() * 0.35)));
+
+        fort.health -= damageToFort;
+        attacker.currentHealth -= damageToUnit;
+        attacker.currentMovement = 0;
+        attacker.fortified = false;
+
+        let attackerDied = false;
+        if (attacker.currentHealth <= 0) {
+            attackerDied = true;
+            removeUnit(attacker.id);
+        }
+
+        let destroyed = false;
+        if (fort.health <= 0) {
+            destroyed = true;
+            destinationTile.fort = null;
+            if (!destinationTile.cityData) {
+                destinationTile.owner = null;
+            }
+        }
+
+        return {
+            success: destroyed && !attackerDied,
+            destroyed,
+            attackerDied,
+            damageToFort,
+            damageToUnit,
+            fortOwner: fort.owner
+        };
+    }
+
+    getAdjacentSupportHealing(unit) {
+        const nearbyAllies = this.units.filter(other =>
+            other.id !== unit.id &&
+            other.owner === unit.owner &&
+            Math.abs(other.position.x - unit.position.x) <= 1 &&
+            Math.abs(other.position.y - unit.position.y) <= 1
+        );
+
+        let healing = 0;
+        nearbyAllies.forEach((ally) => {
+            const healingRate = ally.bonuses?.healingRate || 0;
+            if (healingRate <= 0) return;
+            healing += Math.max(2, Math.floor(healingRate * 0.65));
+        });
+
+        return healing;
+    }
+
+    processUnitHealing() {
+        this.units.forEach((unit) => {
+            if (unit.currentHealth <= 0) return;
+
+            const tile = gameMap?.getTile(unit.position.x, unit.position.y);
+            if (!tile) return;
+
+            let healAmount = 0;
+            const onFriendlyTown = Boolean(tile.cityData) && tile.owner === unit.owner;
+            if (onFriendlyTown) healAmount += 12;
+            if (unit.fortified) healAmount += 8;
+            healAmount += this.getAdjacentSupportHealing(unit);
+
+            if (healAmount <= 0) return;
+            unit.currentHealth = Math.min(unit.stats.health, unit.currentHealth + healAmount);
+
+            if (unit.owner === 'player') {
+                const fort = tile.fort;
+                if (fort && fort.owner === 'player') {
+                    fort.health = Math.min(fort.maxHealth || 90, (fort.health || 0) + 5);
+                }
+            }
+        });
     }
 
     createStartingUnits(faction, scenario) {
@@ -775,6 +898,7 @@ class GameState {
         if ((infra.industry || 0) >= 4 && researched.has('naval_architecture')) options.push('greekfire');
         if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
         if (cityTile.cityData.monastery || researched.has('monastic_scholarship') || (infra.industry || 0) >= 4) options.push('priests');
+        if ((infra.agriculture || 0) >= 2 || cityTile.cityData.monastery) options.push('healer');
 
         const unique = [];
         options.forEach((unitId) => {
@@ -978,6 +1102,21 @@ class GameState {
         if (!destination) return false;
         if (destination.terrain === 'water' && !this.isWaterCapable(unit)) return false;
 
+        if (destination.fort && destination.fort.owner !== unit.owner && !blockingUnit) {
+            const fortAssault = this.resolveFortAssault(unit, destination);
+            if (window.uiManager) {
+                const outcome = fortAssault.destroyed
+                    ? `${unit.name} breached enemy fortification`
+                    : `${unit.name} was repelled by enemy fortification`;
+                uiManager.showNotification(outcome, fortAssault.destroyed ? 'success' : 'error');
+            }
+            if (fortAssault.success) {
+                unit.position = { x: newPosition.x, y: newPosition.y };
+                this.captureTerritory(unit, newPosition);
+            }
+            return fortAssault.success;
+        }
+
         const travelCost = this.estimateTravelCost(unit, unit.position, newPosition);
         if (travelCost <= maxMovement) {
             if (blockingUnit) {
@@ -986,6 +1125,7 @@ class GameState {
                 return this.resolveBattleOnMove(unit, blockingUnit, newPosition);
             }
 
+            unit.fortified = false;
             unit.position = newPosition;
             unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
@@ -1111,6 +1251,9 @@ class GameState {
         // City gold output
         this.addResources(cityProduction.gold, 0, 0);
 
+        // Healing phase: towns, fortified positions, and nearby support units.
+        this.processUnitHealing();
+
         // Reset unit movement
         this.units.forEach(unit => {
             const unitType = getUnitById(unit.typeId);
@@ -1219,7 +1362,8 @@ class GameState {
             units: this.units,
             buildings: this.buildings,
             territories: this.territories,
-            cityOwnership: this.captureCityOwnership()
+            cityOwnership: this.captureCityOwnership(),
+            fortifications: this.captureFortifications()
         };
     }
 
@@ -1232,6 +1376,49 @@ class GameState {
             owner: tile.owner || null,
             faction: tile.faction || null
         }));
+    }
+
+    captureFortifications() {
+        if (!gameMap) return [];
+        const forts = [];
+        for (let y = 0; y < gameMap.height; y++) {
+            for (let x = 0; x < gameMap.width; x++) {
+                const tile = gameMap.getTile(x, y);
+                if (!tile?.fort) continue;
+                forts.push({
+                    x,
+                    y,
+                    ...tile.fort
+                });
+            }
+        }
+        return forts;
+    }
+
+    restoreFortifications(fortifications = []) {
+        if (!gameMap) return;
+        for (let y = 0; y < gameMap.height; y++) {
+            for (let x = 0; x < gameMap.width; x++) {
+                const tile = gameMap.getTile(x, y);
+                if (tile) tile.fort = null;
+            }
+        }
+
+        fortifications.forEach((fort) => {
+            if (!Number.isInteger(fort?.x) || !Number.isInteger(fort?.y)) return;
+            const tile = gameMap.getTile(fort.x, fort.y);
+            if (!tile || tile.terrain === 'water') return;
+            tile.fort = {
+                id: fort.id || `fort_${fort.x}_${fort.y}`,
+                owner: fort.owner || 'neutral',
+                health: Number.isFinite(fort.health) ? fort.health : 90,
+                maxHealth: Number.isFinite(fort.maxHealth) ? fort.maxHealth : 90,
+                defenseBonus: Number.isFinite(fort.defenseBonus) ? fort.defenseBonus : 0.22,
+                attack: Number.isFinite(fort.attack) ? fort.attack : 10,
+                garrisonBonus: Number.isFinite(fort.garrisonBonus) ? fort.garrisonBonus : 0.12,
+                builtTurn: Number.isFinite(fort.builtTurn) ? fort.builtTurn : this.turn
+            };
+        });
     }
 
     restoreCityOwnership(cityOwnership = []) {
@@ -1388,6 +1575,7 @@ class GameState {
         this.buildings = data.buildings;
         this.territories = data.territories;
         this.restoreCityOwnership(data.cityOwnership || []);
+        this.restoreFortifications(data.fortifications || []);
         this.initialized = true;
 
         return true;
