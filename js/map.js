@@ -164,6 +164,8 @@ class GameMap {
             width: 0.84,
             height: 0.86
         };
+        this.fogAlphaCache = [];
+        this.renderQueued = false;
 
         this.initializeMap();
         this.initializeReferenceMap();
@@ -178,7 +180,7 @@ class GameMap {
         image.onload = () => {
             this.referenceMapImage = image;
             this.referenceMapReady = true;
-            this.render();
+            this.requestRender();
         };
         image.onerror = () => {
             this.referenceMapReady = false;
@@ -203,8 +205,10 @@ class GameMap {
                     road: false,
                     owner: null,
                     visible: true,
-                    explored: false
+                    explored: false,
+                    baseColor: null
                 };
+                this.updateTileBaseColor(this.tiles[y][x]);
             }
         }
 
@@ -214,6 +218,19 @@ class GameMap {
 
         // Ensure Constantinople is correctly set up as default start center if needed
         // but generally initialization should be handled by scenario in state.js
+    }
+
+    updateTileBaseColor(tile) {
+        if (!tile) return;
+        let color = TERRAIN_TYPES[tile.terrain]?.color || '#777';
+        const h = MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x];
+        if (h !== undefined) {
+            const generatedTerrain = heightToTerrain(h);
+            if (generatedTerrain === tile.terrain) {
+                color = heightToColor(h);
+            }
+        }
+        tile.baseColor = color;
     }
 
     /**
@@ -276,12 +293,14 @@ class GameMap {
                         if (!neighbor) continue;
                         if (neighbor.terrain === 'water') {
                             neighbor.terrain = Math.abs(dx) + Math.abs(dy) === 2 ? 'hills' : 'plains';
+                            this.updateTileBaseColor(neighbor);
                         }
                     }
                 }
 
                 const tile = this.tiles[town.y][town.x];
                 tile.terrain = 'city';
+                this.updateTileBaseColor(tile);
                 tile.building = town.type === 'capital' ? 'capital' : 'town';
                 tile.name = town.name;
                 tile.importance = town.importance;
@@ -425,11 +444,14 @@ class GameMap {
      */
     initializeFogOfWar() {
         this.fogOfWar = [];
+        this.fogAlphaCache = [];
         for (let y = 0; y < this.height; y++) {
             this.fogOfWar[y] = [];
+            this.fogAlphaCache[y] = [];
             for (let x = 0; x < this.width; x++) {
                 // Start with everything fogged
                 this.fogOfWar[y][x] = true;
+                this.fogAlphaCache[y][x] = -1;
             }
         }
     }
@@ -446,6 +468,14 @@ class GameMap {
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist <= radius) {
                         this.fogOfWar[ny][nx] = false;
+                        for (let cdy = -1; cdy <= 1; cdy++) {
+                            for (let cdx = -1; cdx <= 1; cdx++) {
+                                const cx = nx + cdx;
+                                const cy = ny + cdy;
+                                if (cx < 0 || cx >= this.width || cy < 0 || cy >= this.height) continue;
+                                this.fogAlphaCache[cy][cx] = -1;
+                            }
+                        }
                     }
                 }
             }
@@ -467,6 +497,8 @@ class GameMap {
         if (!this.isFoggedTile(x, y)) {
             return 0;
         }
+        const cached = this.fogAlphaCache?.[y]?.[x];
+        if (typeof cached === 'number' && cached >= 0) return cached;
 
         let exploredNeighbors = 0;
         let totalNeighbors = 0;
@@ -484,7 +516,11 @@ class GameMap {
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
         // Edge tiles stay lighter, deep unknown gets denser.
-        return 0.3 + (1 - edgeFactor) * 0.35;
+        const alpha = 0.3 + (1 - edgeFactor) * 0.35;
+        if (this.fogAlphaCache?.[y]) {
+            this.fogAlphaCache[y][x] = alpha;
+        }
+        return alpha;
     }
 
     /**
@@ -599,6 +635,8 @@ class GameMap {
     }
 
     drawCityLabels(startX, startY, endX, endY, tileSize) {
+        const detailedLimit = 10;
+        let detailedCount = 0;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'bottom';
 
@@ -614,7 +652,13 @@ class GameMap {
                 const isNeutral = tile.owner === 'neutral';
                 const cityColor = isEnemy ? '#ff9f9f' : (isNeutral ? '#9cd3b0' : '#f4d03f');
 
-                this.drawCityInfrastructure(tile, tileSize);
+                const shouldDrawDetailed = tile.owner === 'player'
+                    || (this.selectedTile && this.selectedTile.x === x && this.selectedTile.y === y)
+                    || detailedCount < detailedLimit;
+                if (shouldDrawDetailed) {
+                    this.drawCityInfrastructure(tile, tileSize);
+                    detailedCount++;
+                }
 
                 // City name
                 this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.34))}px "Old Standard TT", serif`;
@@ -624,16 +668,18 @@ class GameMap {
                 this.ctx.fillText(tile.cityData.name, px, py - 6);
 
                 // Production line
-                const p = tile.cityData.production;
-                const prodText = `F${p.food} I${p.industry} G${p.gold}`;
-                this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.28))}px "Crimson Text", serif`;
-                this.ctx.fillStyle = 'rgba(20, 20, 20, 0.7)';
-                this.ctx.fillText(prodText, px + 1, py + tileSize + 11);
-                this.ctx.fillStyle = 'rgba(230, 235, 240, 0.92)';
-                this.ctx.fillText(prodText, px, py + tileSize + 10);
+                if (shouldDrawDetailed) {
+                    const p = tile.cityData.production;
+                    const prodText = `F${p.food} I${p.industry} G${p.gold}`;
+                    this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.28))}px "Crimson Text", serif`;
+                    this.ctx.fillStyle = 'rgba(20, 20, 20, 0.7)';
+                    this.ctx.fillText(prodText, px + 1, py + tileSize + 11);
+                    this.ctx.fillStyle = 'rgba(230, 235, 240, 0.92)';
+                    this.ctx.fillText(prodText, px, py + tileSize + 10);
+                }
 
                 // Wonder marker
-                if (tile.cityData.wonder) {
+                if (shouldDrawDetailed && tile.cityData.wonder) {
                     this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.26))}px "Crimson Text", serif`;
                     this.ctx.fillStyle = 'rgba(255, 220, 130, 0.95)';
                     this.ctx.fillText(`${tile.cityData.wonder}`, px, py - 20);
@@ -708,20 +754,7 @@ class GameMap {
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                let terrainColor = TERRAIN_TYPES[tile.terrain].color;
-                if (
-                    typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
-                    MEDITERRANEAN_HEIGHTMAP[y] &&
-                    MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined
-                ) {
-                    const h = MEDITERRANEAN_HEIGHTMAP[y][x];
-                    const generatedTerrain = heightToTerrain(h);
-                    // Respect runtime overrides (city placement/coast fixes) instead of repainting
-                    // everything from raw heightmap values.
-                    if (generatedTerrain === tile.terrain) {
-                        terrainColor = heightToColor(h);
-                    }
-                }
+                const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
 
                 // Draw terrain
                 this.ctx.fillStyle = terrainColor;
@@ -840,6 +873,15 @@ class GameMap {
         this.drawUI();
     }
 
+    requestRender() {
+        if (this.renderQueued) return;
+        this.renderQueued = true;
+        requestAnimationFrame(() => {
+            this.renderQueued = false;
+            this.render();
+        });
+    }
+
     /**
      * Setup pan controls (no zoom)
      */
@@ -869,7 +911,7 @@ class GameMap {
                 this.lastPanX = e.clientX;
                 this.lastPanY = e.clientY;
 
-                this.render();
+                this.requestRender();
             }
         });
 
@@ -1035,7 +1077,7 @@ class GameMap {
         if (tile) {
             if (!this.hoveredTile || this.hoveredTile.x !== tile.x || this.hoveredTile.y !== tile.y) {
                 this.hoveredTile = tile;
-                this.render();
+                this.requestRender();
             }
         }
     }
@@ -1094,7 +1136,7 @@ class GameMap {
             );
         }
 
-        this.render();
+        this.requestRender();
     }
 
     /**
