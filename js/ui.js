@@ -29,6 +29,7 @@ class UIManager {
         this.modalOverlay = document.getElementById('modal-overlay');
         this.modalContent = document.getElementById('modal-content');
         this.notificationContainer = document.getElementById('notification-container');
+        this.turnProcessingOverlay = document.getElementById('turn-processing-overlay');
 
         // Set up event listeners
         this.setupEventListeners();
@@ -488,27 +489,42 @@ class UIManager {
      * End turn
      */
     async endTurn() {
-        const result = await gameState.endTurn();
-        if (!result) {
-            this.showNotification('Turn did not complete', 'error');
-            return;
-        }
-        if (result.paused) {
-            this.showNotification('Please wait, turn is already processing', 'info');
-            return;
-        }
-        this.updateHUD();
-        gameMap?.requestRender();
+        this.showTurnProcessing(true);
+        try {
+            const result = await gameState.endTurn();
+            if (!result) {
+                this.showNotification('Turn did not complete', 'error');
+                return;
+            }
+            if (result.paused) {
+                this.showNotification('Please wait, turn is already processing', 'info');
+                return;
+            }
+            this.updateHUD();
+            gameMap?.requestRender();
 
-        // Auto-save
-        if (storageManager.settings.autoSave) {
-            storageManager.autoSave();
-        }
+            // Auto-save
+            if (storageManager.settings.autoSave) {
+                storageManager.autoSave();
+            }
 
-        this.showNotification(
-            `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
-            'success'
-        );
+            this.showNotification(
+                `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
+                'success'
+            );
+        } finally {
+            this.showTurnProcessing(false);
+        }
+    }
+
+    showTurnProcessing(visible) {
+        if (!this.turnProcessingOverlay) return;
+        this.turnProcessingOverlay.classList.toggle('active', Boolean(visible));
+        this.turnProcessingOverlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        const endTurnBtn = document.getElementById('btn-end-turn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = Boolean(visible);
+        }
     }
 
     recruitAtSelectedCity() {
@@ -553,7 +569,7 @@ class UIManager {
                     return;
                 }
                 this.updateHUD();
-                gameMap.render();
+                gameMap.requestRender();
                 this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
             }
         );
@@ -614,7 +630,7 @@ class UIManager {
                     return;
                 }
                 this.updateHUD();
-                gameMap.render();
+                gameMap.requestRender();
                 this.showNotification(`${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`, 'success');
             }
         );
@@ -711,7 +727,7 @@ class UIManager {
         selected.currentMovement = 0;
         this.showCombatResult(result);
         this.updateHUD();
-        gameMap.render();
+        gameMap.requestRender();
     }
 
     fortifySelectedUnit() {
@@ -728,7 +744,7 @@ class UIManager {
         this.showNotification(result.message, 'success');
         this.showUnitPanel(selected);
         this.updateHUD();
-        gameMap.render();
+        gameMap.requestRender();
     }
 
     /**
