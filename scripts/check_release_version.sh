@@ -12,17 +12,17 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 grep -Fq "window.APP_VERSION = '$VERSION';" assets/version.js || {
-  echo "assets/version.js is not synced to VERSION=$VERSION" >&2
+  echo "assets/version.js is not synced to VERSION=$VERSION. Run ./scripts/version_set.sh \"$VERSION\" to sync all files." >&2
   exit 1
 }
 
 grep -Fq "**Version $VERSION**" README.md || {
-  echo "README version line is not synced to VERSION=$VERSION" >&2
+  echo "README version line is not synced to VERSION=$VERSION. Run ./scripts/version_set.sh \"$VERSION\" to sync all files." >&2
   exit 1
 }
 
 grep -Fq "const SAVE_VERSION = '$VERSION';" js/state.js || {
-  echo "Save format version in js/state.js is not synced to VERSION=$VERSION" >&2
+  echo "Save format version in js/state.js is not synced to VERSION=$VERSION. Run ./scripts/version_set.sh \"$VERSION\" to sync all files." >&2
   exit 1
 }
 

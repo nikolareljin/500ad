@@ -70,6 +70,7 @@ function parseSemver(version) {
     const major = Number.parseInt(majorStr, 10);
     const minor = Number.parseInt(minorStr, 10);
     const patch = Number.parseInt(patchStr, 10);
+    // Enforce canonical numeric components so values like "01" are rejected.
     if (
         !Number.isInteger(major) || String(major) !== majorStr
         || !Number.isInteger(minor) || String(minor) !== minorStr
@@ -86,7 +87,6 @@ function isSupportedSaveVersion(version) {
     if (!parsed || !current) return false;
     if (parsed.major !== current.major) return false;
     if (parsed.minor > current.minor) return false;
-    if (parsed.minor < 0 || parsed.patch < 0) return false;
     return true;
 }
 
@@ -166,7 +166,11 @@ class GameState {
         };
         const preferredTown = HISTORIC_TOWNS.find(t => t.id === preferred[faction]);
         if (preferredTown) return preferredTown;
-        return HISTORIC_TOWNS.find(t => t.id === 'constantinople') || HISTORIC_TOWNS[0];
+        const fallbackTown = HISTORIC_TOWNS.find(t => t.id === 'constantinople') || HISTORIC_TOWNS[0];
+        if (!fallbackTown) {
+            throw new Error('HISTORIC_TOWNS is empty; cannot determine starting town.');
+        }
+        return fallbackTown;
     }
 
     setupScenarioTowns(playerFaction, scenario) {
@@ -503,7 +507,7 @@ class GameState {
         // Neutral towns can join peacefully or resist based on diplomacy.
         if ((oldOwner === 'neutral' || oldOwner === null) && unit.owner === 'player') {
             const diplomacy = this.selectedLeader?.stats?.diplomacy || 5;
-            const joinChance = Math.min(0.85, 0.38 + diplomacy * 0.05);
+            const joinChance = Math.max(0.38, Math.min(0.85, 0.38 + diplomacy * 0.05));
             if (Math.random() <= joinChance) {
                 tile.owner = 'player';
                 if (!this.player.territories.includes(cityId)) {
