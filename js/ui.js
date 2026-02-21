@@ -127,6 +127,16 @@ class UIManager {
             this.researchTechnology();
         });
 
+        document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.attackWithSelectedUnit();
+        });
+
+        document.getElementById('btn-fortify-unit')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.fortifySelectedUnit();
+        });
+
         // Close modal on overlay click
         this.modalOverlay?.addEventListener('click', (e) => {
             if (e.target === this.modalOverlay) {
@@ -505,22 +515,35 @@ class UIManager {
             return;
         }
 
-        const recruitType = tile.cityData.infrastructure.industry >= 3 ? 'kavallarioi' : 'skutatoi';
-        const spawnTile = this.findRecruitSpawnTile(tile);
-        if (!spawnTile) {
-            this.showNotification('No open adjacent tile for recruitment', 'error');
-            return;
-        }
+        const choices = gameState.getRecruitableUnitTypes(tile)
+            .map((unitId) => {
+                const unit = getUnitById(unitId);
+                return {
+                    id: unitId,
+                    title: `${unit?.name || unitId}`,
+                    subtitle: unit ? `${unit.cost.gold}g / ${unit.cost.manpower}m` : ''
+                };
+            });
 
-        const unit = gameState.recruitUnit(recruitType, spawnTile);
-        if (!unit) {
-            this.showNotification(`Not enough resources to recruit ${recruitType}`, 'error');
-            return;
-        }
-
-        this.updateHUD();
-        gameMap.render();
-        this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+        this.showChoiceModal(
+            `Recruit at ${tile.cityData.name}`,
+            choices,
+            (unitId) => {
+                const spawnTile = this.findRecruitSpawnTile(tile);
+                if (!spawnTile) {
+                    this.showNotification('No open adjacent tile for recruitment', 'error');
+                    return;
+                }
+                const unit = gameState.recruitUnit(unitId, spawnTile);
+                if (!unit) {
+                    this.showNotification('Not enough resources for that unit', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap.render();
+                this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+            }
+        );
     }
 
     findRecruitSpawnTile(cityTile) {
@@ -550,63 +573,140 @@ class UIManager {
         }
 
         const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
-        if (!tile?.cityData || tile.owner !== 'player') {
-            this.showNotification('Build actions require a player-owned city', 'error');
+        const isPlayerControlled = tile && (tile.owner === 'player' || gameMap.getTerritoryOwnerAt(tile.x, tile.y) === 'player');
+        if (!isPlayerControlled) {
+            this.showNotification('Build actions require a player-owned tile', 'error');
             return;
         }
+        if (!tile.owner) tile.owner = 'player';
 
-        const infra = tile.cityData.infrastructure;
-        const infraLevel = infra.roads + infra.agriculture + infra.industry;
-        const buildCost = {
-            gold: 80 + infraLevel * 25,
-            manpower: 20 + infraLevel * 10
-        };
-        if (!gameState.spendResources(buildCost.gold, buildCost.manpower, 0)) {
-            this.showNotification('Insufficient resources for city development', 'error');
-            return;
-        }
+        const choices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
+            id: actionId,
+            title: action.name,
+            subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
+        }));
 
-        const cycle = ['agriculture', 'industry', 'roads'];
-        const target = cycle[(gameState.turn + tile.importance) % cycle.length];
-        infra[target] = Math.min(infra[target] + 1, 5);
-        tile.cityData.population = Math.min(tile.cityData.population + 1, 12);
-
-        if (target === 'agriculture') tile.cityData.production.food += 1;
-        if (target === 'industry') tile.cityData.production.industry += 1;
-        if (target === 'roads') tile.cityData.production.gold += 1;
-
-        if (!tile.cityData.wonder && tile.cityData.kind === 'capital' && infra.industry >= 4) {
-            tile.cityData.wonder = 'Imperial Forum';
-            tile.cityData.production.gold += 1;
-        }
-
-        this.updateHUD();
-        gameMap.render();
-        this.showNotification(
-            `${tile.cityData.name}: improved ${target} (-${buildCost.gold}g/-${buildCost.manpower}m)`,
-            'success'
+        this.showChoiceModal(
+            `Build in ${tile.cityData.name}`,
+            choices,
+            (actionId) => {
+                const result = gameState.applyCityBuildAction(tile, actionId);
+                if (!result.success) {
+                    this.showNotification(result.message || 'Build failed', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap.render();
+                this.showNotification(`${tile.cityData.name}: ${result.actionName}`, 'success');
+            }
         );
     }
 
     researchTechnology() {
-        const cost = { gold: 220, prestige: 30 };
-        if (!gameState.spendResources(cost.gold, 0, cost.prestige)) {
-            this.showNotification('Not enough gold/prestige for research', 'error');
+        const available = gameState.getAvailableTechnologies();
+        if (available.length === 0) {
+            this.showNotification('No technologies currently available', 'info');
             return;
         }
 
-        if (!gameState.player.techResearched.includes('logistics')) {
-            gameState.player.techResearched.push('logistics');
-            // Logistics boosts city output.
-            gameMap?.getCityTiles('player').forEach(tile => {
-                tile.cityData.production.food += 1;
-                tile.cityData.production.industry += 1;
+        const choices = available.map((tech) => ({
+            id: tech.id,
+            title: tech.name,
+            subtitle: `${tech.cost.gold}g / ${tech.cost.prestige}p`
+        }));
+
+        this.showChoiceModal(
+            'Research Technology',
+            choices,
+            (techId) => {
+                const result = gameState.researchTechnology(techId);
+                if (!result.success) {
+                    this.showNotification(result.message || 'Research failed', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap?.render();
+                this.showNotification(`Technology researched: ${result.name}`, 'success');
+            }
+        );
+    }
+
+    showChoiceModal(title, options, onSelect) {
+        const items = options.map((option) => `
+            <button class="menu-btn choice-btn" data-choice="${option.id}">
+                <span class="btn-text">${option.title}</span>
+                <small style="display:block;opacity:0.75;margin-top:0.2rem;">${option.subtitle || ''}</small>
+            </button>
+        `).join('');
+
+        const content = `
+            <h2>${title}</h2>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;max-height:65vh;overflow:auto;">
+                ${items}
+            </div>
+            <div style="margin-top:1rem;">
+                <button class="menu-btn" id="btn-close-choice">Close</button>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.modalContent?.querySelectorAll('.choice-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-choice');
+                this.closeModal();
+                onSelect(id);
             });
+        });
+        this.modalContent?.querySelector('#btn-close-choice')?.addEventListener('click', () => this.closeModal());
+    }
+
+    attackWithSelectedUnit() {
+        const selected = gameState.selectedUnit;
+        if (!selected || selected.owner !== 'player') {
+            this.showNotification('Select one of your units first', 'error');
+            return;
+        }
+        if (!gameMap?.selectedTile) {
+            this.showNotification('Select a target tile', 'error');
+            return;
+        }
+        const target = gameState.units.find(u =>
+            u.owner !== 'player' &&
+            u.position.x === gameMap.selectedTile.x &&
+            u.position.y === gameMap.selectedTile.y
+        );
+        if (!target) {
+            this.showNotification('No enemy unit on selected tile', 'error');
+            return;
         }
 
+        const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
+        const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
+            attemptRetreat: true,
+            retreatSide: 'defender'
+        });
+        if (!result.success) {
+            this.showNotification(result.message || 'Attack failed', 'error');
+            return;
+        }
+
+        selected.currentMovement = 0;
+        this.showCombatResult(result);
         this.updateHUD();
-        gameMap?.render();
-        this.showNotification('Technology researched: Imperial Logistics', 'success');
+        gameMap.render();
+    }
+
+    fortifySelectedUnit() {
+        const selected = gameState.selectedUnit;
+        if (!selected || selected.owner !== 'player') {
+            this.showNotification('Select one of your units first', 'error');
+            return;
+        }
+        selected.currentMovement = 0;
+        selected.morale = Math.min(100, selected.morale + 12);
+        this.showNotification(`${selected.name} fortified (+morale)`, 'success');
+        this.updateHUD();
+        gameMap.render();
     }
 
     /**
@@ -631,7 +731,14 @@ class UIManager {
         document.getElementById('selected-unit-name').textContent = unit.name;
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
-            const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
+            let unitIcon = '⚔️';
+            if (unit.type === 'cavalry') unitIcon = '🐎';
+            if (unit.type === 'naval' || unit.category === 'transport') unitIcon = '⛵';
+            if (unit.category === 'ranged') unitIcon = '🏹';
+            if (unit.category === 'siege') unitIcon = '🛡️';
+            if (unit.category === 'intel') unitIcon = '🕵️';
+            if (unit.category === 'support') unitIcon = '⛪';
+            if (unit.category === 'economic') unitIcon = '🐪';
             portrait.textContent = '';
             const container = document.createElement('div');
             container.className = 'unit-portrait-content';

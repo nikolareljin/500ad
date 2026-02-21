@@ -1,18 +1,19 @@
 /**
  * Geography heightmap for 500 A.D.
  *
- * Real-world theater bounds focused on Byzantine history:
- * Europe, Mediterranean basin, Mesopotamia, Arabian Peninsula, and Ethiopia.
+ * Real-world theater bounds for the expanded grand scenario:
+ * Europe, North/East Africa, Caucasus, Central Asia, Iran, Afghanistan,
+ * and the northwestern approaches of India.
  */
 
-const WORLD_MAP_WIDTH = 200;
-const WORLD_MAP_HEIGHT = 120;
+const WORLD_MAP_WIDTH = 320;
+const WORLD_MAP_HEIGHT = 180;
 
 const GEOGRAPHY_BOUNDS = {
-  west: -12,
-  east: 56,
-  north: 58,
-  south: 8
+  west: -15,
+  east: 92,
+  north: 60,
+  south: 5
 };
 
 function clamp(value, min, max) {
@@ -129,6 +130,14 @@ const LAND_POLYGONS = [
   [[33.8, 37.5], [39.5, 37.2], [39.3, 30.0], [34.2, 30.0], [33.0, 33.5]],
   // Mesopotamia
   [[39.0, 37.8], [49.0, 37.0], [51.0, 30.0], [43.0, 28.0], [38.8, 32.5]],
+  // Iranian plateau
+  [[45.0, 40.0], [63.5, 39.5], [63.5, 24.0], [49.0, 24.0], [45.5, 30.0]],
+  // Central Asia (Transoxiana + steppe fringe)
+  [[54.0, 47.5], [75.0, 48.5], [77.5, 37.5], [66.0, 34.5], [56.0, 37.0]],
+  // Afghanistan
+  [[60.0, 37.5], [72.0, 37.8], [74.0, 30.0], [62.0, 29.0], [58.5, 34.0]],
+  // Northwestern India / Indus basin outskirts
+  [[67.0, 34.5], [79.0, 34.2], [80.5, 26.0], [71.0, 22.5], [66.5, 26.5]],
   // North Africa coastal belt
   [[-11.0, 37.2], [34.5, 37.2], [34.0, 27.0], [12.0, 27.5], [-1.0, 29.0], [-9.0, 32.0]],
   // Egypt + Sinai
@@ -209,6 +218,9 @@ function mountainSignal(lon, lat) {
   mountains += gaussian2D(lon, lat, 43, 42, 5, 2) * 1.45;  // Caucasus
   mountains += gaussian2D(lon, lat, 35, 38, 6, 2) * 1.0;   // Taurus
   mountains += gaussian2D(lon, lat, 46, 33, 5, 3) * 1.25;  // Zagros
+  mountains += gaussian2D(lon, lat, 66, 36, 6, 3) * 1.2;   // Hindu Kush
+  mountains += gaussian2D(lon, lat, 74, 34, 7, 3) * 1.25;  // Western Himalayas
+  mountains += gaussian2D(lon, lat, 66, 44, 7, 3) * 1.0;   // Tien Shan fringe
   mountains += gaussian2D(lon, lat, 39, 11, 4, 3) * 1.25;  // Ethiopian Highlands
 
   return mountains;
@@ -217,7 +229,10 @@ function mountainSignal(lon, lat) {
 function aridSignal(lon, lat) {
   return Math.max(
     gaussian2D(lon, lat, 10, 26, 24, 7), // Sahara edge
-    gaussian2D(lon, lat, 45, 23, 11, 7)  // Arabian desert
+    gaussian2D(lon, lat, 45, 23, 11, 7), // Arabian desert
+    gaussian2D(lon, lat, 60, 39, 9, 5),  // Iranian plateau dryness
+    gaussian2D(lon, lat, 71, 43, 8, 5),  // Central Asian arid belt
+    gaussian2D(lon, lat, 72, 29, 8, 5)   // Indus plain dry season belt
   );
 }
 

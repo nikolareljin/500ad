@@ -314,7 +314,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.1.0** - Scenario system, territorial control overlays, and corrected historical city land placement
+**Version 1.2.0** - Scenario system, territorial control overlays, and corrected historical city land placement
 
 ## License
 

@@ -23,44 +23,139 @@ const HISTORICAL_TOWN_CONTROL = {
     thessalonica: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'core' },
     athens: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'neutral' },
     preslav: { tribe: 'Bulgars', civilization: 'bulgar', stance: 'hostile' },
+    belgrade: { tribe: 'South Slavs', civilization: 'bulgar', stance: 'hostile' },
+    serdica: { tribe: 'Thracians', civilization: 'byzantine', stance: 'neutral' },
+    skopje: { tribe: 'Dardanians', civilization: 'byzantine', stance: 'neutral' },
     nicaea: { tribe: 'Byzantine Anatolians', civilization: 'byzantine', stance: 'core' },
     antioch: { tribe: 'Syriac Christians', civilization: 'byzantine', stance: 'hostile' },
     iconium: { tribe: 'Anatolian Greeks', civilization: 'byzantine', stance: 'neutral' },
     trebizond: { tribe: 'Pontic Greeks', civilization: 'byzantine', stance: 'neutral' },
     tbilisi: { tribe: 'Georgians', civilization: 'sassanid', stance: 'hostile' },
+    ancyra: { tribe: 'Galatian Anatolians', civilization: 'byzantine', stance: 'neutral' },
+    caesarea: { tribe: 'Cappadocians', civilization: 'byzantine', stance: 'neutral' },
+    edessa: { tribe: 'Arameans', civilization: 'byzantine', stance: 'hostile' },
     jerusalem: { tribe: 'Levantine Communities', civilization: 'arab', stance: 'neutral' },
     damascus: { tribe: 'Levantine Arabs', civilization: 'arab', stance: 'hostile' },
+    aleppo: { tribe: 'North Syrian Arabs', civilization: 'arab', stance: 'hostile' },
     baghdad: { tribe: 'Abbasids', civilization: 'arab', stance: 'core' },
     ctesiphon: { tribe: 'Persians', civilization: 'sassanid', stance: 'core' },
+    mosul: { tribe: 'Assyrians', civilization: 'arab', stance: 'hostile' },
+    basra: { tribe: 'Iraqi Arabs', civilization: 'arab', stance: 'core' },
+    isfahan: { tribe: 'Persians', civilization: 'sassanid', stance: 'core' },
+    rayy: { tribe: 'Daylamites', civilization: 'sassanid', stance: 'hostile' },
+    merv: { tribe: 'Khorasanis', civilization: 'sassanid', stance: 'hostile' },
+    samarkand: { tribe: 'Sogdians', civilization: 'sassanid', stance: 'hostile' },
+    bukhara: { tribe: 'Sogdians', civilization: 'sassanid', stance: 'hostile' },
+    herat: { tribe: 'Arians', civilization: 'sassanid', stance: 'hostile' },
+    balkh: { tribe: 'Bactrians', civilization: 'sassanid', stance: 'hostile' },
+    kabul: { tribe: 'Kabul Shahis', civilization: 'sassanid', stance: 'hostile' },
+    kandahar: { tribe: 'Arachosians', civilization: 'sassanid', stance: 'hostile' },
+    multan: { tribe: 'Sindhi Indo-Iranians', civilization: 'sassanid', stance: 'neutral' },
+    lahore: { tribe: 'Punjabi Indo-Iranians', civilization: 'sassanid', stance: 'neutral' },
     medina: { tribe: 'Hejaz Arabs', civilization: 'arab', stance: 'core' },
     mecca: { tribe: 'Hejaz Arabs', civilization: 'arab', stance: 'core' },
     sanaa: { tribe: 'Yemeni Arabs', civilization: 'arab', stance: 'neutral' },
+    aden: { tribe: 'Yemeni Arabs', civilization: 'arab', stance: 'neutral' },
     alexandria: { tribe: 'Egyptians', civilization: 'byzantine', stance: 'neutral' },
     fustat: { tribe: 'Egyptian Arabs', civilization: 'arab', stance: 'hostile' },
     carthage: { tribe: 'Berbers', civilization: 'frank', stance: 'hostile' },
     leptis_magna: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
+    tripoli: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
+    cyrene: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
     axum: { tribe: 'Aksumites', civilization: 'byzantine', stance: 'neutral' },
     adulis: { tribe: 'Aksumites', civilization: 'byzantine', stance: 'neutral' },
+    dongola: { tribe: 'Nubians', civilization: 'byzantine', stance: 'neutral' },
     rome: { tribe: 'Italo-Romans', civilization: 'frank', stance: 'hostile' },
     ravenna: { tribe: 'Exarchate Romans', civilization: 'byzantine', stance: 'neutral' },
     venice: { tribe: 'Venetians', civilization: 'frank', stance: 'neutral' },
+    milan: { tribe: 'Lombards', civilization: 'frank', stance: 'hostile' },
     naples: { tribe: 'Italo-Romans', civilization: 'frank', stance: 'neutral' },
     cartagena: { tribe: 'Visigoths', civilization: 'frank', stance: 'hostile' },
+    cordoba: { tribe: 'Iberian Romans', civilization: 'frank', stance: 'hostile' },
+    toledo: { tribe: 'Visigoths', civilization: 'frank', stance: 'hostile' },
+    massilia: { tribe: 'Gallo-Romans', civilization: 'frank', stance: 'neutral' },
     aachen: { tribe: 'Franks', civilization: 'frank', stance: 'core' },
     paris: { tribe: 'Franks', civilization: 'frank', stance: 'core' },
     london: { tribe: 'Anglo-Saxons', civilization: 'frank', stance: 'neutral' },
-    kiev: { tribe: 'Kievan Slavs', civilization: 'bulgar', stance: 'neutral' }
+    kiev: { tribe: 'Kievan Slavs', civilization: 'bulgar', stance: 'neutral' },
+    prague: { tribe: 'Bohemians', civilization: 'frank', stance: 'neutral' },
+    vienna: { tribe: 'Avars', civilization: 'bulgar', stance: 'hostile' }
 };
 
 const EMPIRE_CORE_TOWNS = {
-    byzantine: ['constantinople', 'thessalonica', 'nicaea', 'iconium', 'antioch', 'ravenna', 'alexandria'],
-    arab: ['baghdad', 'damascus', 'jerusalem', 'mecca', 'medina', 'fustat', 'sanaa'],
-    bulgar: ['preslav', 'kiev'],
-    frank: ['aachen', 'paris', 'rome', 'venice', 'london'],
-    sassanid: ['ctesiphon', 'tbilisi']
+    byzantine: ['constantinople', 'thessalonica', 'nicaea', 'iconium', 'antioch', 'ravenna', 'alexandria', 'ancyra', 'caesarea', 'serdica'],
+    arab: ['baghdad', 'damascus', 'jerusalem', 'mecca', 'medina', 'fustat', 'sanaa', 'basra', 'aleppo'],
+    bulgar: ['preslav', 'kiev', 'belgrade', 'vienna'],
+    frank: ['aachen', 'paris', 'rome', 'venice', 'london', 'milan', 'toledo', 'cordoba'],
+    sassanid: ['ctesiphon', 'tbilisi', 'isfahan', 'rayy', 'merv', 'samarkand', 'bukhara', 'herat', 'balkh', 'kabul']
 };
 
-const SAVE_VERSION = '1.1.0';
+const SAVE_VERSION = '1.2.0';
+
+const TECHNOLOGY_TREE = {
+    military_logistics: {
+        name: 'Military Logistics',
+        description: 'Improves supply and troop movement across roads.',
+        cost: { gold: 220, prestige: 30 },
+        requires: [],
+        effects: { movement: 1, manpowerMultiplier: 1.08 }
+    },
+    siegecraft: {
+        name: 'Siegecraft',
+        description: 'Organized siege doctrine for city assaults.',
+        cost: { gold: 280, prestige: 35 },
+        requires: ['military_logistics'],
+        effects: { siegeAttackMultiplier: 1.2 }
+    },
+    naval_architecture: {
+        name: 'Naval Architecture',
+        description: 'Stronger hulls and faster naval movement.',
+        cost: { gold: 260, prestige: 30 },
+        requires: [],
+        effects: { navalAttackMultiplier: 1.15, navalMovement: 1 }
+    },
+    cavalry_tactics: {
+        name: 'Cavalry Tactics',
+        description: 'Improves flanking and shock momentum.',
+        cost: { gold: 240, prestige: 28 },
+        requires: [],
+        effects: { cavalryAttackMultiplier: 1.12 }
+    },
+    irrigation_systems: {
+        name: 'Irrigation Systems',
+        description: 'Advanced canal-fed irrigation for higher yields.',
+        cost: { gold: 260, prestige: 28 },
+        requires: [],
+        effects: { foodMultiplier: 1.15 }
+    },
+    monastic_scholarship: {
+        name: 'Monastic Scholarship',
+        description: 'Libraries, scriptoria, and legal codification.',
+        cost: { gold: 320, prestige: 40 },
+        requires: ['irrigation_systems'],
+        effects: { researchDiscount: 0.1, prestigePerTurn: 2 }
+    },
+    caravan_routes: {
+        name: 'Caravan Routes',
+        description: 'Formalized trade corridors across the continent.',
+        cost: { gold: 300, prestige: 35 },
+        requires: ['military_logistics'],
+        effects: { goldMultiplier: 1.12, tradePostBonus: 2 }
+    }
+};
+
+const BUILD_ACTIONS = {
+    establish_town: { name: 'Establish Town', gold: 240, manpower: 120, prestige: 12 },
+    build_fort: { name: 'Build Fort', gold: 150, manpower: 90, prestige: 4 },
+    build_road: { name: 'Build Road', gold: 70, manpower: 40, prestige: 0 },
+    establish_monastery: { name: 'Establish Monastery / Mosque', gold: 180, manpower: 60, prestige: 8 },
+    build_caravan_camp: { name: 'Build Caravan Camp', gold: 130, manpower: 55, prestige: 2 },
+    build_port: { name: 'Build Port', gold: 170, manpower: 80, prestige: 3 },
+    build_farm: { name: 'Build Farm', gold: 75, manpower: 45, prestige: 0 },
+    irrigate: { name: 'Irrigate', gold: 90, manpower: 50, prestige: 0 },
+    plant_forest: { name: 'Plant Forest', gold: 60, manpower: 35, prestige: 0 },
+    build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6 }
+};
 
 function parseSemver(version) {
     const raw = String(version || '').trim();
@@ -140,7 +235,20 @@ class GameState {
             territories: [], // Populated during unit creation
             unitsOwned: [],
             buildingsOwned: [],
-            techResearched: []
+            techResearched: [],
+            techEffects: {
+                movement: 0,
+                foodMultiplier: 1,
+                goldMultiplier: 1,
+                manpowerMultiplier: 1,
+                cavalryAttackMultiplier: 1,
+                navalAttackMultiplier: 1,
+                siegeAttackMultiplier: 1,
+                researchDiscount: 0,
+                prestigePerTurn: 0,
+                tradePostBonus: 0,
+                navalMovement: 0
+            }
         };
 
         this.turn = 1;
@@ -252,6 +360,85 @@ class GameState {
             const idx = this.player.territories.indexOf(town.id);
             if (idx !== -1) this.player.territories.splice(idx, 1);
         }
+    }
+
+    isWaterCapable(unit) {
+        return unit.type === 'naval'
+            || unit.category === 'transport'
+            || Boolean(unit.bonuses?.waterTraversal);
+    }
+
+    getBattleType(defenderTile, attacker, defender) {
+        if (defenderTile?.cityData) return 'siege';
+        if (defenderTile?.terrain === 'forest' || defenderTile?.terrain === 'hills' || defenderTile?.terrain === 'mountains') {
+            if (defender.category === 'mountain' || defender.category === 'scout' || defender.category === 'intel') {
+                return 'ambush';
+            }
+        }
+        if (attacker.type === 'naval' || defender.type === 'naval') return 'naval';
+        return 'field';
+    }
+
+    findRetreatTile(unit, threatPos) {
+        const offsets = [
+            { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 },
+            { x: -1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: -1 }
+        ];
+        const ranked = offsets
+            .map((offset) => ({ x: unit.position.x + offset.x, y: unit.position.y + offset.y }))
+            .filter((pos) => {
+                const tile = gameMap?.getTile(pos.x, pos.y);
+                if (!tile) return false;
+                if (tile.terrain === 'water' && !this.isWaterCapable(unit)) return false;
+                if (this.units.some(u => u.id !== unit.id && u.position.x === pos.x && u.position.y === pos.y)) return false;
+                return true;
+            })
+            .sort((a, b) => {
+                const da = Math.abs(a.x - threatPos.x) + Math.abs(a.y - threatPos.y);
+                const db = Math.abs(b.x - threatPos.x) + Math.abs(b.y - threatPos.y);
+                return db - da;
+            });
+        return ranked[0] || null;
+    }
+
+    resolveBattleOnMove(attacker, defender, destination) {
+        const tile = gameMap?.getTile(destination.x, destination.y);
+        const battleType = this.getBattleType(tile, attacker, defender);
+        const attemptRetreat = defender.owner === 'player' || defender.currentHealth < defender.stats.health * 0.55;
+        const result = executeBattle(
+            attacker.id,
+            defender.id,
+            tile?.terrain || 'plains',
+            battleType,
+            { attemptRetreat, retreatSide: 'defender' }
+        );
+        if (!result.success) return false;
+
+        if (result.retreat?.success && result.retreat.side === 'defender') {
+            const retreatingDefender = this.units.find(u => u.id === defender.id);
+            if (retreatingDefender) {
+                const retreatPos = this.findRetreatTile(retreatingDefender, attacker.position);
+                if (retreatPos) {
+                    retreatingDefender.position = retreatPos;
+                }
+            }
+        }
+
+        if (window.uiManager) {
+            const summary = `${battleType.toUpperCase()} battle: ${attacker.name} vs ${defender.name} `
+                + `(A-${result.attackerDamage} / D-${result.defenderDamage})`;
+            uiManager.showNotification(summary, 'info');
+            uiManager.showCombatResult(result);
+        }
+
+        const attackerAlive = this.units.some(u => u.id === attacker.id);
+        const defenderAlive = this.units.some(u => u.id === defender.id);
+        if (attackerAlive && !defenderAlive) {
+            attacker.position = destination;
+            this.captureTerritory(attacker, destination);
+        }
+
+        return attackerAlive;
     }
 
     isSpawnTileAvailable(x, y) {
@@ -440,6 +627,177 @@ class GameState {
         return unit;
     }
 
+    getRecruitableUnitTypes(cityTile) {
+        if (!cityTile?.cityData) return ['skutatoi'];
+        const infra = cityTile.cityData.infrastructure || {};
+        const researched = new Set(this.player?.techResearched || []);
+        const options = ['skutatoi', 'archers', 'kavallarioi'];
+
+        if ((infra.industry || 0) >= 3) options.push('engineers', 'mangonel');
+        if ((infra.agriculture || 0) >= 2) options.push('camel_riders');
+        if ((infra.roads || 0) >= 3) options.push('explorer', 'spy');
+        if ((infra.roads || 0) >= 4 || researched.has('caravan_routes')) options.push('caravan');
+        if ((infra.industry || 0) >= 4 && researched.has('siegecraft')) options.push('war_elephants');
+        if ((infra.industry || 0) >= 2 && researched.has('naval_architecture')) options.push('transport', 'dromon');
+        if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
+        if ((infra.industry || 0) >= 4) options.push('priests');
+
+        const unique = [];
+        options.forEach((unitId) => {
+            if (unique.includes(unitId)) return;
+            if (!getUnitById(unitId)) return;
+            unique.push(unitId);
+        });
+        return unique;
+    }
+
+    getAvailableTechnologies() {
+        const researched = new Set(this.player?.techResearched || []);
+        return Object.entries(TECHNOLOGY_TREE)
+            .filter(([techId, tech]) => {
+                if (researched.has(techId)) return false;
+                return (tech.requires || []).every(req => researched.has(req));
+            })
+            .map(([techId, tech]) => ({ id: techId, ...tech }));
+    }
+
+    applyTechnologyEffects(effects = {}) {
+        const current = this.player.techEffects;
+        if (effects.movement) current.movement += effects.movement;
+        if (effects.foodMultiplier) current.foodMultiplier *= effects.foodMultiplier;
+        if (effects.goldMultiplier) current.goldMultiplier *= effects.goldMultiplier;
+        if (effects.manpowerMultiplier) current.manpowerMultiplier *= effects.manpowerMultiplier;
+        if (effects.cavalryAttackMultiplier) current.cavalryAttackMultiplier *= effects.cavalryAttackMultiplier;
+        if (effects.navalAttackMultiplier) current.navalAttackMultiplier *= effects.navalAttackMultiplier;
+        if (effects.siegeAttackMultiplier) current.siegeAttackMultiplier *= effects.siegeAttackMultiplier;
+        if (effects.researchDiscount) current.researchDiscount = Math.max(current.researchDiscount, effects.researchDiscount);
+        if (effects.prestigePerTurn) current.prestigePerTurn += effects.prestigePerTurn;
+        if (effects.tradePostBonus) current.tradePostBonus += effects.tradePostBonus;
+        if (effects.navalMovement) current.navalMovement += effects.navalMovement;
+    }
+
+    researchTechnology(techId) {
+        const tech = TECHNOLOGY_TREE[techId];
+        if (!tech) return { success: false, message: 'Unknown technology' };
+
+        if (this.player.techResearched.includes(techId)) {
+            return { success: false, message: `${tech.name} already researched` };
+        }
+
+        const researched = new Set(this.player.techResearched);
+        const requirementsMet = (tech.requires || []).every(req => researched.has(req));
+        if (!requirementsMet) {
+            return { success: false, message: 'Prerequisites not met' };
+        }
+
+        const discount = this.player.techEffects.researchDiscount || 0;
+        const goldCost = Math.max(1, Math.floor(tech.cost.gold * (1 - discount)));
+        const prestigeCost = Math.max(1, Math.floor(tech.cost.prestige * (1 - discount)));
+        if (!this.spendResources(goldCost, 0, prestigeCost)) {
+            return { success: false, message: `Need ${goldCost} gold and ${prestigeCost} prestige` };
+        }
+
+        this.player.techResearched.push(techId);
+        this.applyTechnologyEffects(tech.effects || {});
+        return {
+            success: true,
+            techId,
+            name: tech.name,
+            goldCost,
+            prestigeCost
+        };
+    }
+
+    applyCityBuildAction(cityTile, actionId) {
+        if (!cityTile || cityTile.owner !== 'player') {
+            return { success: false, message: 'Build actions require a player-owned tile' };
+        }
+
+        const action = BUILD_ACTIONS[actionId];
+        if (!action) return { success: false, message: 'Unknown build action' };
+
+        if (actionId === 'establish_town' && !cityTile.cityData) {
+            if (cityTile.terrain === 'water') {
+                return { success: false, message: 'Cannot establish a town on water' };
+            }
+            cityTile.terrain = 'city';
+            cityTile.building = 'town';
+            cityTile.cityData = {
+                id: `founded_${cityTile.x}_${cityTile.y}_${this.turn}`,
+                name: `New Settlement ${this.turn}`,
+                kind: 'town',
+                population: 4,
+                production: { food: 2, industry: 1, gold: 1 },
+                infrastructure: { roads: 1, agriculture: 1, industry: 1 }
+            };
+            if (!this.player.territories.includes(cityTile.cityData.id)) {
+                this.player.territories.push(cityTile.cityData.id);
+            }
+        }
+
+        if (!cityTile.cityData) {
+            return { success: false, message: 'Select a city tile for that build action' };
+        }
+
+        if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
+            return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
+        }
+
+        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
+        const production = cityTile.cityData.production || (cityTile.cityData.production = { food: 0, industry: 0, gold: 0 });
+
+        if (actionId === 'establish_town') {
+            cityTile.cityData.kind = 'city';
+            cityTile.building = 'town';
+            cityTile.importance = Math.max(cityTile.importance || 5, 7);
+            cityTile.cityData.population = Math.min((cityTile.cityData.population || 4) + 2, 14);
+            production.food += 1;
+            production.industry += 1;
+            production.gold += 1;
+        } else if (actionId === 'build_fort') {
+            cityTile.cityData.fortLevel = (cityTile.cityData.fortLevel || 0) + 1;
+            cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.15;
+            cityTile.cityData.garrison = (cityTile.cityData.garrison || 0) + 1;
+        } else if (actionId === 'build_road') {
+            infra.roads = Math.min((infra.roads || 0) + 1, 8);
+            production.gold += 1;
+        } else if (actionId === 'establish_monastery') {
+            cityTile.cityData.monastery = true;
+            this.player.resources.prestige += 6;
+            production.gold += 1;
+        } else if (actionId === 'build_caravan_camp') {
+            cityTile.cityData.caravanCamp = true;
+            production.gold += 2 + (this.player.techEffects.tradePostBonus || 0);
+        } else if (actionId === 'build_port') {
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
+            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
+            cityTile.cityData.port = true;
+            cityTile.cityData.navalYard = true;
+            production.gold += 2;
+        } else if (actionId === 'build_farm') {
+            infra.agriculture = Math.min((infra.agriculture || 0) + 1, 8);
+            production.food += 2;
+        } else if (actionId === 'irrigate') {
+            cityTile.cityData.irrigated = true;
+            production.food += 2;
+            production.gold += 1;
+        } else if (actionId === 'plant_forest') {
+            cityTile.cityData.forestManaged = true;
+            production.industry += 1;
+            cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.05;
+        } else if (actionId === 'build_canal') {
+            cityTile.cityData.canal = true;
+            infra.roads = Math.min((infra.roads || 0) + 1, 8);
+            production.gold += 2;
+        }
+
+        gameMap?.markTerritoryDirty();
+        return { success: true, actionId, actionName: action.name };
+    }
+
     /**
      * Select a unit
      */
@@ -465,21 +823,26 @@ class GameState {
         // Calculate distance
         const distance = Math.abs(newPosition.x - unit.position.x) +
             Math.abs(newPosition.y - unit.position.y);
+        const maxMovement = unit.currentMovement;
 
-        // Cannot move onto occupied tile.
-        const occupied = this.units.some(u =>
+        const blockingUnit = this.units.find(u =>
             u.id !== unit.id &&
             u.position.x === newPosition.x &&
             u.position.y === newPosition.y
         );
-        if (occupied) return false;
 
         // Terrain restrictions.
         const destination = gameMap?.getTile(newPosition.x, newPosition.y);
         if (!destination) return false;
-        if (destination.terrain === 'water' && unit.type !== 'special') return false;
+        if (destination.terrain === 'water' && !this.isWaterCapable(unit)) return false;
 
-        if (distance <= unit.currentMovement) {
+        if (distance <= maxMovement) {
+            if (blockingUnit) {
+                if (blockingUnit.owner === unit.owner) return false;
+                unit.currentMovement = 0;
+                return this.resolveBattleOnMove(unit, blockingUnit, newPosition);
+            }
+
             unit.position = newPosition;
             unit.currentMovement -= distance;
 
@@ -599,7 +962,7 @@ class GameState {
         this.addResources(
             Math.floor(baseGold * goldBonus) + territoryBonus,
             Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-            basePrestige
+            basePrestige + (this.player.techEffects.prestigePerTurn || 0)
         );
 
         // City gold output
@@ -609,7 +972,8 @@ class GameState {
         this.units.forEach(unit => {
             const unitType = getUnitById(unit.typeId);
             if (unitType) {
-                unit.currentMovement = unitType.stats.movement;
+                const navalBonus = unit.type === 'naval' ? (this.player.techEffects.navalMovement || 0) : 0;
+                unit.currentMovement = unitType.stats.movement + (this.player.techEffects.movement || 0) + navalBonus;
             }
         });
 
@@ -634,7 +998,7 @@ class GameState {
             income: {
                 gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold,
                 manpower: Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-                prestige: basePrestige
+                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0)
             },
             upkeep: totalUpkeep,
             cityProduction
@@ -652,9 +1016,14 @@ class GameState {
             const infra = tile.cityData?.infrastructure;
             const pop = tile.cityData?.population || 4;
             if (!p) return;
-            totals.food += p.food;
-            totals.gold += Math.floor(p.gold + (infra?.roads || 0) * 0.8 + pop * 0.35);
-            totals.manpower += Math.floor((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6);
+            const foodMultiplier = this.player.techEffects.foodMultiplier || 1;
+            const goldMultiplier = this.player.techEffects.goldMultiplier || 1;
+            const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
+            const tradeBonus = tile.cityData?.caravanCamp ? 2 + (this.player.techEffects.tradePostBonus || 0) : 0;
+            const portBonus = tile.cityData?.port ? 2 : 0;
+            totals.food += Math.floor(p.food * foodMultiplier);
+            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
+            totals.manpower += Math.floor(((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6) * manpowerMultiplier);
         });
 
         return totals;
@@ -851,6 +1220,22 @@ class GameState {
 
         this.selectedLeader = data.selectedLeader;
         this.player = data.player;
+        if (!this.player.techResearched) this.player.techResearched = [];
+        if (!this.player.techEffects) {
+            this.player.techEffects = {
+                movement: 0,
+                foodMultiplier: 1,
+                goldMultiplier: 1,
+                manpowerMultiplier: 1,
+                cavalryAttackMultiplier: 1,
+                navalAttackMultiplier: 1,
+                siegeAttackMultiplier: 1,
+                researchDiscount: 0,
+                prestigePerTurn: 0,
+                tradePostBonus: 0,
+                navalMovement: 0
+            };
+        }
         this.turn = data.turn;
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;

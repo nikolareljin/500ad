@@ -109,6 +109,32 @@ const UNIT_TYPES = {
                 morale: 2.0
             },
             icon: 'varangian.png'
+        },
+
+        mountain_infantry: {
+            id: 'mountain_infantry',
+            name: 'Mountain Infantry',
+            type: 'infantry',
+            category: 'mountain',
+            description: 'Rugged troops trained for rough terrain and passes',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 90,
+                manpower: 55
+            },
+            upkeep: 6,
+            stats: {
+                health: 95,
+                attack: 14,
+                defense: 16,
+                movement: 3,
+                range: 1
+            },
+            bonuses: {
+                terrain: 1.5,
+                vsInfantry: 1.1
+            },
+            icon: 'mountain_infantry.png'
         }
     },
 
@@ -247,6 +273,58 @@ const UNIT_TYPES = {
                 morale: 1.5
             },
             icon: 'tagmata.png'
+        },
+
+        camel_riders: {
+            id: 'camel_riders',
+            name: 'Camel Riders',
+            type: 'cavalry',
+            category: 'desert',
+            description: 'Fast desert cavalry resilient to arid conditions',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 130,
+                manpower: 65
+            },
+            upkeep: 9,
+            stats: {
+                health: 95,
+                attack: 17,
+                defense: 12,
+                movement: 5,
+                range: 1
+            },
+            bonuses: {
+                mobility: 1.35,
+                vsCavalry: 1.15
+            },
+            icon: 'camel_riders.png'
+        },
+
+        war_elephants: {
+            id: 'war_elephants',
+            name: 'War Elephants',
+            type: 'cavalry',
+            category: 'shock',
+            description: 'Massive shock troops with devastating first impact',
+            era: ['early', 'middle'],
+            cost: {
+                gold: 260,
+                manpower: 120
+            },
+            upkeep: 18,
+            stats: {
+                health: 190,
+                attack: 30,
+                defense: 20,
+                movement: 3,
+                range: 1
+            },
+            bonuses: {
+                charge: 2.2,
+                vsInfantry: 1.6
+            },
+            icon: 'war_elephants.png'
         }
     },
 
@@ -305,6 +383,32 @@ const UNIT_TYPES = {
             icon: 'engineers.png'
         },
 
+        mangonel: {
+            id: 'mangonel',
+            name: 'Mangonel Battery',
+            type: 'special',
+            category: 'siege',
+            description: 'Counterweight artillery for sieges and field bombardment',
+            era: ['middle', 'late'],
+            cost: {
+                gold: 220,
+                manpower: 100
+            },
+            upkeep: 14,
+            stats: {
+                health: 70,
+                attack: 34,
+                defense: 8,
+                movement: 1,
+                range: 4
+            },
+            bonuses: {
+                vsBuildings: 2.6,
+                areaEffect: true
+            },
+            icon: 'mangonel.png'
+        },
+
         priests: {
             id: 'priests',
             name: 'Orthodox Priests',
@@ -329,6 +433,135 @@ const UNIT_TYPES = {
                 healingRate: 10
             },
             icon: 'priests.png'
+        },
+
+        caravan: {
+            id: 'caravan',
+            name: 'Caravan',
+            type: 'special',
+            category: 'economic',
+            description: 'Trade convoy that boosts city income when stationed nearby',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 95,
+                manpower: 30
+            },
+            upkeep: 2,
+            stats: {
+                health: 45,
+                attack: 2,
+                defense: 4,
+                movement: 3,
+                range: 1
+            },
+            bonuses: {
+                tradeBoost: 1.3
+            },
+            icon: 'caravan.png'
+        },
+
+        explorer: {
+            id: 'explorer',
+            name: 'Explorer',
+            type: 'special',
+            category: 'scout',
+            description: 'Long-range reconnaissance specialist',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 70,
+                manpower: 25
+            },
+            upkeep: 2,
+            stats: {
+                health: 40,
+                attack: 6,
+                defense: 5,
+                movement: 6,
+                range: 1
+            },
+            bonuses: {
+                mobility: 1.6,
+                vision: 2
+            },
+            icon: 'explorer.png'
+        },
+
+        spy: {
+            id: 'spy',
+            name: 'Spy',
+            type: 'special',
+            category: 'intel',
+            description: 'Covert intelligence operative with ambush potential',
+            era: ['middle', 'late'],
+            cost: {
+                gold: 120,
+                manpower: 20
+            },
+            upkeep: 3,
+            stats: {
+                health: 35,
+                attack: 10,
+                defense: 5,
+                movement: 5,
+                range: 1
+            },
+            bonuses: {
+                ambush: 1.8
+            },
+            icon: 'spy.png'
+        },
+
+        transport: {
+            id: 'transport',
+            name: 'River Transport',
+            type: 'special',
+            category: 'transport',
+            description: 'Support vessel for moving men and supplies across water',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 110,
+                manpower: 45
+            },
+            upkeep: 4,
+            stats: {
+                health: 75,
+                attack: 8,
+                defense: 8,
+                movement: 5,
+                range: 1
+            },
+            bonuses: {
+                waterTraversal: true
+            },
+            icon: 'transport.png'
+        }
+    },
+
+    naval: {
+        dromon: {
+            id: 'dromon',
+            name: 'Dromon',
+            type: 'naval',
+            category: 'warship',
+            description: 'Byzantine war galley armed for naval combat',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 210,
+                manpower: 85
+            },
+            upkeep: 12,
+            stats: {
+                health: 130,
+                attack: 24,
+                defense: 16,
+                movement: 6,
+                range: 2
+            },
+            bonuses: {
+                vsShips: 1.6,
+                waterTraversal: true
+            },
+            icon: 'dromon.png'
         }
     }
 };

@@ -4,9 +4,9 @@
  */
 
 const MAP_CONFIG = {
-    width: 200,
-    height: 120,
-    tileSize: 32,  // Larger tiles for better visibility
+    width: typeof WORLD_MAP_WIDTH !== 'undefined' ? WORLD_MAP_WIDTH : 200,
+    height: typeof WORLD_MAP_HEIGHT !== 'undefined' ? WORLD_MAP_HEIGHT : 120,
+    tileSize: 28,
     hexSize: 25,
     viewportWidth: 30, // Number of tiles visible horizontally
     viewportHeight: 20 // Number of tiles visible vertically
@@ -14,7 +14,7 @@ const MAP_CONFIG = {
 
 const HISTORIC_MAP_BOUNDS = typeof GEOGRAPHY_BOUNDS !== 'undefined'
     ? GEOGRAPHY_BOUNDS
-    : { west: -12, east: 56, north: 58, south: 8 };
+    : { west: -15, east: 92, north: 60, south: 5 };
 
 function toTileCoordinate(lon, lat) {
     const xNorm = (lon - HISTORIC_MAP_BOUNDS.west) / (HISTORIC_MAP_BOUNDS.east - HISTORIC_MAP_BOUNDS.west);
@@ -45,6 +45,9 @@ const HISTORIC_TOWNS = [
     historicTown('thessalonica', 'Thessalonica', 22.95, 40.64, 'city', 8),
     historicTown('athens', 'Athens', 23.73, 37.98, 'town', 6),
     historicTown('preslav', 'Preslav', 26.82, 43.16, 'city', 7, { faction: 'bulgar' }),
+    historicTown('belgrade', 'Belgrade', 20.46, 44.82, 'city', 7),
+    historicTown('serdica', 'Serdica', 23.32, 42.70, 'city', 7),
+    historicTown('skopje', 'Skopje', 21.43, 41.99, 'town', 6),
 
     // Anatolia & Caucasus
     historicTown('nicaea', 'Nicaea', 29.72, 40.43, 'city', 7),
@@ -52,36 +55,63 @@ const HISTORIC_TOWNS = [
     historicTown('iconium', 'Iconium', 32.49, 37.87, 'city', 7),
     historicTown('trebizond', 'Trebizond', 39.72, 41.00, 'city', 7),
     historicTown('tbilisi', 'Tbilisi', 44.80, 41.70, 'town', 6),
+    historicTown('ancyra', 'Ancyra', 32.86, 39.93, 'city', 7),
+    historicTown('caesarea', 'Caesarea Cappadociae', 35.49, 38.73, 'city', 7),
+    historicTown('edessa', 'Edessa', 38.79, 37.16, 'city', 7),
 
     // Levant, Mesopotamia & Arabia
     historicTown('jerusalem', 'Jerusalem', 35.22, 31.78, 'city', 10),
     historicTown('damascus', 'Damascus', 36.29, 33.51, 'city', 8),
+    historicTown('aleppo', 'Aleppo', 37.16, 36.20, 'city', 8),
     historicTown('baghdad', 'Baghdad', 44.37, 33.31, 'capital', 10, { faction: 'arab' }),
     historicTown('ctesiphon', 'Ctesiphon', 44.58, 33.09, 'capital', 10, { faction: 'sassanid' }),
+    historicTown('mosul', 'Mosul', 43.13, 36.34, 'city', 8),
+    historicTown('basra', 'Basra', 47.78, 30.50, 'city', 7, { faction: 'arab' }),
+    historicTown('isfahan', 'Isfahan', 51.67, 32.65, 'city', 8, { faction: 'sassanid' }),
+    historicTown('rayy', 'Rayy', 51.44, 35.60, 'city', 7, { faction: 'sassanid' }),
+    historicTown('merv', 'Merv', 62.18, 37.66, 'city', 8, { faction: 'sassanid' }),
+    historicTown('samarkand', 'Samarkand', 66.97, 39.65, 'city', 8, { faction: 'sassanid' }),
+    historicTown('bukhara', 'Bukhara', 64.42, 39.77, 'town', 7, { faction: 'sassanid' }),
+    historicTown('herat', 'Herat', 62.20, 34.35, 'city', 7),
+    historicTown('balkh', 'Balkh', 66.90, 36.75, 'city', 7),
+    historicTown('kabul', 'Kabul', 69.19, 34.53, 'city', 7),
+    historicTown('kandahar', 'Kandahar', 65.70, 31.62, 'town', 6),
+    historicTown('multan', 'Multan', 71.48, 30.20, 'town', 7),
+    historicTown('lahore', 'Lahore', 74.34, 31.55, 'city', 7),
     historicTown('medina', 'Medina', 39.61, 24.47, 'city', 7, { faction: 'arab' }),
     historicTown('mecca', 'Mecca', 39.86, 21.39, 'city', 8, { faction: 'arab' }),
     historicTown('sanaa', "Sana'a", 44.20, 15.35, 'town', 6),
+    historicTown('aden', 'Aden', 45.03, 12.79, 'town', 6),
 
     // North Africa & Ethiopia
     historicTown('alexandria', 'Alexandria', 29.92, 31.20, 'city', 9),
     historicTown('fustat', 'Fustat', 31.24, 30.03, 'city', 7),
     historicTown('carthage', 'Carthage', 10.33, 36.86, 'city', 8),
     historicTown('leptis_magna', 'Leptis Magna', 14.29, 32.64, 'town', 6),
+    historicTown('tripoli', 'Tripoli', 13.19, 32.89, 'city', 7),
+    historicTown('cyrene', 'Cyrene', 21.86, 32.83, 'town', 6),
     historicTown('axum', 'Axum', 38.72, 14.13, 'city', 7),
     historicTown('adulis', 'Adulis', 39.45, 15.30, 'town', 6),
+    historicTown('dongola', 'Old Dongola', 30.48, 18.25, 'town', 6),
 
     // Italy & Western Mediterranean
     historicTown('rome', 'Rome', 12.50, 41.90, 'capital', 10),
     historicTown('ravenna', 'Ravenna', 12.20, 44.42, 'city', 8),
     historicTown('venice', 'Venice', 12.33, 45.44, 'city', 7),
+    historicTown('milan', 'Milan', 9.19, 45.46, 'city', 8),
     historicTown('naples', 'Naples', 14.27, 40.85, 'town', 6),
     historicTown('cartagena', 'Cartagena', -0.98, 37.60, 'town', 6),
+    historicTown('cordoba', 'Cordoba', -4.78, 37.89, 'city', 8),
+    historicTown('toledo', 'Toledo', -4.02, 39.86, 'city', 7),
+    historicTown('massilia', 'Massilia', 5.37, 43.30, 'city', 7),
 
     // Central & Northern Europe
     historicTown('aachen', 'Aachen', 6.08, 50.78, 'city', 8, { faction: 'frank' }),
     historicTown('paris', 'Paris', 2.35, 48.86, 'city', 7),
     historicTown('london', 'London', -0.13, 51.50, 'city', 7),
-    historicTown('kiev', 'Kiev', 30.52, 50.45, 'city', 7)
+    historicTown('kiev', 'Kiev', 30.52, 50.45, 'city', 7),
+    historicTown('prague', 'Prague', 14.43, 50.08, 'city', 7),
+    historicTown('vienna', 'Vienna', 16.37, 48.21, 'city', 7)
 ];
 
 const TERRAIN_TYPES = {
@@ -126,8 +156,30 @@ class GameMap {
         this.hoveredTile = null;
         this.territoryControl = [];
         this.territoryControlDirty = true;
+        this.referenceMapImage = null;
+        this.referenceMapReady = false;
+        this.referenceMapCrop = {
+            x: 0.08,
+            y: 0.06,
+            width: 0.84,
+            height: 0.86
+        };
 
         this.initializeMap();
+        this.initializeReferenceMap();
+    }
+
+    initializeReferenceMap() {
+        const image = new Image();
+        image.onload = () => {
+            this.referenceMapImage = image;
+            this.referenceMapReady = true;
+            this.render();
+        };
+        image.onerror = () => {
+            this.referenceMapReady = false;
+        };
+        image.src = 'large_map_1.jpg';
     }
 
     /**
@@ -619,6 +671,28 @@ class GameMap {
         const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1);
         const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1);
 
+        if (this.referenceMapReady && this.referenceMapImage) {
+            const crop = this.referenceMapCrop;
+            const sx = this.referenceMapImage.width * crop.x;
+            const sy = this.referenceMapImage.height * crop.y;
+            const sw = this.referenceMapImage.width * crop.width;
+            const sh = this.referenceMapImage.height * crop.height;
+            this.ctx.globalAlpha = 0.5;
+            this.ctx.imageSmoothingEnabled = true;
+            this.ctx.drawImage(
+                this.referenceMapImage,
+                sx,
+                sy,
+                sw,
+                sh,
+                0,
+                0,
+                this.width * tileSize,
+                this.height * tileSize
+            );
+            this.ctx.globalAlpha = 1;
+        }
+
         // Render visible tiles
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
@@ -836,7 +910,14 @@ class GameMap {
         this.ctx.font = `${Math.floor(tileSize * 0.4)}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        const icon = unit.type === 'cavalry' ? '🐎' : '⚔';
+        let icon = '⚔';
+        if (unit.type === 'cavalry') icon = '🐎';
+        if (unit.type === 'naval' || unit.category === 'transport') icon = '⛵';
+        if (unit.category === 'siege') icon = '🛡';
+        if (unit.category === 'ranged') icon = '🏹';
+        if (unit.category === 'intel') icon = '🕵';
+        if (unit.category === 'support') icon = '⛪';
+        if (unit.category === 'economic') icon = '🐪';
         this.ctx.fillText(icon, px + tileSize / 2, py + tileSize / 2);
     }
 
