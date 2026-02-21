@@ -199,6 +199,7 @@ class GameMap {
                     terrain: this.generateTerrain(x, y),
                     unit: null,
                     building: null,
+                    road: false,
                     owner: null,
                     visible: true,
                     explored: false
@@ -767,6 +768,15 @@ class GameMap {
                     }
                 }
 
+                if (tile.road && tile.terrain !== 'water') {
+                    this.ctx.strokeStyle = 'rgba(190, 160, 95, 0.8)';
+                    this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(px + tileSize * 0.2, py + tileSize * 0.5);
+                    this.ctx.lineTo(px + tileSize * 0.8, py + tileSize * 0.5);
+                    this.ctx.stroke();
+                }
+
                 // Gray fog of war for undiscovered areas with softened boundaries.
                 const fogAlpha = this.getFogAlpha(x, y);
                 if (fogAlpha > 0) {
@@ -1048,6 +1058,65 @@ class GameMap {
             return this.tiles[y][x];
         }
         return null;
+    }
+
+    tileToGeo(x, y) {
+        const lon = HISTORIC_MAP_BOUNDS.west + (x / (this.width - 1)) * (HISTORIC_MAP_BOUNDS.east - HISTORIC_MAP_BOUNDS.west);
+        const lat = HISTORIC_MAP_BOUNDS.north - (y / (this.height - 1)) * (HISTORIC_MAP_BOUNDS.north - HISTORIC_MAP_BOUNDS.south);
+        return { lon, lat };
+    }
+
+    isCoastalTile(x, y) {
+        const offsets = [
+            { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+        ];
+        return offsets.some((offset) => this.getTile(x + offset.x, y + offset.y)?.terrain === 'water');
+    }
+
+    isRiverTile(x, y) {
+        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        if (typeof h === 'number' && h >= 40 && h <= 52) return true;
+        if (typeof isNearRiver === 'function') {
+            const geo = this.tileToGeo(x, y);
+            return isNearRiver(geo.lon, geo.lat);
+        }
+        return false;
+    }
+
+    isFertileTile(x, y) {
+        const tile = this.getTile(x, y);
+        if (!tile || tile.terrain === 'water' || tile.terrain === 'mountains') return false;
+        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const richAlluvial = typeof h === 'number' && h >= 54 && h <= 98;
+        return richAlluvial || this.isRiverTile(x, y) || this.isCoastalTile(x, y);
+    }
+
+    getTownFoundationBonuses(x, y) {
+        const result = {
+            food: 0,
+            gold: 0,
+            manpower: 0,
+            notes: []
+        };
+
+        if (this.isRiverTile(x, y)) {
+            result.food += 2;
+            result.manpower += 1;
+            result.notes.push('river basin');
+        }
+        if (this.isCoastalTile(x, y)) {
+            result.gold += 2;
+            result.food += 1;
+            result.notes.push('coastal trade');
+        }
+        if (this.isFertileTile(x, y)) {
+            result.food += 2;
+            result.gold += 1;
+            result.notes.push('fertile ground');
+        }
+
+        return result;
     }
 
     /**

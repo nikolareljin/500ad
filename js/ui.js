@@ -768,7 +768,7 @@ class UIManager {
         document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
         document.getElementById('unit-attack').textContent = unit.stats.attack;
         document.getElementById('unit-defense').textContent = unit.stats.defense;
-        document.getElementById('unit-movement').textContent = `${unit.currentMovement}/${unit.stats.movement}`;
+        document.getElementById('unit-movement').textContent = `${unit.currentMovement.toFixed(1)}/${unit.stats.movement}`;
 
         const healthBar = document.getElementById('unit-health-bar');
         if (healthBar) {

@@ -382,6 +382,7 @@ class GameState {
         this.player.territories = playerCityTiles
             .map(tile => tile.cityData?.id)
             .filter(Boolean);
+        (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
     }
 
     applyTownOwner(town, owner, faction) {
@@ -513,6 +514,88 @@ class GameState {
         }
 
         return null;
+    }
+
+    expandRoadNetworkFromCity(cityTile) {
+        if (!cityTile) return;
+        const infra = cityTile.cityData?.infrastructure || {};
+        const radius = Math.max(1, Math.min(4, Math.floor((infra.roads || 1) / 2) + 1));
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist > radius) continue;
+                const tile = gameMap?.getTile(cityTile.x + dx, cityTile.y + dy);
+                if (!tile || tile.terrain === 'water') continue;
+                tile.road = true;
+            }
+        }
+    }
+
+    getTerrainMoveCost(unit, fromTile, toTile) {
+        if (!toTile) return Infinity;
+        if (toTile.terrain === 'water') {
+            return this.isWaterCapable(unit) ? 1 : Infinity;
+        }
+        const base = TERRAIN_TYPES[toTile.terrain]?.moveCost || 1;
+        let cost = base;
+
+        if (unit.category === 'mountain' && (toTile.terrain === 'hills' || toTile.terrain === 'mountains')) {
+            cost *= 0.65;
+        }
+        if (unit.type === 'cavalry' && (toTile.terrain === 'forest' || toTile.terrain === 'mountains')) {
+            cost *= 1.3;
+        }
+
+        if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
+            cost *= 0.45;
+        } else if (toTile.road && toTile.terrain !== 'water') {
+            cost *= 0.65;
+        }
+
+        return Math.max(0.35, cost);
+    }
+
+    estimateTravelCost(unit, start, end) {
+        if (!gameMap) return Infinity;
+        let cx = start.x;
+        let cy = start.y;
+        let total = 0;
+        let safety = 0;
+
+        while ((cx !== end.x || cy !== end.y) && safety < 2048) {
+            safety++;
+            const dx = end.x - cx;
+            const dy = end.y - cy;
+            const candidates = [];
+
+            if (dx !== 0) candidates.push({ x: cx + Math.sign(dx), y: cy });
+            if (dy !== 0) candidates.push({ x: cx, y: cy + Math.sign(dy) });
+
+            const ranked = candidates
+                .filter((pos) => {
+                    const t = gameMap.getTile(pos.x, pos.y);
+                    if (!t) return false;
+                    const occupied = this.units.some(u => u.position.x === pos.x && u.position.y === pos.y && !(u.position.x === end.x && u.position.y === end.y));
+                    return !occupied;
+                })
+                .map((pos) => {
+                    const fromTile = gameMap.getTile(cx, cy);
+                    const toTile = gameMap.getTile(pos.x, pos.y);
+                    const stepCost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                    const remain = Math.abs(end.x - pos.x) + Math.abs(end.y - pos.y);
+                    return { ...pos, stepCost, remain };
+                })
+                .sort((a, b) => (a.stepCost - b.stepCost) || (a.remain - b.remain));
+
+            const next = ranked[0];
+            if (!next || !Number.isFinite(next.stepCost)) return Infinity;
+            total += next.stepCost;
+            cx = next.x;
+            cy = next.y;
+        }
+
+        if (safety >= 2048) return Infinity;
+        return total;
     }
 
     createStartingUnits(faction, scenario) {
@@ -805,6 +888,15 @@ class GameState {
             production.food += 1;
             production.industry += 1;
             production.gold += 1;
+            const foundation = gameMap?.getTownFoundationBonuses(cityTile.x, cityTile.y) || { food: 0, gold: 0, manpower: 0, notes: [] };
+            production.food += foundation.food;
+            production.gold += foundation.gold;
+            if (foundation.manpower) {
+                this.player.resources.manpower += foundation.manpower * 20;
+            }
+            if (foundation.notes.length > 0) {
+                cityTile.cityData.foundationBonus = foundation.notes.join(', ');
+            }
         } else if (actionId === 'build_fort') {
             cityTile.cityData.fortLevel = (cityTile.cityData.fortLevel || 0) + 1;
             cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.15;
@@ -812,6 +904,7 @@ class GameState {
         } else if (actionId === 'build_road') {
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
             production.gold += 1;
+            this.expandRoadNetworkFromCity(cityTile);
         } else if (actionId === 'establish_monastery') {
             cityTile.cityData.monastery = true;
             this.player.resources.prestige += 6;
@@ -843,6 +936,7 @@ class GameState {
             cityTile.cityData.canal = true;
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
             production.gold += 2;
+            this.expandRoadNetworkFromCity(cityTile);
         }
 
         gameMap?.markTerritoryDirty();
@@ -871,9 +965,6 @@ class GameState {
         // Check if unit has movement remaining
         if (unit.currentMovement <= 0) return false;
 
-        // Calculate distance
-        const distance = Math.abs(newPosition.x - unit.position.x) +
-            Math.abs(newPosition.y - unit.position.y);
         const maxMovement = unit.currentMovement;
 
         const blockingUnit = this.units.find(u =>
@@ -887,7 +978,8 @@ class GameState {
         if (!destination) return false;
         if (destination.terrain === 'water' && !this.isWaterCapable(unit)) return false;
 
-        if (distance <= maxMovement) {
+        const travelCost = this.estimateTravelCost(unit, unit.position, newPosition);
+        if (travelCost <= maxMovement) {
             if (blockingUnit) {
                 if (blockingUnit.owner === unit.owner) return false;
                 unit.currentMovement = 0;
@@ -895,7 +987,7 @@ class GameState {
             }
 
             unit.position = newPosition;
-            unit.currentMovement -= distance;
+            unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
             // Reveal fog of war around new position for player units
             if (unit.owner === 'player' && gameMap) {
@@ -1247,6 +1339,8 @@ class GameState {
                 .map(tile => tile.cityData?.id)
                 .filter(Boolean);
         }
+
+        (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
 
         gameMap.getCityTiles('player').forEach(tile => gameMap.revealArea(tile.x, tile.y, 4));
         this.units
