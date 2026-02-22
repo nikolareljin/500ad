@@ -1306,7 +1306,20 @@ class UIManager {
             if (focusCity) {
                 gameMap?.centerOn(focusCity.x, focusCity.y);
             } else {
-                gameMap?.render();
+                const playerUnits = (gameState?.units || []).filter(u =>
+                    u.owner === 'player' &&
+                    Number.isFinite(u.position?.x) &&
+                    Number.isFinite(u.position?.y) &&
+                    u.position.x >= 0 &&
+                    u.position.y >= 0
+                );
+                if (playerUnits.length > 0) {
+                    const avgX = playerUnits.reduce((sum, u) => sum + u.position.x, 0) / playerUnits.length;
+                    const avgY = playerUnits.reduce((sum, u) => sum + u.position.y, 0) / playerUnits.length;
+                    gameMap?.centerOn(avgX, avgY);
+                } else {
+                    gameMap?.render();
+                }
             }
         });
     }
