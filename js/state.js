@@ -1292,7 +1292,6 @@ class GameState {
             return true;
         }
 
-        return false;
     }
 
     /**
