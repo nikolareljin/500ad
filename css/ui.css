@@ -500,6 +500,7 @@
 
 .unit-panel-header h3 {
     font-size: 1.2rem;
+    color: #7b1515;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -511,13 +512,13 @@
     font-size: 1.5rem;
     background: transparent;
     border: none;
-    color: var(--parchment);
+    color: rgba(95, 78, 48, 0.9);
     cursor: pointer;
     transition: color var(--transition-fast);
 }
 
 .close-btn:hover {
-    color: var(--gold-light);
+    color: #7b1515;
 }
 
 .unit-panel-content {
@@ -525,6 +526,7 @@
     padding: var(--spacing-md);
     overflow-y: auto;
     min-height: 0;
+    color: #322712;
 }
 
 .unit-portrait {
@@ -570,8 +572,8 @@
 
 .stat-label {
     font-size: 0.85rem;
-    color: var(--parchment);
-    opacity: 0.8;
+    color: rgba(76, 61, 35, 0.88);
+    opacity: 1;
 }
 
 .stat-bar {
@@ -590,7 +592,7 @@
 .stat-value {
     font-family: var(--font-display);
     font-weight: 700;
-    color: var(--gold-light);
+    color: #8b6a14;
 }
 
 .unit-actions {
