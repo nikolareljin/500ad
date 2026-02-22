@@ -702,12 +702,6 @@
     color: var(--parchment);
 }
 
-.action-bar-btn .btn-label {
-    font-family: var(--font-accent);
-    font-weight: 400;
-    letter-spacing: 0.03em;
-}
-
 /* === Modal Overlay === */
 .modal-overlay {
     position: fixed;
@@ -746,19 +740,6 @@
 }
 
 .modal h3 {
-    font-family: var(--font-accent);
-    font-weight: 400;
-    letter-spacing: 0.02em;
-}
-
-.modal .menu-btn {
-    font-family: var(--font-accent);
-    font-weight: 400;
-    letter-spacing: 0.02em;
-}
-
-.modal .menu-btn .btn-text,
-.modal .choice-btn .btn-text {
     font-family: var(--font-accent);
     font-weight: 400;
     letter-spacing: 0.02em;
