@@ -2,8 +2,8 @@ name: Deploy To GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - production
   workflow_dispatch:
 
 permissions:
@@ -21,6 +21,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Deploy the release artifact pinned by the production tag so Pages matches the finalized tagged release.
+          ref: refs/tags/production
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

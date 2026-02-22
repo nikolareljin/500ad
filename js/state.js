@@ -207,7 +207,7 @@ const CENTURY_TOWN_CONTROL_OVERRIDES = {
     }
 };
 
-const SAVE_VERSION = '1.2.1';
+const SAVE_VERSION = '1.2.2';
 
 const TECHNOLOGY_TREE = {
     military_logistics: {

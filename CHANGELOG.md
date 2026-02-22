@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - Fixed leader selection state reset so starting a new game after changing century/faction requires a fresh ruler selection and does not reuse the previous leader's realm/town setup.
+- Fixed GitHub Pages deployment timing by publishing from the `production` tag, so deployed builds reflect the finalized auto-tagged release state.
 
 ## [1.2.1] - 2026-02-22
 
