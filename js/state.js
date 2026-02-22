@@ -125,6 +125,19 @@ const CENTURY_EMPIRE_CORE_TOWNS = {
 };
 
 const LEADER_START_PROFILES = {
+    justinian: {
+        startTownId: 'constantinople',
+        empireCoreTowns: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch',
+            'alexandria', 'jerusalem', 'ravenna', 'rome', 'naples', 'carthage', 'cartagena'
+        ]
+    },
+    belisarius: {
+        startTownId: 'constantinople',
+        empireCoreTowns: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria'
+        ]
+    },
     totila: {
         startTownId: 'ravenna',
         empireCoreTowns: ['ravenna', 'rome', 'milan', 'naples', 'venice']
@@ -133,14 +146,26 @@ const LEADER_START_PROFILES = {
         startTownId: 'ctesiphon',
         empireCoreTowns: ['ctesiphon', 'isfahan', 'rayy', 'tbilisi', 'merv', 'herat']
     },
+    heraclius: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria', 'ravenna']
+    },
     khalid: {
         startTownId: 'damascus',
         empireCoreTowns: ['damascus', 'aleppo', 'jerusalem', 'medina', 'mecca', 'fustat'],
         nomadicBuildStart: true
     },
+    basil2: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond', 'serdica']
+    },
     samuel: {
         startTownId: 'preslav',
         empireCoreTowns: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev']
+    },
+    alexios1: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'trebizond', 'athens']
     },
     alp_arslan: {
         startTownId: 'caesarea',
