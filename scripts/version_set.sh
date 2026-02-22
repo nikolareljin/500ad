@@ -39,6 +39,5 @@ replace_in_file() {
 }
 
 replace_in_file "{ gsub(/\\*\\*Version [0-9]+\\.[0-9]+\\.[0-9]+\\*\\*/, \"**Version ${NEW_VERSION}**\"); print }" "$ROOT_DIR/README.md"
-replace_in_file "{ gsub(/const SAVE_VERSION = '[0-9]+\\.[0-9]+\\.[0-9]+';/, \"const SAVE_VERSION = '${NEW_VERSION}';\"); print }" "$ROOT_DIR/js/state.js"
 
 echo "Version synchronized to $NEW_VERSION"

@@ -207,7 +207,17 @@ const CENTURY_TOWN_CONTROL_OVERRIDES = {
     }
 };
 
-const SAVE_VERSION = '1.2.2';
+function resolveAppVersion() {
+    const raw = (typeof window !== 'undefined') ? window.APP_VERSION : '';
+    const version = typeof raw === 'string' ? raw.trim() : '';
+    if (/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(version)) {
+        return version;
+    }
+    console.warn('window.APP_VERSION is missing or invalid; falling back to 0.0.0');
+    return '0.0.0';
+}
+
+const SAVE_VERSION = resolveAppVersion();
 
 const TECHNOLOGY_TREE = {
     military_logistics: {

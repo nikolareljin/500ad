@@ -9,6 +9,8 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed leader selection state reset so starting a new game after changing century/faction requires a fresh ruler selection and does not reuse the previous leader's realm/town setup.
 - Fixed GitHub Pages deployment timing by publishing from the `production` tag, so deployed builds reflect the finalized auto-tagged release state.
+- Fixed app/save version drift by deriving runtime save versioning from generated `assets/version.js` (backed by `VERSION`) instead of a separate hardcoded JS semver constant.
+- Fixed release branch version validation in CI by adding a dedicated `release-version-check` workflow and CI-aware branch-name detection in `scripts/check_release_version.sh`.
 
 ## [1.2.1] - 2026-02-22
 
