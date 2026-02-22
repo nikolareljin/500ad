@@ -2,12 +2,12 @@
 
 ## Unit Health Visibility
 
-- Every unit is rendered with a health ring around the token.
+- Units that have recently taken damage are rendered with a temporary health ring around the token.
 - Ring color indicates health state:
   - Green: high health
   - Yellow/Orange: mid health
   - Red: critical health
-- A numeric HP value is rendered for each unit directly on the map.
+- Numeric HP values are not rendered directly on the map.
 
 ## Healing and Recharge
 

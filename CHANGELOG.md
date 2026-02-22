@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Added
-- Added per-unit health rings on the map (green at high health, grading to red at low health) plus numeric HP labels on each unit.
+- Added a temporary health ring that appears around recently damaged units on the map (green at high health, grading to red at low health).
 - Added a new recruitable support unit: `Field Healer` (`healer`) with high adjacent healing output.
 - Added unit-built permanent fortifications on map tiles via unit fortify action.
 - Added fortification persistence to save/load data.

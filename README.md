@@ -68,7 +68,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
 - **Combat System**: Type advantages, terrain modifiers, morale, and fortification modifiers
-- **Unit Vitality UI**: Every unit shows a map health ring (green -> red) and live HP number
+- **Unit Vitality UI**: Recently damaged units show a map health ring (green -> red) to highlight their current health
 - **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
 - **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
 - **Resource Management**: Gold, manpower, and prestige
