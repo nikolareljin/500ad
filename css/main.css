@@ -3,6 +3,16 @@
    Main Stylesheet - Design System & Core Styles
    ============================================ */
 
+@font-face {
+    font-family: 'ImperialDisplayLocal';
+    src: url('../assets/fonts/neobyz.eot');
+    src: url('../assets/fonts/neobyz.eot?#iefix') format('embedded-opentype'),
+        url('../assets/fonts/NEOBRG__1.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* === CSS Variables - Classic Strategy Design System === */
 :root {
     /* Colonization-inspired Color Palette */
@@ -37,6 +47,7 @@
     /* Typography - Old World Feel */
     --font-display: 'Old Standard TT', serif;
     --font-body: 'Crimson Text', serif;
+    --font-accent: 'ImperialDisplayLocal', 'Old Standard TT', serif;
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -102,6 +113,11 @@ h1 {
 
 h2 {
     font-size: 2rem;
+}
+
+.feature-title {
+    font-family: var(--font-accent);
+    letter-spacing: 0.02em;
 }
 
 h3 {
