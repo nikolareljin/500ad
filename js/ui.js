@@ -429,7 +429,10 @@ class UIManager {
     getLeaderPortraitPath(leader) {
         const file = leader?.portrait;
         if (!file) return null;
-        if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('assets/')) {
+        if (file.startsWith('http://')) {
+            return null;
+        }
+        if (file.startsWith('https://') || file.startsWith('assets/')) {
             return file;
         }
         return `assets/images/leaders/${file}`;

@@ -14,6 +14,7 @@ class Minimap {
         this.width = 0;
         this.height = 0;
         this.isDragging = false;
+        this.realmGrid = [];
     }
 
     /**
@@ -82,6 +83,20 @@ class Minimap {
         const worldHeight = this.gameMap.height * MAP_CONFIG.tileSize;
         this.scaleX = this.width / worldWidth;
         this.scaleY = this.height / worldHeight;
+        this.ensureRealmGrid();
+    }
+
+    ensureRealmGrid() {
+        if (this.realmGrid.length !== this.gameMap.height) {
+            this.realmGrid = Array.from({ length: this.gameMap.height }, () => new Array(this.gameMap.width).fill(null));
+            return;
+        }
+        for (let y = 0; y < this.gameMap.height; y++) {
+            const row = this.realmGrid[y];
+            if (!Array.isArray(row) || row.length !== this.gameMap.width) {
+                this.realmGrid[y] = new Array(this.gameMap.width).fill(null);
+            }
+        }
     }
 
     /**
@@ -119,7 +134,7 @@ class Minimap {
 
         const tilePixelWidth = Math.max(1, MAP_CONFIG.tileSize * this.scaleX);
         const tilePixelHeight = Math.max(1, MAP_CONFIG.tileSize * this.scaleY);
-        const realmGrid = Array.from({ length: this.gameMap.height }, () => new Array(this.gameMap.width).fill(null));
+        const realmGrid = this.realmGrid;
         const realmColors = {
             player: { fill: 'rgba(213, 166, 67, 0.35)', edge: 'rgba(255, 221, 112, 0.9)' },
             enemy: { fill: 'rgba(178, 43, 43, 0.34)', edge: 'rgba(255, 143, 143, 0.92)' },

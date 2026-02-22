@@ -724,7 +724,7 @@ class GameState {
 
     processAutomatedUnits() {
         this.units.forEach(unit => {
-            if (unit.owner === 'player' && (unit.destination || unit.automated)) {
+            if (unit.owner === 'player' && !unit.isCarried && (unit.destination || unit.automated)) {
                 this.processUnitDestination(unit);
                 if (unit.automated) {
                     this.processUnitAutomation(unit);
