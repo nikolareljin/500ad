@@ -11,4 +11,81 @@ permissions:
 
 jobs:
   tag:
-    uses: nikolareljin/ci-helpers/.github/workflows/auto-tag-release.yml@production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Detect release version from merge commit / PR
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const { owner, repo } = context.repo;
+            const message = context.payload?.head_commit?.message || "";
+
+            const fromMessage = message.match(/Merge pull request #\d+ from .*\/release\/v?(\d+\.\d+\.\d+(?:-rc\.?\d+)?)/);
+            if (fromMessage) {
+              core.info(`Detected release version from merge commit message: ${fromMessage[1]}`);
+              core.setOutput("version", fromMessage[1]);
+              return;
+            }
+
+            // Fallback to associated PR lookup (can be eventually consistent immediately after merge).
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: sha,
+            });
+            const merged = prs.data.find((pr) => pr.merged_at && (pr.base.ref === "main" || pr.base.ref === "master"));
+            if (!merged) {
+              core.info("No merged PR associated with the latest commit.");
+              core.setOutput("version", "");
+              return;
+            }
+
+            const match = merged.head.ref.match(/^release\/v?(\d+\.\d+\.\d+(?:-rc\.?\d+)?)$/);
+            if (!match) {
+              core.info("Merged PR is not a release/* branch.");
+              core.setOutput("version", "");
+              return;
+            }
+
+            core.setOutput("version", match[1]);
+
+      - name: Check tag availability
+        if: ${{ steps.release.outputs.version != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
+            echo "Tag $version already exists."
+            exit 1
+          fi
+
+      - name: Validate release version sync
+        if: ${{ steps.release.outputs.version != '' }}
+        shell: bash
+        run: ./scripts/check_release_version.sh
+
+      - name: Create and push release tag
+        if: ${{ steps.release.outputs.version != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          git tag "$version"
+          git push origin "$version"
+
+      - name: Update production tag
+        if: ${{ steps.release.outputs.version != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.release.outputs.version }}"
+          ./scripts/create_production.sh -t "$version" --fetch-tags
