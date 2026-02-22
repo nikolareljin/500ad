@@ -114,6 +114,57 @@ const HISTORIC_TOWNS = [
     historicTown('vienna', 'Vienna', 16.37, 48.21, 'city', 7)
 ];
 
+const HISTORIC_ROADS = [
+    // Via Egnatia & Balkan routes
+    { from: 'rome', to: 'ravenna' },
+    { from: 'ravenna', to: 'venice' },
+    { from: 'belgrade', to: 'serdica' },
+    { from: 'serdica', to: 'constantinople' },
+    { from: 'constantinople', to: 'thessalonica' },
+    { from: 'thessalonica', to: 'athens' },
+    { from: 'serdica', to: 'thessalonica' },
+
+    // Anatolian routes
+    { from: 'constantinople', to: 'nicaea' },
+    { from: 'nicaea', to: 'ancyra' },
+    { from: 'ancyra', to: 'caesarea' },
+    { from: 'caesarea', to: 'antioch' },
+    { from: 'nicaea', to: 'iconium' },
+    { from: 'iconium', to: 'antioch' },
+    { from: 'ancyra', to: 'trebizond' },
+
+    // Fertile Crescent & Persia
+    { from: 'antioch', to: 'aleppo' },
+    { from: 'aleppo', to: 'edessa' },
+    { from: 'edessa', to: 'mosul' },
+    { from: 'mosul', to: 'baghdad' },
+    { from: 'baghdad', to: 'ctesiphon' },
+    { from: 'ctesiphon', to: 'isfahan' },
+    { from: 'isfahan', to: 'rayy' },
+    { from: 'rayy', to: 'merv' },
+    { from: 'merv', to: 'samarkand' },
+    { from: 'samarkand', to: 'bukhara' },
+
+    // Levant & Egypt
+    { from: 'antioch', to: 'damascus' },
+    { from: 'damascus', to: 'jerusalem' },
+    { from: 'jerusalem', to: 'alexandria' },
+    { from: 'alexandria', to: 'fustat' },
+
+    // North Africa
+    { from: 'fustat', to: 'tripoli' },
+    { from: 'tripoli', to: 'carthage' },
+    { from: 'carthage', to: 'cordoba' },
+
+    // Europe
+    { from: 'aachen', to: 'paris' },
+    { from: 'paris', to: 'massilia' },
+    { from: 'massilia', to: 'milan' },
+    { from: 'milan', to: 'venice' },
+    { from: 'aachen', to: 'vienna' },
+    { from: 'vienna', to: 'belgrade' }
+];
+
 const TERRAIN_TYPES = {
     plains: { color: '#C4B896', moveCost: 1, defenseBonus: 0 },
     forest: { color: '#6B8E5F', moveCost: 2, defenseBonus: 0.2 },
@@ -215,6 +266,8 @@ class GameMap {
 
         // Place historical towns
         this.placeHistoricalTowns();
+        // Place historical main roads
+        this.placeHistoricalRoads();
         this.markTerritoryDirty();
 
         // Ensure Constantinople is correctly set up as default start center if needed
@@ -1188,6 +1241,47 @@ class GameMap {
         }
 
         this.requestRender();
+    }
+
+    /**
+     * Place historically precise main roads between major cities
+     */
+    placeHistoricalRoads() {
+        HISTORIC_ROADS.forEach(road => {
+            const fromCity = HISTORIC_TOWNS.find(t => t.id === road.from);
+            const toCity = HISTORIC_TOWNS.find(t => t.id === road.to);
+            if (!fromCity || !toCity) return;
+
+            // Simple line algorithm to place roads between cities
+            let x0 = fromCity.x;
+            let y0 = fromCity.y;
+            let x1 = toCity.x;
+            let y1 = toCity.y;
+
+            let dx = Math.abs(x1 - x0);
+            let dy = Math.abs(y1 - y0);
+            let sx = (x0 < x1) ? 1 : -1;
+            let sy = (y0 < y1) ? 1 : -1;
+            let err = dx - dy;
+
+            while (true) {
+                const tile = this.getTile(x0, y0);
+                if (tile && tile.terrain !== 'water') {
+                    tile.road = true;
+                }
+
+                if (x0 === x1 && y0 === y1) break;
+                let e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x0 += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    y0 += sy;
+                }
+            }
+        });
     }
 
     /**

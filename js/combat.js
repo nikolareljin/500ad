@@ -109,6 +109,14 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
         defenderDamage = Math.floor(defenderDamage * (1 + Math.max(0, Math.min(0.35, garrisonBonus))));
     }
 
+    if (attacker.bonuses?.greekFire) {
+        // Devastating incendiary effect
+        attackerDamage = Math.floor(attackerDamage * 1.6);
+        if (defender.type === 'naval' || defenderTile?.cityData) {
+            attackerDamage = Math.floor(attackerDamage * 1.4);
+        }
+    }
+
     if (attacker.type === 'cavalry') {
         attackerDamage = Math.floor(attackerDamage * (attackerEffects.cavalryAttackMultiplier || 1));
     }

@@ -721,6 +721,128 @@ class GameState {
         });
     }
 
+    processAutomatedUnits() {
+        this.units.forEach(unit => {
+            if (unit.owner === 'player' && (unit.destination || unit.automated)) {
+                this.processUnitDestination(unit);
+                if (unit.automated) {
+                    this.processUnitAutomation(unit);
+                }
+            }
+        });
+    }
+
+    processUnitDestination(unit) {
+        if (!unit.destination) return;
+
+        let safety = 0;
+        // Keep moving as long as we have movement and haven't reached destination
+        while (unit.currentMovement > 0.3 && unit.destination && safety < 12) {
+            safety++;
+            const dx = unit.destination.x - unit.position.x;
+            const dy = unit.destination.y - unit.position.y;
+
+            if (Math.abs(dx) <= 0 && Math.abs(dy) <= 0) {
+                unit.destination = null;
+                break;
+            }
+
+            // Find best next step (Manhattan-ish but checking multiple options)
+            const candidates = [];
+            if (dx !== 0) candidates.push({ x: unit.position.x + Math.sign(dx), y: unit.position.y });
+            if (dy !== 0) candidates.push({ x: unit.position.x, y: unit.position.y + Math.sign(dy) });
+
+            const fromTile = gameMap.getTile(unit.position.x, unit.position.y);
+            const ranked = candidates
+                .map(pos => {
+                    const toTile = gameMap.getTile(pos.x, pos.y);
+                    const cost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                    const dist = Math.abs(unit.destination.x - pos.x) + Math.abs(unit.destination.y - pos.y);
+                    return { ...pos, cost, dist };
+                })
+                .filter(c => c.cost <= unit.currentMovement && c.cost < 99)
+                .sort((a, b) => a.dist - b.dist || a.cost - b.cost);
+
+            if (ranked.length > 0) {
+                const next = ranked[0];
+                const prevPos = { ...unit.position };
+                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y });
+                if (!moved || (unit.position.x === prevPos.x && unit.position.y === prevPos.y)) {
+                    // Blocked by enemy or something
+                    break;
+                }
+            } else {
+                // Not enough movement left for any step
+                break;
+            }
+        }
+    }
+
+    processUnitAutomation(unit) {
+        if (unit.typeId === 'civil_engineers') {
+            const tile = gameMap.getTile(unit.position.x, unit.position.y);
+            // If on a tile without road, build one
+            if (tile && !tile.road && tile.terrain !== 'water' && tile.terrain !== 'mountains' && !tile.cityData) {
+                if (unit.currentMovement >= 0.5) {
+                    this.applyUnitBuildAction(unit, 'build_road');
+                }
+            } else if (unit.currentMovement >= 1) {
+                // If not building, or finished building, find next target
+                if (!unit.destination) {
+                    const target = this.findNearestUnroadedTile(unit.position);
+                    if (target) {
+                        unit.destination = target;
+                        this.processUnitDestination(unit);
+                    }
+                }
+            }
+        }
+    }
+
+    findNearestUnroadedTile(pos) {
+        if (!gameMap) return null;
+        for (let r = 1; r < 15; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const remaining = r - Math.abs(dy);
+                for (let dx = -remaining; dx <= remaining; dx++) {
+                    const x = pos.x + dx;
+                    const y = pos.y + dy;
+                    const tile = gameMap.getTile(x, y);
+                    if (tile && !tile.road && tile.terrain !== 'water' && tile.terrain !== 'mountains' && !tile.cityData) {
+                        return { x, y };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    applyUnitBuildAction(unit, actionId) {
+        const tile = gameMap.getTile(unit.position.x, unit.position.y);
+        if (!tile) return { success: false, message: 'Invalid tile' };
+
+        const action = BUILD_ACTIONS[actionId];
+        if (!action) return { success: false, message: 'Invalid action' };
+
+        if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
+            return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
+        }
+
+        if (actionId === 'build_road') {
+            tile.road = true;
+            if (tile.cityData) {
+                const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
+                infra.roads = Math.min((infra.roads || 0) + 1, 8);
+                this.expandRoadNetworkFromCity(tile);
+            }
+        }
+
+        unit.currentMovement = 0;
+        gameMap?.requestRender();
+        return { success: true, actionName: action.name };
+    }
+
+
     createStartingUnits(faction, scenario) {
         const playerCities = gameMap.getCityTiles('player');
         if (playerCities.length === 0) return;
@@ -1097,6 +1219,19 @@ class GameState {
             u.position.y === newPosition.y
         );
 
+        if (blockingUnit && blockingUnit.owner === unit.owner && blockingUnit.bonuses?.transportCapacity) {
+            const carrying = blockingUnit.carryingUnits || (blockingUnit.carryingUnits = []);
+            if (carrying.length < blockingUnit.bonuses.transportCapacity) {
+                carrying.push(unit);
+                // Remove unit from map but keep in units array marked as carried
+                unit.isCarried = true;
+                unit.position = { x: -1, y: -1 };
+                unit.currentMovement = 0;
+                if (window.uiManager) uiManager.showNotification(`${unit.name} embarked on ${blockingUnit.name}`, 'success');
+                return true;
+            }
+        }
+
         // Terrain restrictions.
         const destination = gameMap?.getTile(newPosition.x, newPosition.y);
         if (!destination) return false;
@@ -1126,7 +1261,7 @@ class GameState {
             }
 
             unit.fortified = false;
-            unit.position = newPosition;
+            unit.position = { ...newPosition };
             unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
             // Reveal fog of war around new position for player units
@@ -1138,9 +1273,47 @@ class GameState {
             this.captureTerritory(unit, newPosition);
 
             return true;
+        } else {
+            // Set destination for future turns if it's too far
+            unit.destination = { ...newPosition };
+            if (window.uiManager) {
+                uiManager.showNotification(`${unit.name} destination set to ${newPosition.x},${newPosition.y}`, 'info');
+            }
+            // Move as much as possible towards destination this turn
+            this.processUnitDestination(unit);
+            return true;
         }
 
         return false;
+    }
+
+    /**
+     * Unload units from a transport
+     */
+    unloadUnits(transportId) {
+        const transport = this.units.find(u => u.id === transportId);
+        if (!transport || !transport.carryingUnits || transport.carryingUnits.length === 0) return { success: false, message: 'No units to unload' };
+
+        // Try to find a land tile adjacent to the transport
+        const spawnPos = this.findAvailableSpawnPosition(
+            transport.position.x,
+            transport.position.y,
+            [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }],
+            1
+        );
+
+        if (!spawnPos) return { success: false, message: 'No suitable landing spot adjacent' };
+
+        const unit = transport.carryingUnits.pop();
+        unit.isCarried = false;
+        unit.position = { ...spawnPos };
+        unit.currentMovement = 0; // Unloading ends unit turn
+
+        if (window.uiManager) {
+            uiManager.showNotification(`${unit.name} disembarked at ${spawnPos.x},${spawnPos.y}`, 'success');
+            gameMap?.requestRender();
+        }
+        return { success: true };
     }
 
     /**
@@ -1257,6 +1430,9 @@ class GameState {
 
         // City gold output
         this.addResources(cityProduction.gold, 0, 0);
+
+        // Process units with destination or automation
+        this.processAutomatedUnits();
 
         // Healing phase: towns, fortified positions, and nearby support units.
         this.processUnitHealing();

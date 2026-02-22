@@ -560,6 +560,31 @@ const UNIT_TYPES = {
                 waterTraversal: true
             },
             icon: 'transport.png'
+        },
+        civil_engineers: {
+            id: 'civil_engineers',
+            name: 'Civil Engineers',
+            type: 'special',
+            category: 'infrastructure',
+            description: 'Specialists in building roads and improving city infrastructure',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 120,
+                manpower: 60
+            },
+            upkeep: 5,
+            stats: {
+                health: 40,
+                attack: 2,
+                defense: 4,
+                movement: 3,
+                range: 1
+            },
+            bonuses: {
+                buildRoad: true,
+                improveInfra: true
+            },
+            icon: 'civil_engineers.png'
         }
     },
 
@@ -588,6 +613,59 @@ const UNIT_TYPES = {
                 waterTraversal: true
             },
             icon: 'dromon.png'
+        },
+        dromon_greekfire: {
+            id: 'dromon_greekfire',
+            name: 'Greek Fire Dromon',
+            type: 'naval',
+            category: 'warship',
+            description: 'Elite warship equipped with the deadly Greek Fire siphon',
+            era: ['middle', 'late'],
+            cost: {
+                gold: 350,
+                manpower: 100
+            },
+            upkeep: 20,
+            stats: {
+                health: 150,
+                attack: 45,
+                defense: 20,
+                movement: 6,
+                range: 3
+            },
+            bonuses: {
+                vsShips: 2.5,
+                vsBuildings: 2.0,
+                greekFire: true,
+                waterTraversal: true
+            },
+            icon: 'dromon_greekfire.png'
+        },
+        merchant_ship: {
+            id: 'merchant_ship',
+            name: 'Merchant Galley',
+            type: 'naval',
+            category: 'transport',
+            description: 'Large cargo vessel for transporting goods and troops',
+            era: ['early', 'middle', 'late'],
+            cost: {
+                gold: 180,
+                manpower: 50
+            },
+            upkeep: 6,
+            stats: {
+                health: 100,
+                attack: 5,
+                defense: 10,
+                movement: 5,
+                range: 1
+            },
+            bonuses: {
+                transportCapacity: 3,
+                tradeBoost: 1.2,
+                waterTraversal: true
+            },
+            icon: 'merchant_ship.png'
         }
     }
 };
@@ -673,6 +751,8 @@ function createUnit(unitTypeId, position, owner) {
         stats: { ...unitType.stats },
         currentHealth: unitType.stats.health,
         currentMovement: unitType.stats.movement,
+        destination: null,
+        automated: false,
         experience: 0,
         level: 1,
         morale: 100,
