@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-22
+
+### Added
+- Added leader-specific campaign start zones (including enemy leaders) and local portrait placeholders for additional leaders.
+- Added century-based historical town-control overrides so enemy factions control different towns by era.
+- Added nomadic field-army starts for selected leaders in the `Building the Civilization` scenario.
+
+### Changed
+- Updated new-campaign camera focus to center on the selected side's starting realm (or starting army for no-city starts).
+- Updated historical realm footprints to vary by selected leader within the same century (for example, `Belisarius` vs `Justinian`, `Alexios I` vs `Basil II`).
+
+### Fixed
+- Fixed enemy-leader campaigns incorrectly opening from Constantinople/Byzantine starting view.
+- Fixed non-Byzantine unit names showing `Byzantine ...` labels for enemy/player forces when playing alternate factions.
+- Fixed save/load restoration so the selected century is persisted and century-specific town control/core realms remain accurate after loading.
+- Fixed duplicate century-core town assignments (including `rome`/`serdica`) that caused ambiguous faction ownership in some empire starts.
+
 ## [1.2.0] - 2026-02-22
 
 ### Added

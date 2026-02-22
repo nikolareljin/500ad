@@ -92,6 +92,8 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 4. Select a leader
 5. Begin your campaign!
 
+Note: the opening position and controlled towns depend on the selected era, leader, and scenario (including enemy-side campaigns).
+
 ### Controls
 - **Tap/Click**: Select units or tiles
 - **Drag Map**: Pan around the historic world map to explore
@@ -106,7 +108,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Fast Travel**: Click or drag on the minimap to jump the visible map section
 - **Explore**: Move units to reveal fog of war
 - **Position**: Current map coordinates shown in top-left corner
-- **Byzantine Focus**: Map starts centered on Constantinople/Anatolia region
+- **Campaign Focus**: Map starts centered on your selected leader's starting realm (or field army for nomadic starts)
 
 ### Resources
 - **Gold** 💰: Used to recruit units and construct buildings
@@ -329,7 +331,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.0** - Health and healing mechanics, fortification system, expanded map, and naval transport
+**Version 1.2.1** - Enemy/alternate-faction historical starts, century-based enemy control, and nomadic campaign starts
 
 ## License
 

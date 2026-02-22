@@ -1301,7 +1301,26 @@ class UIManager {
         requestAnimationFrame(() => {
             window.game?.handleResize();
             initializeMinimap();
-            gameMap?.render();
+            const playerCities = gameMap?.getCityTiles('player') || [];
+            const focusCity = playerCities.find(tile => tile.cityData?.kind === 'capital') || playerCities[0];
+            if (focusCity) {
+                gameMap?.centerOn(focusCity.x, focusCity.y);
+            } else {
+                const playerUnits = (gameState?.units || []).filter(u =>
+                    u.owner === 'player' &&
+                    Number.isFinite(u.position?.x) &&
+                    Number.isFinite(u.position?.y) &&
+                    u.position.x >= 0 &&
+                    u.position.y >= 0
+                );
+                if (playerUnits.length > 0) {
+                    const avgX = playerUnits.reduce((sum, u) => sum + u.position.x, 0) / playerUnits.length;
+                    const avgY = playerUnits.reduce((sum, u) => sum + u.position.y, 0) / playerUnits.length;
+                    gameMap?.centerOn(avgX, avgY);
+                } else {
+                    gameMap?.requestRender();
+                }
+            }
         });
     }
 

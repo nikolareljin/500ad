@@ -90,7 +90,124 @@ const EMPIRE_CORE_TOWNS = {
     sassanid: ['ctesiphon', 'tbilisi', 'isfahan', 'rayy', 'merv', 'samarkand', 'bukhara', 'herat', 'balkh', 'kabul']
 };
 
-const SAVE_VERSION = '1.2.0';
+const CENTURY_EMPIRE_CORE_TOWNS = {
+    '6': {
+        byzantine: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch',
+            'alexandria', 'jerusalem', 'ravenna', 'naples', 'carthage', 'cartagena'
+        ],
+        frank: ['rome', 'milan', 'aachen', 'paris', 'toledo', 'cordoba'],
+        bulgar: ['belgrade', 'vienna'],
+        arab: ['mecca', 'medina', 'sanaa', 'aden'],
+        sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv', 'herat', 'balkh', 'kabul', 'tbilisi']
+    },
+    '7': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'alexandria', 'ravenna'],
+        frank: ['aachen', 'paris', 'rome', 'milan', 'toledo', 'cordoba'],
+        bulgar: ['preslav', 'belgrade'],
+        arab: ['damascus', 'aleppo', 'fustat', 'mecca', 'medina', 'basra'],
+        sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv', 'herat']
+    },
+    '10': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond'],
+        frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'massilia'],
+        bulgar: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev'],
+        arab: ['baghdad', 'damascus', 'aleppo', 'basra', 'fustat', 'mecca', 'medina'],
+        sassanid: ['isfahan', 'rayy', 'merv', 'herat', 'balkh', 'samarkand', 'bukhara']
+    },
+    '11': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'trebizond', 'athens', 'serdica'],
+        frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'london', 'prague'],
+        bulgar: ['preslav', 'belgrade', 'skopje'],
+        arab: ['iconium', 'caesarea', 'edessa', 'antioch', 'aleppo', 'damascus', 'baghdad', 'isfahan', 'rayy'],
+        sassanid: ['isfahan', 'rayy', 'merv', 'herat', 'samarkand', 'bukhara']
+    }
+};
+
+const LEADER_START_PROFILES = {
+    justinian: {
+        startTownId: 'constantinople',
+        empireCoreTowns: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch',
+            'alexandria', 'jerusalem', 'ravenna', 'rome', 'naples', 'carthage', 'cartagena'
+        ]
+    },
+    belisarius: {
+        startTownId: 'constantinople',
+        empireCoreTowns: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria'
+        ]
+    },
+    totila: {
+        startTownId: 'ravenna',
+        empireCoreTowns: ['ravenna', 'rome', 'milan', 'naples', 'venice']
+    },
+    khosrow1: {
+        startTownId: 'ctesiphon',
+        empireCoreTowns: ['ctesiphon', 'isfahan', 'rayy', 'tbilisi', 'merv', 'herat']
+    },
+    heraclius: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria', 'ravenna']
+    },
+    khalid: {
+        startTownId: 'damascus',
+        empireCoreTowns: ['damascus', 'aleppo', 'jerusalem', 'medina', 'mecca', 'fustat'],
+        nomadicBuildStart: true
+    },
+    basil2: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond', 'serdica']
+    },
+    samuel: {
+        startTownId: 'preslav',
+        empireCoreTowns: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev']
+    },
+    alexios1: {
+        startTownId: 'constantinople',
+        empireCoreTowns: ['constantinople', 'thessalonica', 'nicaea', 'trebizond', 'athens']
+    },
+    alp_arslan: {
+        startTownId: 'caesarea',
+        empireCoreTowns: ['caesarea', 'iconium', 'edessa', 'aleppo', 'rayy', 'isfahan'],
+        nomadicBuildStart: true
+    },
+    bardas_skleros: {
+        startTownId: 'caesarea',
+        empireCoreTowns: ['caesarea', 'ancyra', 'iconium', 'edessa', 'trebizond']
+    }
+};
+
+const CENTURY_TOWN_CONTROL_OVERRIDES = {
+    '6': {
+        ravenna: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
+        rome: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
+        milan: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
+        naples: { civilization: 'byzantine', stance: 'neutral', tribe: 'Italo-Romans' }
+    },
+    '7': {
+        baghdad: { civilization: 'sassanid', stance: 'neutral', tribe: 'Mesopotamians' },
+        damascus: { civilization: 'arab', stance: 'core', tribe: 'Levantine Arabs' },
+        aleppo: { civilization: 'arab', stance: 'core', tribe: 'North Syrian Arabs' },
+        jerusalem: { civilization: 'byzantine', stance: 'neutral', tribe: 'Levantine Communities' },
+        fustat: { civilization: 'arab', stance: 'core', tribe: 'Egyptian Arabs' }
+    },
+    '10': {
+        serdica: { civilization: 'bulgar', stance: 'hostile', tribe: 'Bulgars' },
+        skopje: { civilization: 'bulgar', stance: 'hostile', tribe: 'South Slavs' },
+        thessalonica: { civilization: 'byzantine', stance: 'hostile', tribe: 'Byzantine Greeks' },
+        kiev: { civilization: 'bulgar', stance: 'core', tribe: 'Kievan Slavs' }
+    },
+    '11': {
+        iconium: { civilization: 'arab', stance: 'hostile', tribe: 'Turkic settlers' },
+        caesarea: { civilization: 'arab', stance: 'hostile', tribe: 'Turkic frontier clans' },
+        edessa: { civilization: 'arab', stance: 'hostile', tribe: 'Turkic frontier clans' },
+        ancyra: { civilization: 'byzantine', stance: 'hostile', tribe: 'Anatolian Greeks' },
+        antioch: { civilization: 'arab', stance: 'hostile', tribe: 'Syrians' }
+    }
+};
+
+const SAVE_VERSION = '1.2.1';
 
 const TECHNOLOGY_TREE = {
     military_logistics: {
@@ -220,7 +337,7 @@ class GameState {
             return false;
         }
 
-        const civilization = this.resolveCivilization(faction);
+        const civilization = this.resolveCivilization(faction, leader);
         this.selectedLeader = leader;
         this.selectedCentury = century;
         this.selectedFaction = civilization;
@@ -279,9 +396,42 @@ class GameState {
         return true;
     }
 
-    resolveCivilization(faction) {
+    resolveCivilization(faction, leader = null) {
+        if (leader?.civilization && CIVILIZATION_ALIASES[leader.civilization]) {
+            return CIVILIZATION_ALIASES[leader.civilization];
+        }
+        if (faction === 'enemies') {
+            const inferred = this.inferCivilizationFromLeader(leader);
+            if (inferred) return inferred;
+        }
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
         return normalizedFaction;
+    }
+
+    inferCivilizationFromLeader(leader) {
+        if (!leader) return null;
+        const text = `${leader.faction || ''} ${leader.title || ''} ${leader.name || ''}`.toLowerCase();
+
+        if (text.includes('sassanid') || text.includes('persian')) return 'sassanid';
+        if (text.includes('bulgar')) return 'bulgar';
+        if (text.includes('seljuk') || text.includes('rashidun') || text.includes('caliph')) return 'arab';
+        if (
+            text.includes('ostrogoth') ||
+            text.includes('goth') ||
+            text.includes('frank') ||
+            text.includes('lombard') ||
+            text.includes('visigoth')
+        ) return 'frank';
+
+        return null;
+    }
+
+    applyFactionUnitNaming(unit, faction) {
+        if (!unit) return;
+        unit.faction = faction || unit.faction;
+        if (unit.faction && unit.faction !== 'byzantine' && typeof unit.name === 'string') {
+            unit.name = unit.name.replace(/^Byzantine\s+/i, '');
+        }
     }
 
     seedAdvancedEmpireInfrastructure() {
@@ -322,20 +472,56 @@ class GameState {
         return fallbackTown;
     }
 
+    getEmpireCoreTownsForCentury(faction) {
+        const selectedCentury = this.selectedCentury;
+        if (selectedCentury == null) {
+            return EMPIRE_CORE_TOWNS[faction] || [];
+        }
+        return CENTURY_EMPIRE_CORE_TOWNS[String(selectedCentury)]?.[faction] || EMPIRE_CORE_TOWNS[faction] || [];
+    }
+
+    getLeaderStartProfile(playerFaction) {
+        const leaderId = this.selectedLeader?.id;
+        const override = leaderId ? LEADER_START_PROFILES[leaderId] : null;
+        const fallbackTown = this.getStartingTownForFaction(playerFaction);
+        return {
+            startTownId: override?.startTownId || fallbackTown.id,
+            empireCoreTowns: override?.empireCoreTowns || this.getEmpireCoreTownsForCentury(playerFaction),
+            nomadicBuildStart: Boolean(override?.nomadicBuildStart)
+        };
+    }
+
+    isNomadicBuildStart(profile, scenario) {
+        return scenario === SCENARIOS.building && Boolean(profile?.nomadicBuildStart);
+    }
+
+    getHistoricalTownControlForCentury(townId) {
+        const base = HISTORICAL_TOWN_CONTROL[townId] || {
+            tribe: 'Local tribe',
+            civilization: 'neutral',
+            stance: 'neutral'
+        };
+        const selectedCentury = this.selectedCentury;
+        if (selectedCentury == null) {
+            return base;
+        }
+        const centuryOverrides = CENTURY_TOWN_CONTROL_OVERRIDES[String(selectedCentury)] || {};
+        const override = centuryOverrides[townId];
+        return override ? { ...base, ...override } : base;
+    }
+
     setupScenarioTowns(playerFaction, scenario) {
-        const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
-        const startingTownId = this.getStartingTownForFaction(playerFaction).id;
+        const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
+        const playerEmpireCore = new Set(leaderStartProfile.empireCoreTowns || []);
+        const nomadicBuildStart = this.isNomadicBuildStart(leaderStartProfile, scenario);
+        const startingTownId = nomadicBuildStart ? null : leaderStartProfile.startTownId;
         this.player.territories = [];
 
         HISTORIC_TOWNS.forEach((town) => {
             const tile = gameMap.getTile(town.x, town.y);
             if (!tile?.cityData) return;
 
-            const historical = HISTORICAL_TOWN_CONTROL[town.id] || {
-                tribe: 'Local tribe',
-                civilization: 'neutral',
-                stance: 'neutral'
-            };
+            const historical = this.getHistoricalTownControlForCentury(town.id);
             tile.cityData.tribe = historical.tribe;
             tile.cityData.historicalCivilization = historical.civilization;
             tile.cityData.historicalStance = historical.stance;
@@ -351,7 +537,10 @@ class GameState {
 
             if (scenario === SCENARIOS.building) {
                 // In the build scenario, many towns remain neutral and may join or resist.
-                if (historical.stance === 'hostile') {
+                // For nomadic starts, same-civilization core towns begin neutral until conquered/allied.
+                if (nomadicBuildStart && historical.civilization === playerFaction) {
+                    this.applyTownOwner(town, 'neutral', historical.civilization);
+                } else if (historical.stance === 'hostile') {
                     this.applyTownOwner(town, 'enemy', historical.civilization);
                 } else {
                     this.applyTownOwner(town, 'neutral', historical.civilization);
@@ -861,11 +1050,21 @@ class GameState {
 
 
     createStartingUnits(faction, scenario) {
+        const leaderStartProfile = this.getLeaderStartProfile(faction);
+        const nomadicBuildStart = this.isNomadicBuildStart(leaderStartProfile, scenario);
         const playerCities = gameMap.getCityTiles('player');
-        if (playerCities.length === 0) return;
+        if (playerCities.length === 0 && !nomadicBuildStart) return;
 
-        const capital = playerCities.find(t => t.cityData?.kind === 'capital') || playerCities[0];
-        const startPos = { x: capital.x, y: capital.y };
+        let startPos = null;
+        if (playerCities.length > 0) {
+            const capital = playerCities.find(t => t.cityData?.kind === 'capital') || playerCities[0];
+            startPos = { x: capital.x, y: capital.y };
+        } else if (nomadicBuildStart) {
+            const anchorTown = HISTORIC_TOWNS.find(t => t.id === leaderStartProfile.startTownId);
+            if (anchorTown) startPos = { x: anchorTown.x, y: anchorTown.y };
+        }
+        if (!startPos) return;
+
         const baseUnits = scenario === SCENARIOS.empire
             ? [
                 { type: 'skutatoi', count: 5 },
@@ -880,14 +1079,22 @@ class GameState {
                 { type: 'civil_engineers', count: 1 }
             ];
 
-        baseUnits.forEach(({ type, count }) => {
+        const nomadicUnits = [
+            { type: 'kavallarioi', count: 3 },
+            { type: 'archers', count: 2 },
+            { type: 'horsearchers', count: 2 },
+            { type: 'explorer', count: 1 }
+        ];
+        const unitPlan = nomadicBuildStart ? nomadicUnits : baseUnits;
+
+        unitPlan.forEach(({ type, count }) => {
             for (let i = 0; i < count; i++) {
                 const preferredOffset = { x: i % 3 - 1, y: Math.floor(i / 3) - 1 };
                 const spawnPos = this.findAvailableSpawnPosition(startPos.x, startPos.y, [preferredOffset], 4);
                 if (!spawnPos) continue;
                 const unit = createUnit(type, spawnPos, 'player');
                 if (!unit) continue;
-                unit.faction = faction;
+                this.applyFactionUnitNaming(unit, faction);
                 this.units.push(unit);
                 this.player.unitsOwned.push(unit.id);
                 gameMap.revealArea(unit.position.x, unit.position.y, 3);
@@ -908,11 +1115,18 @@ class GameState {
                 if (!spawnPos) return;
                 const garrison = createUnit(garrisonType, spawnPos, 'player');
                 if (!garrison) return;
-                garrison.faction = faction;
+                this.applyFactionUnitNaming(garrison, faction);
                 this.units.push(garrison);
                 this.player.unitsOwned.push(garrison.id);
                 gameMap.revealArea(garrison.position.x, garrison.position.y, 2);
             });
+        }
+
+        if (nomadicBuildStart && window.uiManager) {
+            uiManager.showNotification(
+                `${this.selectedLeader?.name || 'This leader'} begins as a field army and must seize a town to establish a base`,
+                'info'
+            );
         }
     }
 
@@ -927,7 +1141,7 @@ class GameState {
             const unitType = baseTypes[i % baseTypes.length];
             const unit = createUnit(unitType, spawnPos, owner);
             if (!unit) continue;
-            unit.faction = faction;
+            this.applyFactionUnitNaming(unit, faction);
             this.units.push(unit);
         }
     }
@@ -1015,6 +1229,7 @@ class GameState {
         // Create unit
         const unit = createUnit(unitTypeId, position, 'player');
         if (unit) {
+            this.applyFactionUnitNaming(unit, this.player?.faction || this.selectedFaction || 'byzantine');
             this.units.push(unit);
             this.player.unitsOwned.push(unit.id);
         }
@@ -1560,11 +1775,15 @@ class GameState {
 
         // Loss: No units left or no player-controlled cities.
         const playerCities = gameMap?.getCityTiles('player') || [];
+        const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
+        const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
+        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario);
         const hasNoUnits = playerUnits.length === 0;
         const hasNoCities = playerCities.length === 0;
-        if (hasNoUnits || hasNoCities) {
+        const lostByCities = hasNoCities && !allowNoCityStart;
+        if (hasNoUnits || lostByCities) {
             if (window.uiManager) {
-                if (hasNoCities) {
+                if (lostByCities) {
                     uiManager.showGameOver(false, 'Your empire has lost its last city.');
                 } else {
                     uiManager.showGameOver(false);
@@ -1591,6 +1810,7 @@ class GameState {
             version: SAVE_VERSION,
             timestamp: Date.now(),
             selectedLeader: this.selectedLeader,
+            selectedCentury: this.selectedCentury,
             player: this.player,
             turn: this.turn,
             gameMode: this.gameMode,
@@ -1661,8 +1881,10 @@ class GameState {
         if (!gameMap) return;
         const scenario = this.selectedScenario || SCENARIOS.building;
         const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
-        const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
-        const startingTownId = this.getStartingTownForFaction(playerFaction).id;
+        const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
+        const playerEmpireCore = new Set(leaderStartProfile.empireCoreTowns || []);
+        const nomadicBuildStart = this.isNomadicBuildStart(leaderStartProfile, scenario);
+        const startingTownId = nomadicBuildStart ? null : leaderStartProfile.startTownId;
         const hasSavedOwnership = Array.isArray(cityOwnership) && cityOwnership.length > 0;
 
         if (!hasSavedOwnership) {
@@ -1680,11 +1902,7 @@ class GameState {
         HISTORIC_TOWNS.forEach((town) => {
             const tile = gameMap.getTile(town.x, town.y);
             if (!tile?.cityData) return;
-            const historical = HISTORICAL_TOWN_CONTROL[town.id] || {
-                tribe: 'Local tribe',
-                civilization: 'neutral',
-                stance: 'neutral'
-            };
+            const historical = this.getHistoricalTownControlForCentury(town.id);
             tile.cityData.tribe = historical.tribe;
             tile.cityData.historicalCivilization = historical.civilization;
             tile.cityData.historicalStance = historical.stance;
@@ -1730,7 +1948,13 @@ class GameState {
                     tile.owner = 'enemy';
                 }
             } else {
-                tile.owner = town.id === startingTownId ? 'player' : (historical.stance === 'hostile' ? 'enemy' : 'neutral');
+                if (startingTownId && town.id === startingTownId) {
+                    tile.owner = 'player';
+                } else if (nomadicBuildStart && historical.civilization === playerFaction) {
+                    tile.owner = 'neutral';
+                } else {
+                    tile.owner = historical.stance === 'hostile' ? 'enemy' : 'neutral';
+                }
             }
         });
 
@@ -1787,6 +2011,7 @@ class GameState {
         }
 
         this.selectedLeader = data.selectedLeader;
+        this.selectedCentury = data.selectedCentury ?? this.selectedCentury ?? '6';
         this.player = data.player;
         if (!this.player.techResearched) this.player.techResearched = [];
         if (!this.player.techEffects) {
