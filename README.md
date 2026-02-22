@@ -28,7 +28,7 @@ Watch the complete gameplay walkthrough showing map navigation, unit movement, a
 
 ![Gameplay Walkthrough](docs/screenshots/demo.webp)
 
-*The walkthrough demonstrates the 200x120 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
+*The walkthrough demonstrates the 320x180 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
 
 ## Overview
 
@@ -44,7 +44,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Historic Road Network**: Control major ancient trade routes including the Via Egnatia and Silk Road branches.
 
 ### Massive Geographic Map
-- **200x120 Tile Map**: 24,000 tiles covering Europe, the Mediterranean, Mesopotamia, Arabia, and Ethiopia
+- **320x180 Tile Map**: 57,600 tiles covering Europe, North/East Africa, Caucasus, Central Asia, Iran, Afghanistan, and northwestern India
 - **Accurate Geography**: Historic-world projection from Atlantic approaches to Persia, and from Britain to the Horn of Africa
 - **Major Regions**: 
   - Western: Iberia, France, British Isles, Atlantic coast
@@ -78,7 +78,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ### Mobile Optimized
 - **Touch Controls**: Tap to select, drag to move and pan
 - **Responsive Design**: Works on phones and tablets
-- **Performance Optimized**: Smooth 60 FPS even with 24,000 tiles
+- **Performance Optimized**: Render queueing, fog alpha caching, and viewport-based drawing tuned for the 57,600-tile map
 - **Portrait & Landscape**: Supports both orientations
 
 ## How to Play
@@ -208,7 +208,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 ```
 
 ### Map Coordinates Reference
-Key historical cities on the 200x120 map:
+Key historical cities on the 320x180 map:
 - **Constantinople** (Byzantine Capital): positioned from real lat/lon (28.97E, 41.01N)
 - **Rome** (Western Capital): positioned from real lat/lon (12.50E, 41.90N)
 - **Alexandria** (Egypt): positioned from real lat/lon (29.92E, 31.20N)
@@ -304,7 +304,7 @@ Modify CSS variables in `css/main.css` to change colors and styling.
 See `docs/geography.md` for:
 - map bounds and projection
 - land/sea generation approach
-- how city lon/lat values map to 200x120 tile coordinates
+- how city lon/lat values map to 320x180 tile coordinates
 
 ## Historical Notes
 

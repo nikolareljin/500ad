@@ -17,6 +17,12 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed unit healing flow by supporting recovery from friendly towns, fortified positions, and adjacent healer/support units.
 - Fixed enemy-fort tile movement by requiring assault resolution before entering undefended enemy forts.
+- Fixed an attack-action exploit by blocking unit attacks when the selected unit has no movement left.
+- Fixed turn processing order so movement resets before automated destination movement is processed.
+- Fixed `build_port` validation to check adjacent-water prerequisites before deducting resources.
+- Fixed unit action panel behavior where `Move` incorrectly triggered attack logic.
+- Fixed reference-map startup behavior by checking asset availability before loading the optional image.
+- Fixed docs to match expanded map dimensions (`320x180`, 57,600 tiles) and current geography bounds.
 
 ## [1.1.0] - 2026-02-20
 
