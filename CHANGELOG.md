@@ -19,7 +19,7 @@ All notable changes to this project are documented in this file.
 - Fixed enemy-leader campaigns incorrectly opening from Constantinople/Byzantine starting view.
 - Fixed non-Byzantine unit names showing `Byzantine ...` labels for enemy/player forces when playing alternate factions.
 - Fixed save/load restoration so the selected century is persisted and century-specific town control/core realms remain accurate after loading.
-- Fixed duplicate `serdica` century-core assignments that caused ambiguous Byzantine/Bulgar ownership in 10th/11th-century empire starts.
+- Fixed duplicate century-core town assignments (including `rome`/`serdica`) that caused ambiguous faction ownership in some empire starts.
 
 ## [1.2.0] - 2026-02-22
 

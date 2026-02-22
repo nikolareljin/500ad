@@ -94,7 +94,7 @@ const CENTURY_EMPIRE_CORE_TOWNS = {
     '6': {
         byzantine: [
             'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch',
-            'alexandria', 'jerusalem', 'ravenna', 'rome', 'naples', 'carthage', 'cartagena'
+            'alexandria', 'jerusalem', 'ravenna', 'naples', 'carthage', 'cartagena'
         ],
         frank: ['rome', 'milan', 'aachen', 'paris', 'toledo', 'cordoba'],
         bulgar: ['belgrade', 'vienna'],
