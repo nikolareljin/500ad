@@ -1318,7 +1318,7 @@ class UIManager {
                     const avgY = playerUnits.reduce((sum, u) => sum + u.position.y, 0) / playerUnits.length;
                     gameMap?.centerOn(avgX, avgY);
                 } else {
-                    gameMap?.render();
+                    gameMap?.requestRender();
                 }
             }
         });
