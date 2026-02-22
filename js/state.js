@@ -92,7 +92,10 @@ const EMPIRE_CORE_TOWNS = {
 
 const CENTURY_EMPIRE_CORE_TOWNS = {
     '6': {
-        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria', 'ravenna'],
+        byzantine: [
+            'constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch',
+            'alexandria', 'jerusalem', 'ravenna', 'rome', 'naples', 'carthage', 'cartagena'
+        ],
         frank: ['rome', 'milan', 'aachen', 'paris', 'toledo', 'cordoba'],
         bulgar: ['belgrade', 'vienna'],
         arab: ['mecca', 'medina', 'sanaa', 'aden'],
