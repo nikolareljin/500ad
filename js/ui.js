@@ -661,7 +661,7 @@ class UIManager {
                     return;
                 }
                 this.updateHUD();
-                gameMap?.render();
+                gameMap?.requestRender();
                 this.showNotification(`Technology researched: ${result.name}`, 'success');
             }
         );
