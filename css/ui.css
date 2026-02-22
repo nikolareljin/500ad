@@ -499,8 +499,11 @@
 }
 
 .unit-panel-header h3 {
+    font-family: var(--font-accent);
+    font-weight: 400;
     font-size: 1.2rem;
     color: var(--deep-red);
+    letter-spacing: 0.02em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -555,8 +558,11 @@
 }
 
 .unit-portrait-name {
+    font-family: var(--font-accent);
+    font-weight: 400;
     font-size: 1rem;
     color: var(--gold-light);
+    letter-spacing: 0.02em;
     opacity: 1;
 }
 
@@ -674,6 +680,12 @@
     color: var(--parchment);
 }
 
+.action-bar-btn .btn-label {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+}
+
 /* === Modal Overlay === */
 .modal-overlay {
     position: fixed;
@@ -703,6 +715,31 @@
     overflow-y: auto;
     box-shadow: var(--shadow-deep);
     animation: modalAppear 0.3s ease-out;
+}
+
+.modal h2 {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+}
+
+.modal h3 {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+}
+
+.modal .menu-btn {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+}
+
+.modal .menu-btn .btn-text,
+.modal .choice-btn .btn-text {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.02em;
 }
 
 @keyframes modalAppear {
@@ -796,9 +833,11 @@
 }
 
 .turn-processing-title {
-    font-family: var(--font-display);
+    font-family: var(--font-accent);
+    font-weight: 400;
     font-size: 1.15rem;
     color: var(--gold-light);
+    letter-spacing: 0.04em;
 }
 
 .turn-processing-subtitle {
