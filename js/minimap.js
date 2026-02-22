@@ -103,7 +103,7 @@ class Minimap {
         this.gameMap.camera.y = Math.max(0, Math.min(maxY, worldY));
 
         // Re-render both maps
-        this.gameMap.render();
+        this.gameMap.requestRender();
         this.updateViewport();
     }
 

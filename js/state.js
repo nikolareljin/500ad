@@ -276,7 +276,7 @@ class GameState {
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(scenario);
         gameMap.markTerritoryDirty();
-        gameMap.render();
+        gameMap.requestRender();
 
         this.initialized = true;
         return true;

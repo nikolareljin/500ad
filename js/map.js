@@ -879,7 +879,12 @@ class GameMap {
         this.renderQueued = true;
         requestAnimationFrame(() => {
             this.renderQueued = false;
+            const territoryDirtyBefore = this.territoryControlDirty;
             this.render();
+            if (typeof minimap !== 'undefined' && minimap) {
+                if (territoryDirtyBefore) minimap.render();
+                else minimap.updateViewport();
+            }
         });
     }
 
@@ -1289,11 +1294,11 @@ function initializeGameMap() {
         gameMap.camera.x = (constantinopleX * MAP_CONFIG.tileSize) - (canvas.width / 2);
         gameMap.camera.y = (constantinopleY * MAP_CONFIG.tileSize) - (canvas.height / 2);
         gameMap.markTerritoryDirty();
-        gameMap.render();
+        gameMap.requestRender();
         return;
     }
 
     gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
     gameMap.initializeCanvas(canvas);
-    gameMap.render();
+    gameMap.requestRender();
 }

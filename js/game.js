@@ -77,7 +77,9 @@ class Game {
 
         this.running = true;
         this.lastFrameTime = performance.now();
-        this.gameLoop();
+        if (this.continuousMapRendering) {
+            this.gameLoop();
+        }
     }
 
     /**
