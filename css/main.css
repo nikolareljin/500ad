@@ -7,14 +7,24 @@
 :root {
     /* Colonization-inspired Color Palette */
     --gold: #D4AF37;
+    --imperial-gold: #D4AF37;
     --gold-dark: #B8941F;
     --gold-light: #F4D03F;
     --wood-brown: #5D4037;
     --deep-red: #8B0000;
     --byzantine-purple: #702963;
+    --byzantine-purple-dark: #3F1D5A;
+    --deep-blue: #0F2A4A;
+    --byzantine-blue: #2563EB;
+    --crimson: #B91C1C;
+    --crimson-dark: #7F1D1D;
     --parchment: #F4E4BC;
     --parchment-dark: #D2B48C;
+    --parchment-ink: #3B2C17;
+    --parchment-ink-soft: #5B472A;
+    --parchment-accent: #8B6A14;
     --ink-black: #2C1810;
+    --marble-white: #F7F2E7;
     --canvas-bg: #1A1A1A;
 
     /* UI Aesthetic */

@@ -500,7 +500,7 @@
 
 .unit-panel-header h3 {
     font-size: 1.2rem;
-    color: #7b1515;
+    color: var(--deep-red);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -512,13 +512,13 @@
     font-size: 1.5rem;
     background: transparent;
     border: none;
-    color: rgba(95, 78, 48, 0.9);
+    color: var(--parchment-ink-soft);
     cursor: pointer;
     transition: color var(--transition-fast);
 }
 
 .close-btn:hover {
-    color: #7b1515;
+    color: var(--deep-red);
 }
 
 .unit-panel-content {
@@ -526,7 +526,7 @@
     padding: var(--spacing-md);
     overflow-y: auto;
     min-height: 0;
-    color: #322712;
+    color: var(--parchment-ink);
 }
 
 .unit-portrait {
@@ -536,6 +536,7 @@
     border-radius: var(--radius-md);
     border: 2px solid var(--imperial-gold);
     margin-bottom: var(--spacing-md);
+    box-shadow: inset 0 0 0 1px rgba(247, 242, 231, 0.08);
 }
 
 .unit-portrait-content {
@@ -544,8 +545,9 @@
     justify-content: center;
     height: 100%;
     font-size: 2rem;
-    color: #f4d03f;
+    color: var(--marble-white);
     gap: 0.6rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 
 .unit-portrait-icon {
@@ -554,7 +556,8 @@
 
 .unit-portrait-name {
     font-size: 1rem;
-    opacity: 0.9;
+    color: var(--gold-light);
+    opacity: 1;
 }
 
 .unit-stats-grid {
@@ -572,7 +575,7 @@
 
 .stat-label {
     font-size: 0.85rem;
-    color: rgba(76, 61, 35, 0.88);
+    color: var(--parchment-ink-soft);
     opacity: 1;
 }
 
@@ -592,7 +595,7 @@
 .stat-value {
     font-family: var(--font-display);
     font-weight: 700;
-    color: #8b6a14;
+    color: var(--parchment-accent);
 }
 
 .unit-actions {
@@ -611,6 +614,7 @@
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all var(--transition-fast);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
 }
 
 .action-btn:hover {
