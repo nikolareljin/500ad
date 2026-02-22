@@ -16,8 +16,19 @@ class AIManager {
 
         // Find all enemy units
         const enemyUnits = gameState.units.filter(u => u.owner === 'enemy');
+        if (enemyUnits.length === 0) {
+            console.log('Enemy turn skipped: no enemy units available.');
+            return;
+        }
+
+        // Focus once at the start instead of every enemy action to avoid excessive camera jumps/renders.
+        if (gameMap && enemyUnits[0]) {
+            gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
+            gameMap.requestRender();
+        }
 
         for (const unit of enemyUnits) {
+
             await this.processUnit(unit);
             // Small delay between unit actions for visual clarity
             await new Promise(resolve => setTimeout(resolve, this.thinkingDelay));
@@ -30,11 +41,18 @@ class AIManager {
      * Process a single enemy unit
      */
     async processUnit(unit) {
+        if (!unit || unit.currentHealth <= 0) return;
         // 1. Can we attack something nearby?
         const adjacentEnemy = this.findNearbyTarget(unit);
         if (adjacentEnemy) {
             console.log(`AI: ${unit.name} attacking ${adjacentEnemy.name}`);
-            const result = executeCombat(unit.id, adjacentEnemy.id);
+            const defenderTile = gameMap.getTile(adjacentEnemy.position.x, adjacentEnemy.position.y);
+            const terrain = defenderTile?.terrain || 'plains';
+            const battleType = defenderTile?.cityData ? 'siege' : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
+            const result = executeBattle(unit.id, adjacentEnemy.id, terrain, battleType, {
+                attemptRetreat: true,
+                retreatSide: 'defender'
+            });
             if (result.success && window.uiManager) {
                 window.uiManager.showCombatResult(result);
             }
@@ -47,12 +65,24 @@ class AIManager {
             const nextStep = this.calculateNextStep(unit.position, target.position);
             if (nextStep) {
                 console.log(`AI: ${unit.name} moving from ${unit.position.x},${unit.position.y} to ${nextStep.x},${nextStep.y}`);
-                gameState.moveUnit(unit.id, nextStep);
+                const moved = gameState.moveUnit(unit.id, nextStep);
+                if (!moved) {
+                    const fallback = this.findAnyPassableNeighbor(unit);
+                    if (fallback) {
+                        gameState.moveUnit(unit.id, fallback);
+                    }
+                }
 
                 // After moving, check if we can attack now
                 const newAdjacentEnemy = this.findNearbyTarget(unit);
                 if (newAdjacentEnemy) {
-                    const result = executeCombat(unit.id, newAdjacentEnemy.id);
+                    const defenderTile = gameMap.getTile(newAdjacentEnemy.position.x, newAdjacentEnemy.position.y);
+                    const terrain = defenderTile?.terrain || 'plains';
+                    const battleType = defenderTile?.cityData ? 'siege' : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
+                    const result = executeBattle(unit.id, newAdjacentEnemy.id, terrain, battleType, {
+                        attemptRetreat: true,
+                        retreatSide: 'defender'
+                    });
                     if (result.success && window.uiManager) {
                         window.uiManager.showCombatResult(result);
                     }
@@ -142,9 +172,33 @@ class AIManager {
         nextX = Math.max(0, Math.min(gameMap.width - 1, nextX));
         nextY = Math.max(0, Math.min(gameMap.height - 1, nextY));
 
+        const tile = gameMap.getTile(nextX, nextY);
+        if (!tile) return null;
+        const isWater = tile.terrain === 'water';
+        if (isWater) return null;
+
         return { x: nextX, y: nextY };
+    }
+
+    findAnyPassableNeighbor(unit) {
+        const offsets = [
+            { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+        ];
+        for (const offset of offsets) {
+            const nx = unit.position.x + offset.x;
+            const ny = unit.position.y + offset.y;
+            if (nx < 0 || nx >= gameMap.width || ny < 0 || ny >= gameMap.height) continue;
+            const tile = gameMap.getTile(nx, ny);
+            if (!tile || tile.terrain === 'water') continue;
+            const occupied = gameState.units.some(u => u.id !== unit.id && u.position.x === nx && u.position.y === ny);
+            if (occupied) continue;
+            return { x: nx, y: ny };
+        }
+        return null;
     }
 }
 
 // Global AI instance
 const aiManager = new AIManager();
+window.aiManager = aiManager;

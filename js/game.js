@@ -9,6 +9,7 @@ class Game {
         this.lastFrameTime = 0;
         this.fps = 60;
         this.frameInterval = 1000 / this.fps;
+        this.continuousMapRendering = false;
     }
 
     /**
@@ -76,7 +77,9 @@ class Game {
 
         this.running = true;
         this.lastFrameTime = performance.now();
-        this.gameLoop();
+        if (this.continuousMapRendering) {
+            this.gameLoop();
+        }
     }
 
     /**
@@ -122,20 +125,17 @@ class Game {
      * Render game
      */
     render() {
-        // Render map if in game screen
-        if (gameMap && uiManager.currentScreen === 'game') {
-            const territoryChangedThisFrame = gameMap.territoryControlDirty;
-            gameMap.render();
-            const minimapNeedsRender = territoryChangedThisFrame;
-
-            // Update minimap viewport indicator
-            if (minimap) {
-                if (minimapNeedsRender) {
-                    minimap.render();
-                } else {
-                    minimap.updateViewport();
-                }
+        // Turn-based map is rendered on demand by UI/state actions.
+        if (!this.continuousMapRendering) {
+            if (minimap && uiManager.currentScreen === 'game') {
+                minimap.updateViewport();
             }
+            return;
+        }
+
+        if (gameMap && uiManager.currentScreen === 'game') {
+            gameMap.requestRender();
+            if (minimap) minimap.updateViewport();
         }
     }
 
@@ -149,7 +149,7 @@ class Game {
             if (container) {
                 gameMap.canvas.width = container.clientWidth;
                 gameMap.canvas.height = container.clientHeight;
-                gameMap.render();
+                gameMap.requestRender();
             }
         }
 

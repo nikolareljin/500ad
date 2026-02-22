@@ -29,6 +29,7 @@ class UIManager {
         this.modalOverlay = document.getElementById('modal-overlay');
         this.modalContent = document.getElementById('modal-content');
         this.notificationContainer = document.getElementById('notification-container');
+        this.turnProcessingOverlay = document.getElementById('turn-processing-overlay');
 
         // Set up event listeners
         this.setupEventListeners();
@@ -125,6 +126,20 @@ class UIManager {
         document.getElementById('btn-tech')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.researchTechnology();
+        });
+
+        document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.attackWithSelectedUnit();
+        });
+
+        document.getElementById('btn-fortify-unit')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.fortifySelectedUnit();
+        });
+
+        window.addEventListener('resize', () => {
+            this.positionUnitPanel();
         });
 
         // Close modal on overlay click
@@ -302,12 +317,16 @@ class UIManager {
 
         // Determine symbol based on faction
         const symbol = leader.faction ? getFactionSymbol(leader.faction) : (this.selectedFaction ? getFactionSymbol(this.selectedFaction) : BYZANTINE_SYMBOLS.crown);
+        const portraitPath = this.getLeaderPortraitPath(leader);
+        const portraitHtml = portraitPath
+            ? `<img src="${portraitPath}" alt="${leader.name}" loading="lazy" onerror="this.remove(); this.parentElement.classList.add('leader-portrait-fallback'); this.parentElement.innerHTML='${symbol}';">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg, var(--parchment-dark), var(--parchment));">
+                    ${symbol}
+                </div>`;
 
         card.innerHTML = `
             <div class="leader-portrait">
-                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg, var(--parchment-dark), var(--parchment));">
-                    ${symbol}
-                </div>
+                ${portraitHtml}
             </div>
             <h4>${leader.name}</h4>
             <p>${leader.title}</p>
@@ -353,7 +372,15 @@ class UIManager {
         // Update portrait
         const portrait = document.getElementById('leader-portrait-large');
         if (portrait) {
-            portrait.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem;">👑</div>';
+            portrait.classList.remove('leader-portrait-fallback');
+            const symbol = leader.faction ? getFactionSymbol(leader.faction) : (this.selectedFaction ? getFactionSymbol(this.selectedFaction) : BYZANTINE_SYMBOLS.crown);
+            const portraitPath = this.getLeaderPortraitPath(leader);
+            if (portraitPath) {
+                portrait.innerHTML = `<img src="${portraitPath}" alt="${leader.name}" onerror="this.remove(); this.parentElement.classList.add('leader-portrait-fallback'); this.parentElement.innerHTML='${symbol}';">`;
+            } else {
+                portrait.classList.add('leader-portrait-fallback');
+                portrait.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem;">${symbol}</div>`;
+            }
         }
 
         // Update info
@@ -399,6 +426,18 @@ class UIManager {
         this.selectedLeaderCard = leader;
     }
 
+    getLeaderPortraitPath(leader) {
+        const file = leader?.portrait;
+        if (!file) return null;
+        if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('//')) {
+            return null;
+        }
+        if (file.startsWith('assets/') || file.startsWith('./assets/') || file.startsWith('/assets/')) {
+            return file;
+        }
+        return `assets/images/leaders/${file}`;
+    }
+
     /**
      * Switch era tab
      */
@@ -440,7 +479,9 @@ class UIManager {
         if (success) {
             this.initializeGameView();
             this.updateHUD();
-            audioManager.playMusic('battle_theme');
+            // For battles, use: battle_theme
+            // For ambient music, use: 500ad_ambient
+            audioManager.playMusic('500ad_ambient');
             this.showNotification(
                 `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`,
                 'info'
@@ -467,6 +508,7 @@ class UIManager {
             gameMap?.markTerritoryDirty();
             this.initializeGameView();
             this.updateHUD();
+            audioManager.playMusic('500ad_ambient');
             this.showNotification('Game loaded', 'success');
         } else {
             this.showScreen('mainMenu');
@@ -478,19 +520,42 @@ class UIManager {
      * End turn
      */
     async endTurn() {
-        const result = await gameState.endTurn();
-        this.updateHUD();
-        gameMap?.render();
+        this.showTurnProcessing(true);
+        try {
+            const result = await gameState.endTurn();
+            if (!result) {
+                this.showNotification('Turn did not complete', 'error');
+                return;
+            }
+            if (result.paused) {
+                this.showNotification('Please wait, turn is already processing', 'info');
+                return;
+            }
+            this.updateHUD();
+            gameMap?.requestRender();
 
-        // Auto-save
-        if (storageManager.settings.autoSave) {
-            storageManager.autoSave();
+            // Auto-save
+            if (storageManager.settings.autoSave) {
+                storageManager.autoSave();
+            }
+
+            this.showNotification(
+                `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
+                'success'
+            );
+        } finally {
+            this.showTurnProcessing(false);
         }
+    }
 
-        this.showNotification(
-            `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
-            'success'
-        );
+    showTurnProcessing(visible) {
+        if (!this.turnProcessingOverlay) return;
+        this.turnProcessingOverlay.classList.toggle('active', Boolean(visible));
+        this.turnProcessingOverlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        const endTurnBtn = document.getElementById('btn-end-turn');
+        if (endTurnBtn) {
+            endTurnBtn.disabled = Boolean(visible);
+        }
     }
 
     recruitAtSelectedCity() {
@@ -505,25 +570,46 @@ class UIManager {
             return;
         }
 
-        const recruitType = tile.cityData.infrastructure.industry >= 3 ? 'kavallarioi' : 'skutatoi';
-        const spawnTile = this.findRecruitSpawnTile(tile);
-        if (!spawnTile) {
-            this.showNotification('No open adjacent tile for recruitment', 'error');
-            return;
-        }
+        const choices = gameState.getRecruitableUnitTypes(tile)
+            .map((unitId) => {
+                const unit = getUnitById(unitId);
+                return {
+                    id: unitId,
+                    title: `${unit?.name || unitId}`,
+                    subtitle: unit ? `${unit.cost.gold}g / ${unit.cost.manpower}m` : ''
+                };
+            });
 
-        const unit = gameState.recruitUnit(recruitType, spawnTile);
-        if (!unit) {
-            this.showNotification(`Not enough resources to recruit ${recruitType}`, 'error');
-            return;
-        }
-
-        this.updateHUD();
-        gameMap.render();
-        this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+        this.showChoiceModal(
+            `Recruit at ${tile.cityData.name}`,
+            choices,
+            (unitId) => {
+                const spawnTile = this.findRecruitSpawnTile(tile, unitId);
+                if (!spawnTile) {
+                    const unit = getUnitById(unitId);
+                    const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
+                    this.showNotification(
+                        isNaval ? 'No valid adjacent water tile for naval recruitment' : 'No open adjacent land tile for recruitment',
+                        'error'
+                    );
+                    return;
+                }
+                const unit = gameState.recruitUnit(unitId, spawnTile);
+                if (!unit) {
+                    this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap.requestRender();
+                this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+            }
+        );
     }
 
-    findRecruitSpawnTile(cityTile) {
+    findRecruitSpawnTile(cityTile, unitId) {
+        const unitType = getUnitById(unitId);
+        if (!unitType) return null;
+        const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
         const offsets = [
             { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
             { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
@@ -533,7 +619,9 @@ class UIManager {
             const x = cityTile.x + offset.x;
             const y = cityTile.y + offset.y;
             const mapTile = gameMap.getTile(x, y);
-            if (!mapTile || mapTile.terrain === 'water') continue;
+            if (!mapTile) continue;
+            if (wantsWater && mapTile.terrain !== 'water') continue;
+            if (!wantsWater && mapTile.terrain === 'water') continue;
 
             const occupied = gameState.units.some(u => u.position.x === x && u.position.y === y);
             if (occupied) continue;
@@ -550,63 +638,147 @@ class UIManager {
         }
 
         const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
-        if (!tile?.cityData || tile.owner !== 'player') {
-            this.showNotification('Build actions require a player-owned city', 'error');
+        const isPlayerControlled = tile && (tile.owner === 'player' || gameMap.getTerritoryOwnerAt(tile.x, tile.y) === 'player');
+        if (!isPlayerControlled) {
+            this.showNotification('Build actions require a player-owned tile', 'error');
             return;
         }
 
-        const infra = tile.cityData.infrastructure;
-        const infraLevel = infra.roads + infra.agriculture + infra.industry;
-        const buildCost = {
-            gold: 80 + infraLevel * 25,
-            manpower: 20 + infraLevel * 10
-        };
-        if (!gameState.spendResources(buildCost.gold, buildCost.manpower, 0)) {
-            this.showNotification('Insufficient resources for city development', 'error');
-            return;
-        }
+        const choices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
+            id: actionId,
+            title: action.name,
+            subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
+        }));
 
-        const cycle = ['agriculture', 'industry', 'roads'];
-        const target = cycle[(gameState.turn + tile.importance) % cycle.length];
-        infra[target] = Math.min(infra[target] + 1, 5);
-        tile.cityData.population = Math.min(tile.cityData.population + 1, 12);
-
-        if (target === 'agriculture') tile.cityData.production.food += 1;
-        if (target === 'industry') tile.cityData.production.industry += 1;
-        if (target === 'roads') tile.cityData.production.gold += 1;
-
-        if (!tile.cityData.wonder && tile.cityData.kind === 'capital' && infra.industry >= 4) {
-            tile.cityData.wonder = 'Imperial Forum';
-            tile.cityData.production.gold += 1;
-        }
-
-        this.updateHUD();
-        gameMap.render();
-        this.showNotification(
-            `${tile.cityData.name}: improved ${target} (-${buildCost.gold}g/-${buildCost.manpower}m)`,
-            'success'
+        this.showChoiceModal(
+            `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
+            choices,
+            (actionId) => {
+                const result = gameState.applyCityBuildAction(tile, actionId);
+                if (!result.success) {
+                    this.showNotification(result.message || 'Build failed', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap.requestRender();
+                this.showNotification(`${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`, 'success');
+            }
         );
     }
 
     researchTechnology() {
-        const cost = { gold: 220, prestige: 30 };
-        if (!gameState.spendResources(cost.gold, 0, cost.prestige)) {
-            this.showNotification('Not enough gold/prestige for research', 'error');
+        const available = gameState.getAvailableTechnologies();
+        if (available.length === 0) {
+            this.showNotification('No technologies currently available', 'info');
             return;
         }
 
-        if (!gameState.player.techResearched.includes('logistics')) {
-            gameState.player.techResearched.push('logistics');
-            // Logistics boosts city output.
-            gameMap?.getCityTiles('player').forEach(tile => {
-                tile.cityData.production.food += 1;
-                tile.cityData.production.industry += 1;
+        const choices = available.map((tech) => ({
+            id: tech.id,
+            title: tech.name,
+            subtitle: `${tech.cost.gold}g / ${tech.cost.prestige}p`
+        }));
+
+        this.showChoiceModal(
+            'Research Technology',
+            choices,
+            (techId) => {
+                const result = gameState.researchTechnology(techId);
+                if (!result.success) {
+                    this.showNotification(result.message || 'Research failed', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap?.requestRender();
+                this.showNotification(`Technology researched: ${result.name}`, 'success');
+            }
+        );
+    }
+
+    showChoiceModal(title, options, onSelect) {
+        const items = options.map((option) => `
+            <button class="menu-btn choice-btn" data-choice="${option.id}">
+                <span class="btn-text">${option.title}</span>
+                <small style="display:block;opacity:0.75;margin-top:0.2rem;">${option.subtitle || ''}</small>
+            </button>
+        `).join('');
+
+        const content = `
+            <h2>${title}</h2>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;max-height:65vh;overflow:auto;">
+                ${items}
+            </div>
+            <div style="margin-top:1rem;">
+                <button class="menu-btn" id="btn-close-choice">Close</button>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.modalContent?.querySelectorAll('.choice-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-choice');
+                this.closeModal();
+                onSelect(id);
             });
+        });
+        this.modalContent?.querySelector('#btn-close-choice')?.addEventListener('click', () => this.closeModal());
+    }
+
+    attackWithSelectedUnit() {
+        const selected = gameState.selectedUnit;
+        if (!selected || selected.owner !== 'player') {
+            this.showNotification('Select one of your units first', 'error');
+            return;
+        }
+        if (selected.currentMovement <= 0) {
+            this.showNotification(`${selected.name} has no movement remaining this turn`, 'error');
+            return;
+        }
+        if (!gameMap?.selectedTile) {
+            this.showNotification('Select a target tile', 'error');
+            return;
+        }
+        const target = gameState.units.find(u =>
+            u.owner !== 'player' &&
+            u.position.x === gameMap.selectedTile.x &&
+            u.position.y === gameMap.selectedTile.y
+        );
+        if (!target) {
+            this.showNotification('No enemy unit on selected tile', 'error');
+            return;
         }
 
+        const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
+        const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
+            attemptRetreat: true,
+            retreatSide: 'defender'
+        });
+        if (!result.success) {
+            this.showNotification(result.message || 'Attack failed', 'error');
+            return;
+        }
+
+        selected.currentMovement = 0;
+        this.showCombatResult(result);
         this.updateHUD();
-        gameMap?.render();
-        this.showNotification('Technology researched: Imperial Logistics', 'success');
+        gameMap.requestRender();
+    }
+
+    fortifySelectedUnit() {
+        const selected = gameState.selectedUnit;
+        if (!selected || selected.owner !== 'player') {
+            this.showNotification('Select one of your units first', 'error');
+            return;
+        }
+        const result = gameState.fortifyUnit(selected.id);
+        if (!result?.success) {
+            this.showNotification(result?.message || 'Cannot fortify here', 'error');
+            return;
+        }
+        this.showNotification(result.message, 'success');
+        this.showUnitPanel(selected);
+        this.updateHUD();
+        gameMap.requestRender();
     }
 
     /**
@@ -622,16 +794,36 @@ class UIManager {
     /**
      * Show unit panel
      */
-    showUnitPanel(unit) {
+    showUnitPanel(unit, options = {}) {
         const panel = document.getElementById('unit-panel');
         if (!panel) return;
+        const enemyView = Boolean(options.enemyView);
+        const estimatedView = Boolean(options.estimatedView);
 
         panel.classList.add('active');
+        panel.classList.toggle('enemy-panel', enemyView);
+        this.positionUnitPanel();
 
         document.getElementById('selected-unit-name').textContent = unit.name;
+        const metaEl = document.getElementById('unit-panel-meta');
+        if (metaEl) {
+            if (enemyView) {
+                const factionName = this.formatFactionName(unit.faction || unit.owner || 'enemy');
+                metaEl.textContent = `Enemy force: ${factionName}${estimatedView ? ' • Estimated strength' : ''}`;
+            } else {
+                metaEl.textContent = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+            }
+        }
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
-            const unitIcon = unit.type === 'cavalry' ? '🐎' : (unit.category === 'ranged' ? '🏹' : '⚔️');
+            let unitIcon = '⚔️';
+            if (unit.type === 'cavalry') unitIcon = '🐎';
+            if (unit.type === 'naval' || unit.category === 'transport') unitIcon = '⛵';
+            if (unit.category === 'ranged') unitIcon = '🏹';
+            if (unit.category === 'siege') unitIcon = '🛡️';
+            if (unit.category === 'intel') unitIcon = '🕵️';
+            if (unit.category === 'support') unitIcon = '⛪';
+            if (unit.category === 'economic') unitIcon = '🐪';
             portrait.textContent = '';
             const container = document.createElement('div');
             container.className = 'unit-portrait-content';
@@ -648,15 +840,211 @@ class UIManager {
             container.appendChild(nameSpan);
             portrait.appendChild(container);
         }
-        document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
-        document.getElementById('unit-attack').textContent = unit.stats.attack;
-        document.getElementById('unit-defense').textContent = unit.stats.defense;
-        document.getElementById('unit-movement').textContent = `${unit.currentMovement}/${unit.stats.movement}`;
+        const statLabels = document.querySelectorAll('#unit-panel .stat-label');
+        if (statLabels.length >= 4) {
+            statLabels[0].textContent = estimatedView ? 'Health (est.)' : 'Health';
+            statLabels[1].textContent = estimatedView ? 'Attack (est.)' : 'Attack';
+            statLabels[2].textContent = estimatedView ? 'Defense (est.)' : 'Defense';
+            statLabels[3].textContent = estimatedView ? 'Movement (est.)' : 'Movement';
+        }
+
+        if (estimatedView) {
+            document.getElementById('unit-health-value').textContent = this.formatEstimatedHealth(unit);
+            document.getElementById('unit-attack').textContent = this.formatEstimatedRange(unit.stats.attack, 0.18);
+            document.getElementById('unit-defense').textContent = this.formatEstimatedRange(unit.stats.defense, 0.18);
+            document.getElementById('unit-movement').textContent = this.formatEstimatedRange(unit.currentMovement, 0.25, { decimals: 1 });
+        } else {
+            document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
+            document.getElementById('unit-attack').textContent = unit.stats.attack;
+            document.getElementById('unit-defense').textContent = unit.stats.defense;
+            document.getElementById('unit-movement').textContent = `${unit.currentMovement.toFixed(1)}/${unit.stats.movement}`;
+        }
 
         const healthBar = document.getElementById('unit-health-bar');
         if (healthBar) {
             const healthPercent = (unit.currentHealth / unit.stats.health) * 100;
             healthBar.style.width = `${healthPercent}%`;
+        }
+
+        if (enemyView) {
+            const container = document.querySelector('.unit-actions');
+            if (container) {
+                container.innerHTML = '<div class="unit-intel-note">Intelligence is approximate. Exact combat values, morale, and bonuses are unknown.</div>';
+            }
+            return;
+        }
+
+        // Add special action buttons
+        this.updateUnitActionButtons(unit);
+    }
+
+    showEnemyUnitPanel(unit) {
+        this.showUnitPanel(unit, { enemyView: true, estimatedView: true });
+    }
+
+    formatFactionName(factionId) {
+        if (!factionId) return 'Unknown';
+        const labels = {
+            byzantine: 'Byzantines',
+            arab: 'Arabs',
+            bulgar: 'Bulgars',
+            frank: 'Franks',
+            sassanid: 'Sassanids',
+            tribal: 'Tribal Confederation',
+            enemy: 'Enemy Army',
+            neutral: 'Neutral'
+        };
+        if (labels[factionId]) return labels[factionId];
+        return String(factionId)
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (m) => m.toUpperCase());
+    }
+
+    formatEstimatedRange(value, uncertainty = 0.15, options = {}) {
+        const decimals = Number.isFinite(options.decimals) ? options.decimals : 0;
+        const n = Number.isFinite(value) ? Number(value) : 0;
+        const spread = Math.max(decimals > 0 ? 0.2 : 1, Math.abs(n) * uncertainty);
+        const factor = 10 ** decimals;
+        const low = Math.max(0, Math.floor((n - spread) * factor) / factor);
+        const high = Math.max(low, Math.ceil((n + spread) * factor) / factor);
+        const fmt = (x) => decimals > 0 ? x.toFixed(decimals) : String(Math.round(x));
+        return low === high ? `~${fmt(low)}` : `~${fmt(low)}-${fmt(high)}`;
+    }
+
+    formatEstimatedHealth(unit) {
+        const hpRatio = Math.max(0, Math.min(1, (unit.currentHealth || 0) / Math.max(1, unit.stats?.health || 1)));
+        let condition = 'Unknown';
+        if (hpRatio >= 0.8) condition = 'Strong';
+        else if (hpRatio >= 0.55) condition = 'Steady';
+        else if (hpRatio >= 0.3) condition = 'Worn';
+        else condition = 'Critical';
+
+        const spread = Math.max(8, Math.floor((unit.stats.health || 1) * 0.12));
+        const low = Math.max(0, Math.min(unit.stats.health, unit.currentHealth - spread));
+        const high = Math.max(low, Math.min(unit.stats.health, unit.currentHealth + spread));
+        return `${condition} (~${low}-${high}/${unit.stats.health})`;
+    }
+
+    positionUnitPanel() {
+        const panel = document.getElementById('unit-panel');
+        if (!panel) return;
+
+        // Mobile layout pins the panel to the bottom via CSS.
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            panel.style.top = '';
+            panel.style.maxHeight = '';
+            return;
+        }
+
+        const hud = document.querySelector('.game-hud');
+        const gameScreen = document.getElementById('game-screen');
+        if (!hud || !gameScreen) return;
+
+        const hudRect = hud.getBoundingClientRect();
+        const screenRect = gameScreen.getBoundingClientRect();
+        const topOffset = Math.ceil(hudRect.bottom - screenRect.top + 8);
+        const bottomMargin = 88;
+        const maxHeight = Math.max(220, Math.floor(window.innerHeight - topOffset - bottomMargin));
+
+        panel.style.top = `${topOffset}px`;
+        panel.style.maxHeight = `${maxHeight}px`;
+    }
+
+    /**
+     * Update unit action buttons based on capabilities
+     */
+    updateUnitActionButtons(unit) {
+        const container = document.querySelector('.unit-actions');
+        if (!container) return;
+        const withClickSound = (handler) => () => {
+            if (typeof audioManager !== 'undefined' && audioManager?.playUISound) {
+                audioManager.playUISound('click');
+            }
+            handler();
+        };
+
+        // Clear existing custom buttons (everything except move/attack/fortify if they are static)
+        // For simplicity, let's just rebuild the whole set
+        container.innerHTML = '';
+
+        const moveBtn = document.createElement('button');
+        moveBtn.className = 'action-btn';
+        moveBtn.id = 'btn-move-unit';
+        moveBtn.textContent = 'Move';
+        moveBtn.onclick = withClickSound(() => {
+            this.showNotification('Select a destination tile to move this unit.', 'info');
+        });
+        container.appendChild(moveBtn);
+
+        const attackBtn = document.createElement('button');
+        attackBtn.className = 'action-btn';
+        attackBtn.id = 'btn-attack-unit';
+        attackBtn.textContent = 'Attack';
+        attackBtn.onclick = withClickSound(() => this.attackWithSelectedUnit());
+        container.appendChild(attackBtn);
+
+        const fortBtn = document.createElement('button');
+        fortBtn.className = 'action-btn';
+        fortBtn.id = 'btn-fortify-unit';
+        fortBtn.textContent = 'Fortify';
+        fortBtn.onclick = withClickSound(() => this.fortifySelectedUnit());
+        container.appendChild(fortBtn);
+
+        // Engineer special actions
+        if (unit.typeId === 'civil_engineers') {
+            const buildRoadBtn = document.createElement('button');
+            buildRoadBtn.className = 'action-btn';
+            buildRoadBtn.textContent = 'Build Road';
+            buildRoadBtn.onclick = withClickSound(() => {
+                const result = gameState.applyUnitBuildAction(unit, 'build_road');
+                if (result.success) {
+                    this.showNotification('Road construction started', 'success');
+                    this.updateHUD();
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            });
+            container.appendChild(buildRoadBtn);
+
+            const automateBtn = document.createElement('button');
+            automateBtn.className = `action-btn ${unit.automated ? 'active' : ''}`;
+            automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+            automateBtn.onclick = withClickSound(() => {
+                unit.automated = !unit.automated;
+                automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+                automateBtn.classList.toggle('active', unit.automated);
+                this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
+            });
+            container.appendChild(automateBtn);
+        }
+
+        // Transport unit actions
+        if (unit.bonuses?.transportCapacity && unit.carryingUnits && unit.carryingUnits.length > 0) {
+            const unloadBtn = document.createElement('button');
+            unloadBtn.className = 'action-btn';
+            unloadBtn.textContent = `Unload (${unit.carryingUnits.length})`;
+            unloadBtn.onclick = withClickSound(() => {
+                const result = gameState.unloadUnits(unit.id);
+                if (result.success) {
+                    this.updateUnitActionButtons(unit);
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            });
+            container.appendChild(unloadBtn);
+        }
+
+        // Destination cancel button
+        if (unit.destination) {
+            const cancelDestBtn = document.createElement('button');
+            cancelDestBtn.className = 'action-btn danger';
+            cancelDestBtn.textContent = 'Cancel Route';
+            cancelDestBtn.onclick = withClickSound(() => {
+                unit.destination = null;
+                this.showNotification('Route cancelled', 'info');
+                this.updateUnitActionButtons(unit);
+            });
+            container.appendChild(cancelDestBtn);
         }
     }
 
@@ -709,8 +1097,32 @@ class UIManager {
     showCombatResult(result) {
         const attacker = gameState.units.find(u => u.id === result.attacker.id);
         const defender = gameState.units.find(u => u.id === result.defender.id);
+        if (gameMap) {
+            gameMap.focusOnBattleUnits(attacker, defender);
+            const highlighted = [];
+            if (attacker && attacker.currentHealth < attacker.stats.health) highlighted.push(attacker.id);
+            if (defender && defender.currentHealth < defender.stats.health) highlighted.push(defender.id);
+            gameMap.setBattleHealthHighlights(highlighted, 3500);
+        }
+        const battlePosition = defender?.position || attacker?.position;
+        let locationText = '';
+        if (battlePosition && gameMap) {
+            let nearestTown = null;
+            let nearestDistance = Number.POSITIVE_INFINITY;
+            const cityTiles = gameMap.getCityTiles() || [];
+            cityTiles.forEach((tile) => {
+                const distance = Math.abs(tile.x - battlePosition.x) + Math.abs(tile.y - battlePosition.y);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestTown = tile.cityData?.name || tile.name || null;
+                }
+            });
+            if (nearestTown && Number.isFinite(nearestDistance) && nearestDistance <= 8) {
+                locationText = ` near ${nearestTown}`;
+            }
+        }
 
-        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}. Target health: ${result.defender.health}`;
+        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}${locationText}. Target health: ${result.defender.health}`;
         this.showNotification(message, 'info');
 
         // Flash the screen if player was attacked
@@ -718,6 +1130,8 @@ class UIManager {
             document.body.classList.add('hit-shake');
             setTimeout(() => document.body.classList.remove('hit-shake'), 500);
         }
+
+        gameMap?.requestRender();
     }
 
     /**
@@ -819,6 +1233,9 @@ class UIManager {
                     <strong>Historical Accuracy:</strong> All leaders, units, and scenarios are based 
                     on actual Byzantine history.
                 </p>
+		<p style="margin-bottom:1rem;">
+		    Game developed by <a href="https://www.linkedin.com/in/nikolareljin" target="_blank" rel="noopener noreferrer">Nikola Reljin</a>. Please check my other  <a href="https://github.com/nikolareljin?tab=repositories" target="_blank" rel="noopener noreferrer">Github repositories</a>.
+		</p>
                 <p style="margin-bottom:1.5rem;">
                     <strong>Version:</strong> ${window.APP_VERSION || 'dev'}
                 </p>
@@ -901,7 +1318,8 @@ class UIManager {
      * Close unit panel
      */
     closeUnitPanel() {
-        document.getElementById('unit-panel')?.classList.remove('active');
+        const panel = document.getElementById('unit-panel');
+        panel?.classList.remove('active', 'enemy-panel');
         gameState.selectedUnit = null;
         gameMap?.render();
     }

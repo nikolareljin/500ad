@@ -4,9 +4,9 @@
  */
 
 const MAP_CONFIG = {
-    width: 200,
-    height: 120,
-    tileSize: 32,  // Larger tiles for better visibility
+    width: typeof WORLD_MAP_WIDTH !== 'undefined' ? WORLD_MAP_WIDTH : 200,
+    height: typeof WORLD_MAP_HEIGHT !== 'undefined' ? WORLD_MAP_HEIGHT : 120,
+    tileSize: 28,
     hexSize: 25,
     viewportWidth: 30, // Number of tiles visible horizontally
     viewportHeight: 20 // Number of tiles visible vertically
@@ -14,7 +14,7 @@ const MAP_CONFIG = {
 
 const HISTORIC_MAP_BOUNDS = typeof GEOGRAPHY_BOUNDS !== 'undefined'
     ? GEOGRAPHY_BOUNDS
-    : { west: -12, east: 56, north: 58, south: 8 };
+    : { west: -15, east: 92, north: 60, south: 5 };
 
 function toTileCoordinate(lon, lat) {
     const xNorm = (lon - HISTORIC_MAP_BOUNDS.west) / (HISTORIC_MAP_BOUNDS.east - HISTORIC_MAP_BOUNDS.west);
@@ -45,6 +45,9 @@ const HISTORIC_TOWNS = [
     historicTown('thessalonica', 'Thessalonica', 22.95, 40.64, 'city', 8),
     historicTown('athens', 'Athens', 23.73, 37.98, 'town', 6),
     historicTown('preslav', 'Preslav', 26.82, 43.16, 'city', 7, { faction: 'bulgar' }),
+    historicTown('belgrade', 'Belgrade', 20.46, 44.82, 'city', 7),
+    historicTown('serdica', 'Serdica', 23.32, 42.70, 'city', 7),
+    historicTown('skopje', 'Skopje', 21.43, 41.99, 'town', 6),
 
     // Anatolia & Caucasus
     historicTown('nicaea', 'Nicaea', 29.72, 40.43, 'city', 7),
@@ -52,36 +55,114 @@ const HISTORIC_TOWNS = [
     historicTown('iconium', 'Iconium', 32.49, 37.87, 'city', 7),
     historicTown('trebizond', 'Trebizond', 39.72, 41.00, 'city', 7),
     historicTown('tbilisi', 'Tbilisi', 44.80, 41.70, 'town', 6),
+    historicTown('ancyra', 'Ancyra', 32.86, 39.93, 'city', 7),
+    historicTown('caesarea', 'Caesarea Cappadociae', 35.49, 38.73, 'city', 7),
+    historicTown('edessa', 'Edessa', 38.79, 37.16, 'city', 7),
 
     // Levant, Mesopotamia & Arabia
     historicTown('jerusalem', 'Jerusalem', 35.22, 31.78, 'city', 10),
     historicTown('damascus', 'Damascus', 36.29, 33.51, 'city', 8),
+    historicTown('aleppo', 'Aleppo', 37.16, 36.20, 'city', 8),
     historicTown('baghdad', 'Baghdad', 44.37, 33.31, 'capital', 10, { faction: 'arab' }),
     historicTown('ctesiphon', 'Ctesiphon', 44.58, 33.09, 'capital', 10, { faction: 'sassanid' }),
+    historicTown('mosul', 'Mosul', 43.13, 36.34, 'city', 8),
+    historicTown('basra', 'Basra', 47.78, 30.50, 'city', 7, { faction: 'arab' }),
+    historicTown('isfahan', 'Isfahan', 51.67, 32.65, 'city', 8, { faction: 'sassanid' }),
+    historicTown('rayy', 'Rayy', 51.44, 35.60, 'city', 7, { faction: 'sassanid' }),
+    historicTown('merv', 'Merv', 62.18, 37.66, 'city', 8, { faction: 'sassanid' }),
+    historicTown('samarkand', 'Samarkand', 66.97, 39.65, 'city', 8, { faction: 'sassanid' }),
+    historicTown('bukhara', 'Bukhara', 64.42, 39.77, 'town', 7, { faction: 'sassanid' }),
+    historicTown('herat', 'Herat', 62.20, 34.35, 'city', 7),
+    historicTown('balkh', 'Balkh', 66.90, 36.75, 'city', 7),
+    historicTown('kabul', 'Kabul', 69.19, 34.53, 'city', 7),
+    historicTown('kandahar', 'Kandahar', 65.70, 31.62, 'town', 6),
+    historicTown('multan', 'Multan', 71.48, 30.20, 'town', 7),
+    historicTown('lahore', 'Lahore', 74.34, 31.55, 'city', 7),
     historicTown('medina', 'Medina', 39.61, 24.47, 'city', 7, { faction: 'arab' }),
     historicTown('mecca', 'Mecca', 39.86, 21.39, 'city', 8, { faction: 'arab' }),
     historicTown('sanaa', "Sana'a", 44.20, 15.35, 'town', 6),
+    historicTown('aden', 'Aden', 45.03, 12.79, 'town', 6),
 
     // North Africa & Ethiopia
     historicTown('alexandria', 'Alexandria', 29.92, 31.20, 'city', 9),
     historicTown('fustat', 'Fustat', 31.24, 30.03, 'city', 7),
     historicTown('carthage', 'Carthage', 10.33, 36.86, 'city', 8),
     historicTown('leptis_magna', 'Leptis Magna', 14.29, 32.64, 'town', 6),
+    historicTown('tripoli', 'Tripoli', 13.19, 32.89, 'city', 7),
+    historicTown('cyrene', 'Cyrene', 21.86, 32.83, 'town', 6),
     historicTown('axum', 'Axum', 38.72, 14.13, 'city', 7),
     historicTown('adulis', 'Adulis', 39.45, 15.30, 'town', 6),
+    historicTown('dongola', 'Old Dongola', 30.48, 18.25, 'town', 6),
 
     // Italy & Western Mediterranean
     historicTown('rome', 'Rome', 12.50, 41.90, 'capital', 10),
     historicTown('ravenna', 'Ravenna', 12.20, 44.42, 'city', 8),
     historicTown('venice', 'Venice', 12.33, 45.44, 'city', 7),
+    historicTown('milan', 'Milan', 9.19, 45.46, 'city', 8),
     historicTown('naples', 'Naples', 14.27, 40.85, 'town', 6),
     historicTown('cartagena', 'Cartagena', -0.98, 37.60, 'town', 6),
+    historicTown('cordoba', 'Cordoba', -4.78, 37.89, 'city', 8),
+    historicTown('toledo', 'Toledo', -4.02, 39.86, 'city', 7),
+    historicTown('massilia', 'Massilia', 5.37, 43.30, 'city', 7),
 
     // Central & Northern Europe
     historicTown('aachen', 'Aachen', 6.08, 50.78, 'city', 8, { faction: 'frank' }),
     historicTown('paris', 'Paris', 2.35, 48.86, 'city', 7),
     historicTown('london', 'London', -0.13, 51.50, 'city', 7),
-    historicTown('kiev', 'Kiev', 30.52, 50.45, 'city', 7)
+    historicTown('kiev', 'Kiev', 30.52, 50.45, 'city', 7),
+    historicTown('prague', 'Prague', 14.43, 50.08, 'city', 7),
+    historicTown('vienna', 'Vienna', 16.37, 48.21, 'city', 7)
+];
+
+const HISTORIC_ROADS = [
+    // Via Egnatia & Balkan routes
+    { from: 'rome', to: 'ravenna' },
+    { from: 'ravenna', to: 'venice' },
+    { from: 'belgrade', to: 'serdica' },
+    { from: 'serdica', to: 'constantinople' },
+    { from: 'constantinople', to: 'thessalonica' },
+    { from: 'thessalonica', to: 'athens' },
+    { from: 'serdica', to: 'thessalonica' },
+
+    // Anatolian routes
+    { from: 'constantinople', to: 'nicaea' },
+    { from: 'nicaea', to: 'ancyra' },
+    { from: 'ancyra', to: 'caesarea' },
+    { from: 'caesarea', to: 'antioch' },
+    { from: 'nicaea', to: 'iconium' },
+    { from: 'iconium', to: 'antioch' },
+    { from: 'ancyra', to: 'trebizond' },
+
+    // Fertile Crescent & Persia
+    { from: 'antioch', to: 'aleppo' },
+    { from: 'aleppo', to: 'edessa' },
+    { from: 'edessa', to: 'mosul' },
+    { from: 'mosul', to: 'baghdad' },
+    { from: 'baghdad', to: 'ctesiphon' },
+    { from: 'ctesiphon', to: 'isfahan' },
+    { from: 'isfahan', to: 'rayy' },
+    { from: 'rayy', to: 'merv' },
+    { from: 'merv', to: 'samarkand' },
+    { from: 'samarkand', to: 'bukhara' },
+
+    // Levant & Egypt
+    { from: 'antioch', to: 'damascus' },
+    { from: 'damascus', to: 'jerusalem' },
+    { from: 'jerusalem', to: 'alexandria' },
+    { from: 'alexandria', to: 'fustat' },
+
+    // North Africa
+    { from: 'fustat', to: 'tripoli' },
+    { from: 'tripoli', to: 'carthage' },
+    { from: 'carthage', to: 'cordoba' },
+
+    // Europe
+    { from: 'aachen', to: 'paris' },
+    { from: 'paris', to: 'massilia' },
+    { from: 'massilia', to: 'milan' },
+    { from: 'milan', to: 'venice' },
+    { from: 'aachen', to: 'vienna' },
+    { from: 'vienna', to: 'belgrade' }
 ];
 
 const TERRAIN_TYPES = {
@@ -126,8 +207,57 @@ class GameMap {
         this.hoveredTile = null;
         this.territoryControl = [];
         this.territoryControlDirty = true;
+        this.referenceMapImage = null;
+        this.referenceMapReady = false;
+        this.referenceMapCrop = {
+            x: 0.08,
+            y: 0.06,
+            width: 0.84,
+            height: 0.86
+        };
+        this.fogAlphaCache = [];
+        this.renderQueued = false;
+        this.battleHealthHighlights = new Map();
 
         this.initializeMap();
+        this.initializeReferenceMap();
+    }
+
+    initializeReferenceMap() {
+        if (typeof Image === 'undefined') {
+            this.referenceMapReady = false;
+            return;
+        }
+        const referenceMapPath = './large_map_1.jpg';
+        const loadReferenceImage = () => {
+            const image = new Image();
+            image.onload = () => {
+                this.referenceMapImage = image;
+                this.referenceMapReady = true;
+                this.requestRender();
+            };
+            image.onerror = () => {
+                this.referenceMapReady = false;
+            };
+            image.src = referenceMapPath;
+        };
+
+        if (typeof fetch !== 'function') {
+            loadReferenceImage();
+            return;
+        }
+
+        fetch(referenceMapPath, { method: 'HEAD', cache: 'no-store' })
+            .then((response) => {
+                if (!response.ok) {
+                    this.referenceMapReady = false;
+                    return;
+                }
+                loadReferenceImage();
+            })
+            .catch(() => {
+                this.referenceMapReady = false;
+            });
     }
 
     /**
@@ -143,19 +273,38 @@ class GameMap {
                     terrain: this.generateTerrain(x, y),
                     unit: null,
                     building: null,
+                    fort: null,
+                    road: false,
                     owner: null,
                     visible: true,
-                    explored: false
+                    explored: false,
+                    baseColor: null
                 };
+                this.updateTileBaseColor(this.tiles[y][x]);
             }
         }
 
         // Place historical towns
         this.placeHistoricalTowns();
+        // Place historical main roads
+        this.placeHistoricalRoads();
         this.markTerritoryDirty();
 
         // Ensure Constantinople is correctly set up as default start center if needed
         // but generally initialization should be handled by scenario in state.js
+    }
+
+    updateTileBaseColor(tile) {
+        if (!tile) return;
+        let color = TERRAIN_TYPES[tile.terrain]?.color || '#777';
+        const h = MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x];
+        if (h !== undefined) {
+            const generatedTerrain = heightToTerrain(h);
+            if (generatedTerrain === tile.terrain) {
+                color = heightToColor(h);
+            }
+        }
+        tile.baseColor = color;
     }
 
     /**
@@ -218,12 +367,14 @@ class GameMap {
                         if (!neighbor) continue;
                         if (neighbor.terrain === 'water') {
                             neighbor.terrain = Math.abs(dx) + Math.abs(dy) === 2 ? 'hills' : 'plains';
+                            this.updateTileBaseColor(neighbor);
                         }
                     }
                 }
 
                 const tile = this.tiles[town.y][town.x];
                 tile.terrain = 'city';
+                this.updateTileBaseColor(tile);
                 tile.building = town.type === 'capital' ? 'capital' : 'town';
                 tile.name = town.name;
                 tile.importance = town.importance;
@@ -367,11 +518,14 @@ class GameMap {
      */
     initializeFogOfWar() {
         this.fogOfWar = [];
+        this.fogAlphaCache = [];
         for (let y = 0; y < this.height; y++) {
             this.fogOfWar[y] = [];
+            this.fogAlphaCache[y] = [];
             for (let x = 0; x < this.width; x++) {
                 // Start with everything fogged
                 this.fogOfWar[y][x] = true;
+                this.fogAlphaCache[y][x] = -1;
             }
         }
     }
@@ -388,6 +542,14 @@ class GameMap {
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist <= radius) {
                         this.fogOfWar[ny][nx] = false;
+                        for (let cdy = -1; cdy <= 1; cdy++) {
+                            for (let cdx = -1; cdx <= 1; cdx++) {
+                                const cx = nx + cdx;
+                                const cy = ny + cdy;
+                                if (cx < 0 || cx >= this.width || cy < 0 || cy >= this.height) continue;
+                                this.fogAlphaCache[cy][cx] = -1;
+                            }
+                        }
                     }
                 }
             }
@@ -409,6 +571,8 @@ class GameMap {
         if (!this.isFoggedTile(x, y)) {
             return 0;
         }
+        const cached = this.fogAlphaCache?.[y]?.[x];
+        if (typeof cached === 'number' && cached >= 0) return cached;
 
         let exploredNeighbors = 0;
         let totalNeighbors = 0;
@@ -426,7 +590,11 @@ class GameMap {
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
         // Edge tiles stay lighter, deep unknown gets denser.
-        return 0.3 + (1 - edgeFactor) * 0.35;
+        const alpha = 0.3 + (1 - edgeFactor) * 0.35;
+        if (this.fogAlphaCache?.[y]) {
+            this.fogAlphaCache[y][x] = alpha;
+        }
+        return alpha;
     }
 
     /**
@@ -541,6 +709,8 @@ class GameMap {
     }
 
     drawCityLabels(startX, startY, endX, endY, tileSize) {
+        const detailedLimit = 10;
+        let detailedCount = 0;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'bottom';
 
@@ -556,7 +726,13 @@ class GameMap {
                 const isNeutral = tile.owner === 'neutral';
                 const cityColor = isEnemy ? '#ff9f9f' : (isNeutral ? '#9cd3b0' : '#f4d03f');
 
-                this.drawCityInfrastructure(tile, tileSize);
+                const shouldDrawDetailed = tile.owner === 'player'
+                    || (this.selectedTile && this.selectedTile.x === x && this.selectedTile.y === y)
+                    || detailedCount < detailedLimit;
+                if (shouldDrawDetailed) {
+                    this.drawCityInfrastructure(tile, tileSize);
+                    detailedCount++;
+                }
 
                 // City name
                 this.ctx.font = `${Math.max(10, Math.floor(tileSize * 0.34))}px "Old Standard TT", serif`;
@@ -566,16 +742,18 @@ class GameMap {
                 this.ctx.fillText(tile.cityData.name, px, py - 6);
 
                 // Production line
-                const p = tile.cityData.production;
-                const prodText = `F${p.food} I${p.industry} G${p.gold}`;
-                this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.28))}px "Crimson Text", serif`;
-                this.ctx.fillStyle = 'rgba(20, 20, 20, 0.7)';
-                this.ctx.fillText(prodText, px + 1, py + tileSize + 11);
-                this.ctx.fillStyle = 'rgba(230, 235, 240, 0.92)';
-                this.ctx.fillText(prodText, px, py + tileSize + 10);
+                if (shouldDrawDetailed) {
+                    const p = tile.cityData.production;
+                    const prodText = `F${p.food} I${p.industry} G${p.gold}`;
+                    this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.28))}px "Crimson Text", serif`;
+                    this.ctx.fillStyle = 'rgba(20, 20, 20, 0.7)';
+                    this.ctx.fillText(prodText, px + 1, py + tileSize + 11);
+                    this.ctx.fillStyle = 'rgba(230, 235, 240, 0.92)';
+                    this.ctx.fillText(prodText, px, py + tileSize + 10);
+                }
 
                 // Wonder marker
-                if (tile.cityData.wonder) {
+                if (shouldDrawDetailed && tile.cityData.wonder) {
                     this.ctx.font = `${Math.max(9, Math.floor(tileSize * 0.26))}px "Crimson Text", serif`;
                     this.ctx.fillStyle = 'rgba(255, 220, 130, 0.95)';
                     this.ctx.fillText(`${tile.cityData.wonder}`, px, py - 20);
@@ -619,6 +797,28 @@ class GameMap {
         const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1);
         const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1);
 
+        if (this.referenceMapReady && this.referenceMapImage) {
+            const crop = this.referenceMapCrop;
+            const sx = this.referenceMapImage.width * crop.x;
+            const sy = this.referenceMapImage.height * crop.y;
+            const sw = this.referenceMapImage.width * crop.width;
+            const sh = this.referenceMapImage.height * crop.height;
+            this.ctx.globalAlpha = 0.5;
+            this.ctx.imageSmoothingEnabled = true;
+            this.ctx.drawImage(
+                this.referenceMapImage,
+                sx,
+                sy,
+                sw,
+                sh,
+                0,
+                0,
+                this.width * tileSize,
+                this.height * tileSize
+            );
+            this.ctx.globalAlpha = 1;
+        }
+
         // Render visible tiles
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
@@ -628,13 +828,7 @@ class GameMap {
                 const px = x * tileSize;
                 const py = y * tileSize;
 
-                // Get color from heightmap if available
-                let terrainColor = TERRAIN_TYPES[tile.terrain].color;
-                if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
-                    MEDITERRANEAN_HEIGHTMAP[y] &&
-                    MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
-                    terrainColor = heightToColor(MEDITERRANEAN_HEIGHTMAP[y][x]);
-                }
+                const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
 
                 // Draw terrain
                 this.ctx.fillStyle = terrainColor;
@@ -682,6 +876,35 @@ class GameMap {
                     }
                 }
 
+                if (tile.fort && tile.terrain !== 'water') {
+                    const cx = px + tileSize / 2;
+                    const cy = py + tileSize / 2;
+                    const size = tileSize * 0.25;
+                    this.ctx.fillStyle = tile.fort.owner === 'player'
+                        ? 'rgba(107, 44, 145, 0.8)'
+                        : 'rgba(139, 0, 0, 0.8)';
+                    this.ctx.strokeStyle = '#d9be6a';
+                    this.ctx.lineWidth = Math.max(1, tileSize * 0.07);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cx, cy - size);
+                    this.ctx.lineTo(cx + size * 0.9, cy - size * 0.15);
+                    this.ctx.lineTo(cx + size * 0.7, cy + size);
+                    this.ctx.lineTo(cx - size * 0.7, cy + size);
+                    this.ctx.lineTo(cx - size * 0.9, cy - size * 0.15);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+
+                if (tile.road && tile.terrain !== 'water') {
+                    this.ctx.strokeStyle = 'rgba(190, 160, 95, 0.8)';
+                    this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(px + tileSize * 0.2, py + tileSize * 0.5);
+                    this.ctx.lineTo(px + tileSize * 0.8, py + tileSize * 0.5);
+                    this.ctx.stroke();
+                }
+
                 // Gray fog of war for undiscovered areas with softened boundaries.
                 const fogAlpha = this.getFogAlpha(x, y);
                 if (fogAlpha > 0) {
@@ -724,6 +947,64 @@ class GameMap {
         this.drawUI();
     }
 
+    requestRender() {
+        if (this.renderQueued) return;
+        this.renderQueued = true;
+        requestAnimationFrame(() => {
+            this.renderQueued = false;
+            const territoryDirtyBefore = this.territoryControlDirty;
+            this.render();
+            if (typeof minimap !== 'undefined' && minimap) {
+                if (territoryDirtyBefore) minimap.render();
+                else minimap.updateViewport();
+            }
+        });
+    }
+
+    setBattleHealthHighlights(unitIds = [], durationMs = 3000) {
+        const now = Date.now();
+        const expiresAt = now + Math.max(300, durationMs);
+        unitIds.forEach((unitId) => {
+            if (!unitId) return;
+            this.battleHealthHighlights.set(unitId, expiresAt);
+        });
+        this.requestRender();
+    }
+
+    shouldRenderBattleHealth(unit) {
+        if (!unit) return false;
+        if (unit.currentHealth >= unit.stats.health) return false;
+        const expiresAt = this.battleHealthHighlights.get(unit.id);
+        if (!expiresAt) return false;
+        if (Date.now() > expiresAt) {
+            this.battleHealthHighlights.delete(unit.id);
+            return false;
+        }
+        return true;
+    }
+
+    focusOnBattleUnits(attacker, defender) {
+        if (!this.canvas) return;
+        const units = [attacker, defender].filter(Boolean);
+        if (units.length === 0) return;
+        const avgX = units.reduce((sum, unit) => sum + unit.position.x, 0) / units.length;
+        const avgY = units.reduce((sum, unit) => sum + unit.position.y, 0) / units.length;
+        this.centerOn(avgX, avgY);
+    }
+
+    centerOn(tileX, tileY) {
+        if (!this.canvas) return;
+        const tx = Number.isFinite(tileX) ? tileX : 0;
+        const ty = Number.isFinite(tileY) ? tileY : 0;
+        this.camera.x = Math.floor((tx * MAP_CONFIG.tileSize) - (this.canvas.width / 2));
+        this.camera.y = Math.floor((ty * MAP_CONFIG.tileSize) - (this.canvas.height / 2));
+        const maxX = Math.max(0, (this.width * MAP_CONFIG.tileSize) - this.canvas.width);
+        const maxY = Math.max(0, (this.height * MAP_CONFIG.tileSize) - this.canvas.height);
+        this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
+        this.requestRender();
+    }
+
     /**
      * Setup pan controls (no zoom)
      */
@@ -753,7 +1034,7 @@ class GameMap {
                 this.lastPanX = e.clientX;
                 this.lastPanY = e.clientY;
 
-                this.render();
+                this.requestRender();
             }
         });
 
@@ -813,13 +1094,31 @@ class GameMap {
         const tileSize = MAP_CONFIG.tileSize;
         const px = unit.position.x * tileSize;
         const py = unit.position.y * tileSize;
+        const cx = px + tileSize / 2;
+        const cy = py + tileSize / 2;
+        if (this.shouldRenderBattleHealth(unit)) {
+            const healthRatio = Math.max(0, Math.min(1, unit.currentHealth / Math.max(1, unit.stats.health)));
+            const healthColor = this.getUnitHealthColor(healthRatio);
+            // Battle-only health ring overlay.
+            this.ctx.strokeStyle = healthColor;
+            this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
+            this.ctx.beginPath();
+            this.ctx.arc(
+                cx,
+                cy,
+                tileSize * 0.44,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.stroke();
+        }
 
         // Unit circle
         this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
         this.ctx.beginPath();
         this.ctx.arc(
-            px + tileSize / 2,
-            py + tileSize / 2,
+            cx,
+            cy,
             tileSize / 3,
             0,
             Math.PI * 2
@@ -836,8 +1135,22 @@ class GameMap {
         this.ctx.font = `${Math.floor(tileSize * 0.4)}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        const icon = unit.type === 'cavalry' ? '🐎' : '⚔';
-        this.ctx.fillText(icon, px + tileSize / 2, py + tileSize / 2);
+        let icon = '⚔';
+        if (unit.type === 'cavalry') icon = '🐎';
+        if (unit.type === 'naval' || unit.category === 'transport') icon = '⛵';
+        if (unit.category === 'siege') icon = '🛡';
+        if (unit.category === 'ranged') icon = '🏹';
+        if (unit.category === 'intel') icon = '🕵';
+        if (unit.category === 'support') icon = '⛪';
+        if (unit.category === 'economic') icon = '🐪';
+        this.ctx.fillText(icon, cx, cy);
+    }
+
+    getUnitHealthColor(ratio) {
+        const clamped = Math.max(0, Math.min(1, ratio));
+        const red = Math.floor(230 * (1 - clamped));
+        const green = Math.floor(220 * clamped);
+        return `rgb(${red}, ${green}, 40)`;
     }
 
     /**
@@ -886,8 +1199,10 @@ class GameMap {
     handleMouseMove(event) {
         const tile = this.screenToTile(event.clientX, event.clientY);
         if (tile) {
-            this.hoveredTile = tile;
-            this.render();
+            if (!this.hoveredTile || this.hoveredTile.x !== tile.x || this.hoveredTile.y !== tile.y) {
+                this.hoveredTile = tile;
+                this.requestRender();
+            }
         }
     }
 
@@ -929,6 +1244,10 @@ class GameMap {
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }
+        } else if (unit && unit.owner !== 'player' && !gameState.selectedUnit) {
+            if (window.uiManager) {
+                window.uiManager.showEnemyUnitPanel(unit);
+            }
         } else if (gameState.selectedUnit) {
             // Try to move selected unit
             const moved = gameState.moveUnit(gameState.selectedUnit.id, { x, y });
@@ -945,7 +1264,48 @@ class GameMap {
             );
         }
 
-        this.render();
+        this.requestRender();
+    }
+
+    /**
+     * Place historically precise main roads between major cities
+     */
+    placeHistoricalRoads() {
+        HISTORIC_ROADS.forEach(road => {
+            const fromCity = HISTORIC_TOWNS.find(t => t.id === road.from);
+            const toCity = HISTORIC_TOWNS.find(t => t.id === road.to);
+            if (!fromCity || !toCity) return;
+
+            // Simple line algorithm to place roads between cities
+            let x0 = fromCity.x;
+            let y0 = fromCity.y;
+            let x1 = toCity.x;
+            let y1 = toCity.y;
+
+            let dx = Math.abs(x1 - x0);
+            let dy = Math.abs(y1 - y0);
+            let sx = (x0 < x1) ? 1 : -1;
+            let sy = (y0 < y1) ? 1 : -1;
+            let err = dx - dy;
+
+            while (true) {
+                const tile = this.getTile(x0, y0);
+                if (tile && tile.terrain !== 'water') {
+                    tile.road = true;
+                }
+
+                if (x0 === x1 && y0 === y1) break;
+                let e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x0 += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    y0 += sy;
+                }
+            }
+        });
     }
 
     /**
@@ -956,6 +1316,65 @@ class GameMap {
             return this.tiles[y][x];
         }
         return null;
+    }
+
+    tileToGeo(x, y) {
+        const lon = HISTORIC_MAP_BOUNDS.west + (x / (this.width - 1)) * (HISTORIC_MAP_BOUNDS.east - HISTORIC_MAP_BOUNDS.west);
+        const lat = HISTORIC_MAP_BOUNDS.north - (y / (this.height - 1)) * (HISTORIC_MAP_BOUNDS.north - HISTORIC_MAP_BOUNDS.south);
+        return { lon, lat };
+    }
+
+    isCoastalTile(x, y) {
+        const offsets = [
+            { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+        ];
+        return offsets.some((offset) => this.getTile(x + offset.x, y + offset.y)?.terrain === 'water');
+    }
+
+    isRiverTile(x, y) {
+        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        if (typeof h === 'number' && h >= 40 && h <= 52) return true;
+        if (typeof isNearRiver === 'function') {
+            const geo = this.tileToGeo(x, y);
+            return isNearRiver(geo.lon, geo.lat);
+        }
+        return false;
+    }
+
+    isFertileTile(x, y) {
+        const tile = this.getTile(x, y);
+        if (!tile || tile.terrain === 'water' || tile.terrain === 'mountains') return false;
+        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const richAlluvial = typeof h === 'number' && h >= 54 && h <= 98;
+        return richAlluvial || this.isRiverTile(x, y) || this.isCoastalTile(x, y);
+    }
+
+    getTownFoundationBonuses(x, y) {
+        const result = {
+            food: 0,
+            gold: 0,
+            manpower: 0,
+            notes: []
+        };
+
+        if (this.isRiverTile(x, y)) {
+            result.food += 2;
+            result.manpower += 1;
+            result.notes.push('river basin');
+        }
+        if (this.isCoastalTile(x, y)) {
+            result.gold += 2;
+            result.food += 1;
+            result.notes.push('coastal trade');
+        }
+        if (this.isFertileTile(x, y)) {
+            result.food += 2;
+            result.gold += 1;
+            result.notes.push('fertile ground');
+        }
+
+        return result;
     }
 
     /**
@@ -993,11 +1412,11 @@ function initializeGameMap() {
         gameMap.camera.x = (constantinopleX * MAP_CONFIG.tileSize) - (canvas.width / 2);
         gameMap.camera.y = (constantinopleY * MAP_CONFIG.tileSize) - (canvas.height / 2);
         gameMap.markTerritoryDirty();
-        gameMap.render();
+        gameMap.requestRender();
         return;
     }
 
     gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
     gameMap.initializeCanvas(canvas);
-    gameMap.render();
+    gameMap.requestRender();
 }

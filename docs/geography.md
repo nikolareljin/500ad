@@ -1,13 +1,13 @@
 # Geography Model
 
-The `500ad` map uses a 200x120 tile projection of a fixed historic theater centered on Byzantine-era strategy regions.
+The `500ad` map uses a 320x180 tile projection of an expanded historic theater centered on Byzantine-era strategy regions.
 
 ## Bounds and Projection
 
-- West: `-12` (Atlantic approaches west of Iberia)
-- East: `56` (Mesopotamia / Persian Gulf edge)
-- North: `58` (British Isles / northern Europe)
-- South: `8` (Horn of Africa / southern Arabia)
+- West: `-15` (Atlantic approaches west of Iberia)
+- East: `92` (Central Asia and northwestern India edge)
+- North: `60` (British Isles / northern Europe)
+- South: `5` (Horn of Africa / southern Arabia)
 
 Coordinates are converted using an equirectangular-style transform:
 
@@ -18,13 +18,19 @@ Coordinates are converted using an equirectangular-style transform:
 
 `assets/geography.js` builds terrain from:
 
-- Explicit coastline/land polygons for Europe, North Africa, Anatolia, Levant, Mesopotamia, Arabia, and Ethiopia/Horn.
+- Explicit coastline/land polygons for Europe, North/East Africa, Anatolia, Levant, Mesopotamia, Arabia, Caucasus, Central Asia, Iran, Afghanistan, and northwestern India.
 - Distance-to-coast logic for shelf vs deep water outside polygons.
 - Regional mountain signals (Alps, Caucasus, Taurus, Zagros, Atlas, Ethiopian Highlands).
 - River carving (Nile, Danube, Tigris/Euphrates, Po, Rhone, Dnieper).
 - Historic-map inspired terrain palette.
 
 This replaces the prior synthetic continent-blob model that could place key cities on water.
+
+## Performance Notes
+
+- Map rendering is viewport-based and only draws visible tiles plus a small buffer.
+- Rendering uses `requestRender()` queueing to avoid unnecessary full-canvas redraw loops.
+- Fog-of-war alpha values are cached to reduce per-frame recomputation costs on the larger map.
 
 ## Historical Town Placement
 

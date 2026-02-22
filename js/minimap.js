@@ -14,6 +14,7 @@ class Minimap {
         this.width = 0;
         this.height = 0;
         this.isDragging = false;
+        this.realmGrid = [];
     }
 
     /**
@@ -82,6 +83,20 @@ class Minimap {
         const worldHeight = this.gameMap.height * MAP_CONFIG.tileSize;
         this.scaleX = this.width / worldWidth;
         this.scaleY = this.height / worldHeight;
+        this.ensureRealmGrid();
+    }
+
+    ensureRealmGrid() {
+        if (this.realmGrid.length !== this.gameMap.height) {
+            this.realmGrid = Array.from({ length: this.gameMap.height }, () => new Array(this.gameMap.width).fill(null));
+            return;
+        }
+        for (let y = 0; y < this.gameMap.height; y++) {
+            const row = this.realmGrid[y];
+            if (!Array.isArray(row) || row.length !== this.gameMap.width) {
+                this.realmGrid[y] = new Array(this.gameMap.width).fill(null);
+            }
+        }
     }
 
     /**
@@ -103,7 +118,7 @@ class Minimap {
         this.gameMap.camera.y = Math.max(0, Math.min(maxY, worldY));
 
         // Re-render both maps
-        this.gameMap.render();
+        this.gameMap.requestRender();
         this.updateViewport();
     }
 
@@ -117,7 +132,27 @@ class Minimap {
         this.ctx.fillStyle = '#0a0a0a';
         this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw simplified terrain
+        const tilePixelWidth = Math.max(1, MAP_CONFIG.tileSize * this.scaleX);
+        const tilePixelHeight = Math.max(1, MAP_CONFIG.tileSize * this.scaleY);
+        const realmGrid = this.realmGrid;
+        const realmColors = {
+            player: { fill: 'rgba(213, 166, 67, 0.35)', edge: 'rgba(255, 221, 112, 0.9)' },
+            enemy: { fill: 'rgba(178, 43, 43, 0.34)', edge: 'rgba(255, 143, 143, 0.92)' },
+            neutral: { fill: 'rgba(68, 137, 92, 0.30)', edge: 'rgba(151, 218, 170, 0.85)' },
+            byzantine: { fill: 'rgba(122, 52, 167, 0.34)', edge: 'rgba(187, 136, 244, 0.95)' },
+            arab: { fill: 'rgba(46, 137, 89, 0.34)', edge: 'rgba(138, 235, 182, 0.9)' },
+            bulgar: { fill: 'rgba(177, 58, 58, 0.34)', edge: 'rgba(246, 156, 156, 0.9)' },
+            frank: { fill: 'rgba(66, 118, 188, 0.33)', edge: 'rgba(154, 197, 255, 0.9)' },
+            sassanid: { fill: 'rgba(176, 108, 52, 0.34)', edge: 'rgba(252, 192, 125, 0.9)' },
+            tribal: { fill: 'rgba(103, 121, 70, 0.28)', edge: 'rgba(185, 205, 141, 0.82)' }
+        };
+
+        const getRealmStyle = (realmKey) => {
+            if (!realmKey) return null;
+            return realmColors[realmKey] || realmColors.neutral;
+        };
+
+        // Draw simplified terrain + realm tint
         for (let y = 0; y < this.gameMap.height; y++) {
             for (let x = 0; x < this.gameMap.width; x++) {
                 const tile = this.gameMap.tiles[y][x];
@@ -136,23 +171,54 @@ class Minimap {
                 // Draw pixel
                 const px = x * MAP_CONFIG.tileSize * this.scaleX;
                 const py = y * MAP_CONFIG.tileSize * this.scaleY;
-                const sizeX = Math.max(1, MAP_CONFIG.tileSize * this.scaleX);
-                const sizeY = Math.max(1, MAP_CONFIG.tileSize * this.scaleY);
+                const sizeX = tilePixelWidth;
+                const sizeY = tilePixelHeight;
 
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(px, py, sizeX, sizeY);
 
-                // Territory ownership overlay on minimap.
+                // Territory ownership / realm tint overlay for easier border reading.
                 const controlOwner = tile.owner || this.gameMap.getTerritoryOwnerAt(x, y);
-                if (controlOwner && tile.terrain !== 'water') {
-                    if (controlOwner === 'player') {
-                        this.ctx.fillStyle = 'rgba(122, 52, 167, 0.55)';
-                    } else if (controlOwner === 'enemy') {
-                        this.ctx.fillStyle = 'rgba(152, 14, 14, 0.55)';
-                    } else {
-                        this.ctx.fillStyle = 'rgba(54, 128, 88, 0.5)';
-                    }
+                const realmKey = (tile.faction && tile.terrain !== 'water') ? tile.faction : controlOwner;
+                realmGrid[y][x] = tile.terrain === 'water' ? null : (realmKey || null);
+                const realmStyle = getRealmStyle(realmGrid[y][x]);
+                if (realmStyle && tile.terrain !== 'water') {
+                    this.ctx.fillStyle = realmStyle.fill;
                     this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
+            }
+        }
+
+        // Emphasize realm boundaries with bright edge highlights on overlay color.
+        const edgeThicknessX = Math.max(1, Math.round(Math.min(2, tilePixelWidth)));
+        const edgeThicknessY = Math.max(1, Math.round(Math.min(2, tilePixelHeight)));
+        for (let y = 0; y < this.gameMap.height; y++) {
+            for (let x = 0; x < this.gameMap.width; x++) {
+                const realmKey = realmGrid[y][x];
+                if (!realmKey) continue;
+
+                const style = getRealmStyle(realmKey);
+                if (!style) continue;
+
+                const px = x * MAP_CONFIG.tileSize * this.scaleX;
+                const py = y * MAP_CONFIG.tileSize * this.scaleY;
+                const rightRealm = x + 1 < this.gameMap.width ? realmGrid[y][x + 1] : null;
+                const bottomRealm = y + 1 < this.gameMap.height ? realmGrid[y + 1][x] : null;
+                const leftRealm = x > 0 ? realmGrid[y][x - 1] : null;
+                const topRealm = y > 0 ? realmGrid[y - 1][x] : null;
+
+                this.ctx.fillStyle = style.edge;
+                if (rightRealm !== realmKey) {
+                    this.ctx.fillRect(px + tilePixelWidth - edgeThicknessX, py, edgeThicknessX, tilePixelHeight);
+                }
+                if (bottomRealm !== realmKey) {
+                    this.ctx.fillRect(px, py + tilePixelHeight - edgeThicknessY, tilePixelWidth, edgeThicknessY);
+                }
+                if (leftRealm !== realmKey) {
+                    this.ctx.fillRect(px, py, edgeThicknessX, tilePixelHeight);
+                }
+                if (topRealm !== realmKey) {
+                    this.ctx.fillRect(px, py, tilePixelWidth, edgeThicknessY);
                 }
             }
         }

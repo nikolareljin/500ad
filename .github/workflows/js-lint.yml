@@ -1,0 +1,20 @@
+name: JS Lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  node_scan:
+    uses: nikolareljin/ci-helpers/.github/workflows/node-scan.yml@production
+    with:
+      node_version: "20"
+      install_command: ""
+      lint_command: "npx --yes eslint@9.22.0 --no-config-lookup --rule no-unreachable:error --rule no-undef:off js/*.js"
+      test_command: ""
+      audit_command: ""
+      build_command: ""
+

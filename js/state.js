@@ -23,44 +23,139 @@ const HISTORICAL_TOWN_CONTROL = {
     thessalonica: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'core' },
     athens: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'neutral' },
     preslav: { tribe: 'Bulgars', civilization: 'bulgar', stance: 'hostile' },
+    belgrade: { tribe: 'South Slavs', civilization: 'bulgar', stance: 'hostile' },
+    serdica: { tribe: 'Thracians', civilization: 'byzantine', stance: 'neutral' },
+    skopje: { tribe: 'Dardanians', civilization: 'byzantine', stance: 'neutral' },
     nicaea: { tribe: 'Byzantine Anatolians', civilization: 'byzantine', stance: 'core' },
     antioch: { tribe: 'Syriac Christians', civilization: 'byzantine', stance: 'hostile' },
     iconium: { tribe: 'Anatolian Greeks', civilization: 'byzantine', stance: 'neutral' },
     trebizond: { tribe: 'Pontic Greeks', civilization: 'byzantine', stance: 'neutral' },
     tbilisi: { tribe: 'Georgians', civilization: 'sassanid', stance: 'hostile' },
+    ancyra: { tribe: 'Galatian Anatolians', civilization: 'byzantine', stance: 'neutral' },
+    caesarea: { tribe: 'Cappadocians', civilization: 'byzantine', stance: 'neutral' },
+    edessa: { tribe: 'Arameans', civilization: 'byzantine', stance: 'hostile' },
     jerusalem: { tribe: 'Levantine Communities', civilization: 'arab', stance: 'neutral' },
     damascus: { tribe: 'Levantine Arabs', civilization: 'arab', stance: 'hostile' },
+    aleppo: { tribe: 'North Syrian Arabs', civilization: 'arab', stance: 'hostile' },
     baghdad: { tribe: 'Abbasids', civilization: 'arab', stance: 'core' },
     ctesiphon: { tribe: 'Persians', civilization: 'sassanid', stance: 'core' },
+    mosul: { tribe: 'Assyrians', civilization: 'arab', stance: 'hostile' },
+    basra: { tribe: 'Iraqi Arabs', civilization: 'arab', stance: 'core' },
+    isfahan: { tribe: 'Persians', civilization: 'sassanid', stance: 'core' },
+    rayy: { tribe: 'Daylamites', civilization: 'sassanid', stance: 'hostile' },
+    merv: { tribe: 'Khorasanis', civilization: 'sassanid', stance: 'hostile' },
+    samarkand: { tribe: 'Sogdians', civilization: 'sassanid', stance: 'hostile' },
+    bukhara: { tribe: 'Sogdians', civilization: 'sassanid', stance: 'hostile' },
+    herat: { tribe: 'Arians', civilization: 'sassanid', stance: 'hostile' },
+    balkh: { tribe: 'Bactrians', civilization: 'sassanid', stance: 'hostile' },
+    kabul: { tribe: 'Kabul Shahis', civilization: 'sassanid', stance: 'hostile' },
+    kandahar: { tribe: 'Arachosians', civilization: 'sassanid', stance: 'hostile' },
+    multan: { tribe: 'Sindhi Indo-Iranians', civilization: 'sassanid', stance: 'neutral' },
+    lahore: { tribe: 'Punjabi Indo-Iranians', civilization: 'sassanid', stance: 'neutral' },
     medina: { tribe: 'Hejaz Arabs', civilization: 'arab', stance: 'core' },
     mecca: { tribe: 'Hejaz Arabs', civilization: 'arab', stance: 'core' },
     sanaa: { tribe: 'Yemeni Arabs', civilization: 'arab', stance: 'neutral' },
+    aden: { tribe: 'Yemeni Arabs', civilization: 'arab', stance: 'neutral' },
     alexandria: { tribe: 'Egyptians', civilization: 'byzantine', stance: 'neutral' },
     fustat: { tribe: 'Egyptian Arabs', civilization: 'arab', stance: 'hostile' },
     carthage: { tribe: 'Berbers', civilization: 'frank', stance: 'hostile' },
     leptis_magna: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
+    tripoli: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
+    cyrene: { tribe: 'Libyans', civilization: 'arab', stance: 'neutral' },
     axum: { tribe: 'Aksumites', civilization: 'byzantine', stance: 'neutral' },
     adulis: { tribe: 'Aksumites', civilization: 'byzantine', stance: 'neutral' },
+    dongola: { tribe: 'Nubians', civilization: 'byzantine', stance: 'neutral' },
     rome: { tribe: 'Italo-Romans', civilization: 'frank', stance: 'hostile' },
     ravenna: { tribe: 'Exarchate Romans', civilization: 'byzantine', stance: 'neutral' },
     venice: { tribe: 'Venetians', civilization: 'frank', stance: 'neutral' },
+    milan: { tribe: 'Lombards', civilization: 'frank', stance: 'hostile' },
     naples: { tribe: 'Italo-Romans', civilization: 'frank', stance: 'neutral' },
     cartagena: { tribe: 'Visigoths', civilization: 'frank', stance: 'hostile' },
+    cordoba: { tribe: 'Iberian Romans', civilization: 'frank', stance: 'hostile' },
+    toledo: { tribe: 'Visigoths', civilization: 'frank', stance: 'hostile' },
+    massilia: { tribe: 'Gallo-Romans', civilization: 'frank', stance: 'neutral' },
     aachen: { tribe: 'Franks', civilization: 'frank', stance: 'core' },
     paris: { tribe: 'Franks', civilization: 'frank', stance: 'core' },
     london: { tribe: 'Anglo-Saxons', civilization: 'frank', stance: 'neutral' },
-    kiev: { tribe: 'Kievan Slavs', civilization: 'bulgar', stance: 'neutral' }
+    kiev: { tribe: 'Kievan Slavs', civilization: 'bulgar', stance: 'neutral' },
+    prague: { tribe: 'Bohemians', civilization: 'frank', stance: 'neutral' },
+    vienna: { tribe: 'Avars', civilization: 'bulgar', stance: 'hostile' }
 };
 
 const EMPIRE_CORE_TOWNS = {
-    byzantine: ['constantinople', 'thessalonica', 'nicaea', 'iconium', 'antioch', 'ravenna', 'alexandria'],
-    arab: ['baghdad', 'damascus', 'jerusalem', 'mecca', 'medina', 'fustat', 'sanaa'],
-    bulgar: ['preslav', 'kiev'],
-    frank: ['aachen', 'paris', 'rome', 'venice', 'london'],
-    sassanid: ['ctesiphon', 'tbilisi']
+    byzantine: ['constantinople', 'thessalonica', 'nicaea', 'iconium', 'antioch', 'ravenna', 'alexandria', 'ancyra', 'caesarea', 'serdica'],
+    arab: ['baghdad', 'damascus', 'jerusalem', 'mecca', 'medina', 'fustat', 'sanaa', 'basra', 'aleppo'],
+    bulgar: ['preslav', 'kiev', 'belgrade', 'vienna'],
+    frank: ['aachen', 'paris', 'rome', 'venice', 'london', 'milan', 'toledo', 'cordoba'],
+    sassanid: ['ctesiphon', 'tbilisi', 'isfahan', 'rayy', 'merv', 'samarkand', 'bukhara', 'herat', 'balkh', 'kabul']
 };
 
-const SAVE_VERSION = '1.1.0';
+const SAVE_VERSION = '1.2.0';
+
+const TECHNOLOGY_TREE = {
+    military_logistics: {
+        name: 'Military Logistics',
+        description: 'Improves supply and troop movement across roads.',
+        cost: { gold: 220, prestige: 30 },
+        requires: [],
+        effects: { movement: 1, manpowerMultiplier: 1.08 }
+    },
+    siegecraft: {
+        name: 'Siegecraft',
+        description: 'Organized siege doctrine for city assaults.',
+        cost: { gold: 280, prestige: 35 },
+        requires: ['military_logistics'],
+        effects: { siegeAttackMultiplier: 1.2 }
+    },
+    naval_architecture: {
+        name: 'Naval Architecture',
+        description: 'Stronger hulls and faster naval movement.',
+        cost: { gold: 260, prestige: 30 },
+        requires: [],
+        effects: { navalAttackMultiplier: 1.15, navalMovement: 1 }
+    },
+    cavalry_tactics: {
+        name: 'Cavalry Tactics',
+        description: 'Improves flanking and shock momentum.',
+        cost: { gold: 240, prestige: 28 },
+        requires: [],
+        effects: { cavalryAttackMultiplier: 1.12 }
+    },
+    irrigation_systems: {
+        name: 'Irrigation Systems',
+        description: 'Advanced canal-fed irrigation for higher yields.',
+        cost: { gold: 260, prestige: 28 },
+        requires: [],
+        effects: { foodMultiplier: 1.15 }
+    },
+    monastic_scholarship: {
+        name: 'Monastic Scholarship',
+        description: 'Libraries, scriptoria, and legal codification.',
+        cost: { gold: 320, prestige: 40 },
+        requires: ['irrigation_systems'],
+        effects: { researchDiscount: 0.1, prestigePerTurn: 2 }
+    },
+    caravan_routes: {
+        name: 'Caravan Routes',
+        description: 'Formalized trade corridors across the continent.',
+        cost: { gold: 300, prestige: 35 },
+        requires: ['military_logistics'],
+        effects: { goldMultiplier: 1.12, tradePostBonus: 2 }
+    }
+};
+
+const BUILD_ACTIONS = {
+    establish_town: { name: 'Establish Town', gold: 240, manpower: 120, prestige: 12 },
+    build_fort: { name: 'Build Fort', gold: 150, manpower: 90, prestige: 4 },
+    build_road: { name: 'Build Road', gold: 70, manpower: 40, prestige: 0 },
+    establish_monastery: { name: 'Establish Monastery / Mosque', gold: 180, manpower: 60, prestige: 8 },
+    build_caravan_camp: { name: 'Build Caravan Camp', gold: 130, manpower: 55, prestige: 2 },
+    build_port: { name: 'Build Port', gold: 170, manpower: 80, prestige: 3 },
+    build_farm: { name: 'Build Farm', gold: 75, manpower: 45, prestige: 0 },
+    irrigate: { name: 'Irrigate', gold: 90, manpower: 50, prestige: 0 },
+    plant_forest: { name: 'Plant Forest', gold: 60, manpower: 35, prestige: 0 },
+    build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6 }
+};
 
 function parseSemver(version) {
     const raw = String(version || '').trim();
@@ -140,17 +235,45 @@ class GameState {
             territories: [], // Populated during unit creation
             unitsOwned: [],
             buildingsOwned: [],
-            techResearched: []
+            techResearched: [],
+            techEffects: {
+                movement: 0,
+                foodMultiplier: 1,
+                goldMultiplier: 1,
+                manpowerMultiplier: 1,
+                cavalryAttackMultiplier: 1,
+                navalAttackMultiplier: 1,
+                siegeAttackMultiplier: 1,
+                researchDiscount: 0,
+                prestigePerTurn: 0,
+                tradePostBonus: 0,
+                navalMovement: 0
+            }
         };
 
         this.turn = 1;
         this.units = [];
         this.buildings = [];
         this.setupScenarioTowns(civilization, scenario);
+        if (scenario === SCENARIOS.empire) {
+            const empireStartTechs = [
+                'military_logistics',
+                'naval_architecture',
+                'cavalry_tactics',
+                'irrigation_systems'
+            ];
+            empireStartTechs.forEach((techId) => {
+                if (!this.player.techResearched.includes(techId)) {
+                    this.player.techResearched.push(techId);
+                    this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+                }
+            });
+            this.seedAdvancedEmpireInfrastructure();
+        }
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(scenario);
         gameMap.markTerritoryDirty();
-        gameMap.render();
+        gameMap.requestRender();
 
         this.initialized = true;
         return true;
@@ -159,6 +282,27 @@ class GameState {
     resolveCivilization(faction) {
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
         return normalizedFaction;
+    }
+
+    seedAdvancedEmpireInfrastructure() {
+        const playerCities = gameMap?.getCityTiles('player') || [];
+        playerCities.forEach((tile, index) => {
+            if (!tile?.cityData) return;
+            const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
+            infra.roads = Math.max(infra.roads || 1, 3);
+            infra.agriculture = Math.max(infra.agriculture || 1, 3);
+            infra.industry = Math.max(infra.industry || 1, 3);
+            if (index === 0) tile.cityData.monastery = true;
+
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(tile.x + offset.x, tile.y + offset.y)?.terrain === 'water');
+            if (nearWater) {
+                tile.cityData.port = true;
+                tile.cityData.navalYard = true;
+            }
+        });
     }
 
     getStartingTownForFaction(faction) {
@@ -235,6 +379,7 @@ class GameState {
         this.player.territories = playerCityTiles
             .map(tile => tile.cityData?.id)
             .filter(Boolean);
+        (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
     }
 
     applyTownOwner(town, owner, faction) {
@@ -252,6 +397,93 @@ class GameState {
             const idx = this.player.territories.indexOf(town.id);
             if (idx !== -1) this.player.territories.splice(idx, 1);
         }
+    }
+
+    isWaterCapable(unit) {
+        return unit.type === 'naval'
+            || unit.category === 'transport'
+            || Boolean(unit.bonuses?.waterTraversal);
+    }
+
+    isWaterOnlyUnit(unit) {
+        return unit?.type === 'naval' || unit?.category === 'transport';
+    }
+
+    getBattleType(defenderTile, attacker, defender) {
+        if (defenderTile?.cityData) return 'siege';
+        if (defenderTile?.terrain === 'forest' || defenderTile?.terrain === 'hills' || defenderTile?.terrain === 'mountains') {
+            if (defender.category === 'mountain' || defender.category === 'scout' || defender.category === 'intel') {
+                return 'ambush';
+            }
+        }
+        if (attacker.type === 'naval' || defender.type === 'naval') return 'naval';
+        return 'field';
+    }
+
+    findRetreatTile(unit, threatPos) {
+        const offsets = [
+            { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 },
+            { x: -1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: -1 }
+        ];
+        const ranked = offsets
+            .map((offset) => ({ x: unit.position.x + offset.x, y: unit.position.y + offset.y }))
+            .filter((pos) => {
+                const tile = gameMap?.getTile(pos.x, pos.y);
+                if (!tile) return false;
+                if (tile.terrain === 'water' && !this.isWaterCapable(unit)) return false;
+                if (this.units.some(u => u.id !== unit.id && u.position.x === pos.x && u.position.y === pos.y)) return false;
+                return true;
+            })
+            .sort((a, b) => {
+                const da = Math.abs(a.x - threatPos.x) + Math.abs(a.y - threatPos.y);
+                const db = Math.abs(b.x - threatPos.x) + Math.abs(b.y - threatPos.y);
+                return db - da;
+            });
+        return ranked[0] || null;
+    }
+
+    resolveBattleOnMove(attacker, defender, destination) {
+        const tile = gameMap?.getTile(destination.x, destination.y);
+        const battleType = this.getBattleType(tile, attacker, defender);
+        const attemptRetreat = defender.owner === 'player' || defender.currentHealth < defender.stats.health * 0.55;
+        const result = executeBattle(
+            attacker.id,
+            defender.id,
+            tile?.terrain || 'plains',
+            battleType,
+            { attemptRetreat, retreatSide: 'defender' }
+        );
+        if (!result.success) return false;
+
+        if (result.retreat?.success && result.retreat.side === 'defender') {
+            const retreatingDefender = this.units.find(u => u.id === defender.id);
+            if (retreatingDefender) {
+                const retreatPos = this.findRetreatTile(retreatingDefender, attacker.position);
+                if (retreatPos) {
+                    retreatingDefender.position = retreatPos;
+                }
+            }
+        }
+
+        if (window.uiManager) {
+            const summary = `${battleType.toUpperCase()} battle: ${attacker.name} vs ${defender.name} `
+                + `(A-${result.attackerDamage} / D-${result.defenderDamage})`;
+            uiManager.showNotification(summary, 'info');
+            uiManager.showCombatResult(result);
+        }
+
+        const attackerAlive = this.units.some(u => u.id === attacker.id);
+        const defenderAlive = this.units.some(u => u.id === defender.id);
+        if (attackerAlive && !defenderAlive) {
+            attacker.position = destination;
+            if (tile?.fort && tile.fort.owner !== attacker.owner) {
+                tile.fort.owner = attacker.owner;
+                tile.fort.health = Math.max(20, Math.floor((tile.fort.maxHealth || 90) * 0.45));
+            }
+            this.captureTerritory(attacker, destination);
+        }
+
+        return attackerAlive;
     }
 
     isSpawnTileAvailable(x, y) {
@@ -289,6 +521,345 @@ class GameState {
         return null;
     }
 
+    expandRoadNetworkFromCity(cityTile) {
+        if (!cityTile) return;
+        const infra = cityTile.cityData?.infrastructure || {};
+        const radius = Math.max(1, Math.min(4, Math.floor((infra.roads || 1) / 2) + 1));
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist > radius) continue;
+                const tile = gameMap?.getTile(cityTile.x + dx, cityTile.y + dy);
+                if (!tile || tile.terrain === 'water') continue;
+                tile.road = true;
+            }
+        }
+    }
+
+    getTerrainMoveCost(unit, fromTile, toTile) {
+        if (!toTile) return Infinity;
+        if (toTile.terrain === 'water') {
+            return this.isWaterCapable(unit) ? 1 : Infinity;
+        }
+        const base = TERRAIN_TYPES[toTile.terrain]?.moveCost || 1;
+        let cost = base;
+
+        if (unit.category === 'mountain' && (toTile.terrain === 'hills' || toTile.terrain === 'mountains')) {
+            cost *= 0.65;
+        }
+        if (unit.type === 'cavalry' && (toTile.terrain === 'forest' || toTile.terrain === 'mountains')) {
+            cost *= 1.3;
+        }
+
+        if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
+            cost *= 0.45;
+        } else if (toTile.road && toTile.terrain !== 'water') {
+            cost *= 0.65;
+        }
+
+        return Math.max(0.35, cost);
+    }
+
+    estimateTravelCost(unit, start, end) {
+        if (!gameMap) return Infinity;
+        let cx = start.x;
+        let cy = start.y;
+        let total = 0;
+        let safety = 0;
+
+        while ((cx !== end.x || cy !== end.y) && safety < 2048) {
+            safety++;
+            const dx = end.x - cx;
+            const dy = end.y - cy;
+            const candidates = [];
+
+            if (dx !== 0) candidates.push({ x: cx + Math.sign(dx), y: cy });
+            if (dy !== 0) candidates.push({ x: cx, y: cy + Math.sign(dy) });
+
+            const ranked = candidates
+                .filter((pos) => {
+                    const t = gameMap.getTile(pos.x, pos.y);
+                    if (!t) return false;
+                    const occupied = this.units.some(u => u.position.x === pos.x && u.position.y === pos.y && !(u.position.x === end.x && u.position.y === end.y));
+                    return !occupied;
+                })
+                .map((pos) => {
+                    const fromTile = gameMap.getTile(cx, cy);
+                    const toTile = gameMap.getTile(pos.x, pos.y);
+                    const stepCost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                    const remain = Math.abs(end.x - pos.x) + Math.abs(end.y - pos.y);
+                    return { ...pos, stepCost, remain };
+                })
+                .sort((a, b) => (a.stepCost - b.stepCost) || (a.remain - b.remain));
+
+            const next = ranked[0];
+            if (!next || !Number.isFinite(next.stepCost)) return Infinity;
+            total += next.stepCost;
+            cx = next.x;
+            cy = next.y;
+        }
+
+        if (safety >= 2048) return Infinity;
+        return total;
+    }
+
+    fortifyUnit(unitId) {
+        const unit = this.units.find(u => u.id === unitId);
+        if (!unit) return { success: false, message: 'Unit not found' };
+
+        const tile = gameMap?.getTile(unit.position.x, unit.position.y);
+        if (!tile) return { success: false, message: 'Invalid tile' };
+        if (tile.terrain === 'water') return { success: false, message: 'Cannot fortify at sea' };
+
+        unit.fortified = true;
+        unit.currentMovement = 0;
+        unit.morale = Math.min(100, unit.morale + 10);
+
+        let created = false;
+        if (!tile.fort) {
+            tile.fort = {
+                id: `fort_${tile.x}_${tile.y}`,
+                owner: unit.owner,
+                health: 90,
+                maxHealth: 90,
+                defenseBonus: 0.22,
+                attack: 10,
+                garrisonBonus: 0.12,
+                builtTurn: this.turn
+            };
+            created = true;
+        } else if (tile.fort.owner === unit.owner) {
+            tile.fort.health = Math.min(tile.fort.maxHealth || 90, (tile.fort.health || 0) + 12);
+        }
+
+        return {
+            success: true,
+            created,
+            message: created ? `${unit.name} established a fortification` : `${unit.name} fortified the position`
+        };
+    }
+
+    resolveFortAssault(attacker, destinationTile) {
+        const fort = destinationTile?.fort;
+        if (!fort) return { success: true, destroyed: false };
+
+        const attackerIsSiege = attacker.category === 'siege';
+        const attackerPower = attacker.stats.attack * (attackerIsSiege ? 1.45 : 1);
+        const defenderPower = (fort.attack || 8) + Math.floor((fort.health || 50) * 0.05);
+        const damageToFort = Math.max(6, Math.floor(attackerPower * (0.55 + Math.random() * 0.35)));
+        const damageToUnit = Math.max(3, Math.floor(defenderPower * (0.65 + Math.random() * 0.35)));
+
+        fort.health -= damageToFort;
+        attacker.currentHealth -= damageToUnit;
+        attacker.currentMovement = 0;
+        attacker.fortified = false;
+
+        let attackerDied = false;
+        if (attacker.currentHealth <= 0) {
+            attackerDied = true;
+            removeUnit(attacker.id);
+        }
+
+        let destroyed = false;
+        if (fort.health <= 0) {
+            destroyed = true;
+            destinationTile.fort = null;
+            if (!destinationTile.cityData) {
+                destinationTile.owner = null;
+            }
+        }
+
+        return {
+            success: !attackerDied,
+            destroyed,
+            attackerDied,
+            damageToFort,
+            damageToUnit,
+            fortOwner: fort.owner
+        };
+    }
+
+    getAdjacentSupportHealing(unit) {
+        const nearbyAllies = this.units.filter(other =>
+            other.id !== unit.id &&
+            other.owner === unit.owner &&
+            Math.abs(other.position.x - unit.position.x) <= 1 &&
+            Math.abs(other.position.y - unit.position.y) <= 1
+        );
+
+        let healing = 0;
+        nearbyAllies.forEach((ally) => {
+            const healingRate = ally.bonuses?.healingRate || 0;
+            if (healingRate <= 0) return;
+            healing += Math.max(2, Math.floor(healingRate * 0.65));
+        });
+
+        return healing;
+    }
+
+    processUnitHealing() {
+        this.units.forEach((unit) => {
+            if (unit.currentHealth <= 0) return;
+            // Carried units are off-map while embarked and do not heal independently.
+            if (unit.isCarried) return;
+
+            const tile = gameMap?.getTile(unit.position.x, unit.position.y);
+            if (!tile) return;
+
+            let healAmount = 0;
+            const onFriendlyTown = Boolean(tile.cityData) && tile.owner === unit.owner;
+            if (onFriendlyTown) healAmount += 12;
+            if (unit.fortified) healAmount += 8;
+            healAmount += this.getAdjacentSupportHealing(unit);
+
+            if (healAmount <= 0) return;
+            unit.currentHealth = Math.min(unit.stats.health, unit.currentHealth + healAmount);
+
+            if (unit.owner === 'player') {
+                const fort = tile.fort;
+                if (fort && fort.owner === 'player') {
+                    fort.health = Math.min(fort.maxHealth || 90, (fort.health || 0) + 5);
+                }
+            }
+        });
+    }
+
+    processAutomatedUnits() {
+        this.units.forEach(unit => {
+            if (unit.owner === 'player' && !unit.isCarried && (unit.destination || unit.automated)) {
+                this.processUnitDestination(unit);
+                if (unit.automated) {
+                    this.processUnitAutomation(unit);
+                }
+            }
+        });
+    }
+
+    revealCarriedUnitVision() {
+        if (!gameMap) return;
+        this.units.forEach((transport) => {
+            if (transport.owner !== 'player' || !Array.isArray(transport.carryingUnits) || transport.carryingUnits.length === 0) return;
+            if (!Number.isFinite(transport.position?.x) || !Number.isFinite(transport.position?.y)) return;
+            transport.carryingUnits.forEach((entry) => {
+                const carriedId = (entry && typeof entry === 'object') ? entry.id : entry;
+                const carriedUnit = this.units.find(u => u.id === carriedId);
+                if (!carriedUnit || !carriedUnit.isCarried) return;
+                gameMap.revealArea(transport.position.x, transport.position.y, 3);
+            });
+        });
+    }
+
+    processUnitDestination(unit) {
+        if (!unit.destination) return;
+
+        let safety = 0;
+        // Keep moving as long as we have movement and haven't reached destination
+        while (unit.currentMovement > 0.3 && unit.destination && safety < 12) {
+            safety++;
+            const dx = unit.destination.x - unit.position.x;
+            const dy = unit.destination.y - unit.position.y;
+
+            if (Math.abs(dx) <= 0 && Math.abs(dy) <= 0) {
+                unit.destination = null;
+                break;
+            }
+
+            // Find best next step (Manhattan-ish but checking multiple options)
+            const candidates = [];
+            if (dx !== 0) candidates.push({ x: unit.position.x + Math.sign(dx), y: unit.position.y });
+            if (dy !== 0) candidates.push({ x: unit.position.x, y: unit.position.y + Math.sign(dy) });
+
+            const fromTile = gameMap.getTile(unit.position.x, unit.position.y);
+            const ranked = candidates
+                .map(pos => {
+                    const toTile = gameMap.getTile(pos.x, pos.y);
+                    const cost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                    const dist = Math.abs(unit.destination.x - pos.x) + Math.abs(unit.destination.y - pos.y);
+                    return { ...pos, cost, dist };
+                })
+                .filter(c => c.cost <= unit.currentMovement && c.cost < 99)
+                .sort((a, b) => a.dist - b.dist || a.cost - b.cost);
+
+            if (ranked.length > 0) {
+                const next = ranked[0];
+                const prevPos = { ...unit.position };
+                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y });
+                if (!moved || (unit.position.x === prevPos.x && unit.position.y === prevPos.y)) {
+                    // Blocked by enemy or something
+                    break;
+                }
+            } else {
+                // Not enough movement left for any step
+                break;
+            }
+        }
+    }
+
+    processUnitAutomation(unit) {
+        if (unit.typeId === 'civil_engineers') {
+            const tile = gameMap.getTile(unit.position.x, unit.position.y);
+            // If on a tile without road, build one
+            if (tile && !tile.road && tile.terrain !== 'water' && tile.terrain !== 'mountains' && !tile.cityData) {
+                if (unit.currentMovement >= 0.5) {
+                    this.applyUnitBuildAction(unit, 'build_road');
+                }
+            } else if (unit.currentMovement >= 1) {
+                // If not building, or finished building, find next target
+                if (!unit.destination) {
+                    const target = this.findNearestUnroadedTile(unit.position);
+                    if (target) {
+                        unit.destination = target;
+                        this.processUnitDestination(unit);
+                    }
+                }
+            }
+        }
+    }
+
+    findNearestUnroadedTile(pos) {
+        if (!gameMap) return null;
+        for (let r = 1; r < 15; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const remaining = r - Math.abs(dy);
+                for (let dx = -remaining; dx <= remaining; dx++) {
+                    const x = pos.x + dx;
+                    const y = pos.y + dy;
+                    const tile = gameMap.getTile(x, y);
+                    if (tile && !tile.road && tile.terrain !== 'water' && tile.terrain !== 'mountains' && !tile.cityData) {
+                        return { x, y };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    applyUnitBuildAction(unit, actionId) {
+        const tile = gameMap.getTile(unit.position.x, unit.position.y);
+        if (!tile) return { success: false, message: 'Invalid tile' };
+
+        const action = BUILD_ACTIONS[actionId];
+        if (!action) return { success: false, message: 'Invalid action' };
+
+        if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
+            return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
+        }
+
+        if (actionId === 'build_road') {
+            tile.road = true;
+            if (tile.cityData) {
+                const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
+                infra.roads = Math.min((infra.roads || 0) + 1, 8);
+                this.expandRoadNetworkFromCity(tile);
+            }
+        }
+
+        unit.currentMovement = 0;
+        gameMap?.requestRender();
+        return { success: true, actionName: action.name };
+    }
+
+
     createStartingUnits(faction, scenario) {
         const playerCities = gameMap.getCityTiles('player');
         if (playerCities.length === 0) return;
@@ -299,12 +870,14 @@ class GameState {
             ? [
                 { type: 'skutatoi', count: 5 },
                 { type: 'kavallarioi', count: 4 },
-                { type: 'archers', count: 3 }
+                { type: 'archers', count: 3 },
+                { type: 'civil_engineers', count: 1 }
             ]
             : [
                 { type: 'skutatoi', count: 3 },
                 { type: 'kavallarioi', count: 2 },
-                { type: 'archers', count: 2 }
+                { type: 'archers', count: 2 },
+                { type: 'civil_engineers', count: 1 }
             ];
 
         baseUnits.forEach(({ type, count }) => {
@@ -421,6 +994,15 @@ class GameState {
     recruitUnit(unitTypeId, position) {
         const unitType = getUnitById(unitTypeId);
         if (!unitType) return null;
+        const tile = gameMap?.getTile(position?.x, position?.y);
+        if (!tile) return null;
+        const occupied = this.units.some(u => u.position.x === position.x && u.position.y === position.y);
+        if (occupied) return null;
+
+        const waterCapable = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
+        const waterOnly = unitType.type === 'naval' || unitType.category === 'transport';
+        if (tile.terrain === 'water' && !waterCapable) return null;
+        if (tile.terrain !== 'water' && waterOnly) return null;
 
         // Check if player can afford
         if (!this.canAfford(unitType.cost.gold, unitType.cost.manpower)) {
@@ -438,6 +1020,211 @@ class GameState {
         }
 
         return unit;
+    }
+
+    getRecruitableUnitTypes(cityTile) {
+        if (!cityTile?.cityData) return ['skutatoi'];
+        const infra = cityTile.cityData.infrastructure || {};
+        const researched = new Set(this.player?.techResearched || []);
+        const options = ['skutatoi', 'archers', 'kavallarioi', 'civil_engineers'];
+
+        if ((infra.industry || 0) >= 1) options.push('civil_engineers');
+        if ((infra.industry || 0) >= 2) options.push('engineers');
+        if ((infra.industry || 0) >= 3 || researched.has('siegecraft')) options.push('mangonel');
+        if ((infra.agriculture || 0) >= 2) options.push('camel_riders');
+        if ((infra.roads || 0) >= 2) options.push('explorer');
+        if ((infra.roads || 0) >= 3 || researched.has('monastic_scholarship')) options.push('spy');
+        if ((infra.roads || 0) >= 3 || researched.has('caravan_routes')) options.push('caravan');
+        if ((infra.industry || 0) >= 3 && (infra.agriculture || 0) >= 3 && researched.has('cavalry_tactics')) options.push('war_elephants');
+        if (cityTile.cityData.port || cityTile.cityData.navalYard) {
+            options.push('transport');
+            options.push('merchant_ship');
+        }
+        if ((cityTile.cityData.port || cityTile.cityData.navalYard) && researched.has('naval_architecture')) {
+            options.push('dromon');
+            options.push('dromon_greekfire');
+        }
+        if ((infra.industry || 0) >= 4 && researched.has('naval_architecture')) options.push('greekfire');
+        if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
+        if (cityTile.cityData.monastery || researched.has('monastic_scholarship') || (infra.industry || 0) >= 4) options.push('priests');
+        if ((infra.agriculture || 0) >= 2 || cityTile.cityData.monastery) options.push('healer');
+
+        const unique = [];
+        options.forEach((unitId) => {
+            if (unique.includes(unitId)) return;
+            if (!getUnitById(unitId)) return;
+            unique.push(unitId);
+        });
+        return unique;
+    }
+
+    getAvailableTechnologies() {
+        const researched = new Set(this.player?.techResearched || []);
+        return Object.entries(TECHNOLOGY_TREE)
+            .filter(([techId, tech]) => {
+                if (researched.has(techId)) return false;
+                return (tech.requires || []).every(req => researched.has(req));
+            })
+            .map(([techId, tech]) => ({ id: techId, ...tech }));
+    }
+
+    applyTechnologyEffects(effects = {}) {
+        const current = this.player.techEffects;
+        if (effects.movement) current.movement += effects.movement;
+        if (effects.foodMultiplier) current.foodMultiplier *= effects.foodMultiplier;
+        if (effects.goldMultiplier) current.goldMultiplier *= effects.goldMultiplier;
+        if (effects.manpowerMultiplier) current.manpowerMultiplier *= effects.manpowerMultiplier;
+        if (effects.cavalryAttackMultiplier) current.cavalryAttackMultiplier *= effects.cavalryAttackMultiplier;
+        if (effects.navalAttackMultiplier) current.navalAttackMultiplier *= effects.navalAttackMultiplier;
+        if (effects.siegeAttackMultiplier) current.siegeAttackMultiplier *= effects.siegeAttackMultiplier;
+        if (effects.researchDiscount) current.researchDiscount = Math.max(current.researchDiscount, effects.researchDiscount);
+        if (effects.prestigePerTurn) current.prestigePerTurn += effects.prestigePerTurn;
+        if (effects.tradePostBonus) current.tradePostBonus += effects.tradePostBonus;
+        if (effects.navalMovement) current.navalMovement += effects.navalMovement;
+    }
+
+    researchTechnology(techId) {
+        const tech = TECHNOLOGY_TREE[techId];
+        if (!tech) return { success: false, message: 'Unknown technology' };
+
+        if (this.player.techResearched.includes(techId)) {
+            return { success: false, message: `${tech.name} already researched` };
+        }
+
+        const researched = new Set(this.player.techResearched);
+        const requirementsMet = (tech.requires || []).every(req => researched.has(req));
+        if (!requirementsMet) {
+            return { success: false, message: 'Prerequisites not met' };
+        }
+
+        const discount = this.player.techEffects.researchDiscount || 0;
+        const goldCost = Math.max(1, Math.floor(tech.cost.gold * (1 - discount)));
+        const prestigeCost = Math.max(1, Math.floor(tech.cost.prestige * (1 - discount)));
+        if (!this.spendResources(goldCost, 0, prestigeCost)) {
+            return { success: false, message: `Need ${goldCost} gold and ${prestigeCost} prestige` };
+        }
+
+        this.player.techResearched.push(techId);
+        this.applyTechnologyEffects(tech.effects || {});
+        return {
+            success: true,
+            techId,
+            name: tech.name,
+            goldCost,
+            prestigeCost
+        };
+    }
+
+    applyCityBuildAction(cityTile, actionId) {
+        const isPlayerControlled = cityTile && (
+            cityTile.owner === 'player' ||
+            gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player'
+        );
+        if (!isPlayerControlled) {
+            return { success: false, message: 'Build actions require a player-owned tile' };
+        }
+
+        const action = BUILD_ACTIONS[actionId];
+        if (!action) return { success: false, message: 'Unknown build action' };
+
+        if (actionId === 'establish_town' && !cityTile.cityData) {
+            if (cityTile.terrain === 'water') {
+                return { success: false, message: 'Cannot establish a town on water' };
+            }
+            cityTile.terrain = 'city';
+            cityTile.building = 'town';
+            cityTile.cityData = {
+                id: `founded_${cityTile.x}_${cityTile.y}_${this.turn}`,
+                name: `New Settlement ${this.turn}`,
+                kind: 'town',
+                population: 4,
+                production: { food: 2, industry: 1, gold: 1 },
+                infrastructure: { roads: 1, agriculture: 1, industry: 1 }
+            };
+            if (!this.player.territories.includes(cityTile.cityData.id)) {
+                this.player.territories.push(cityTile.cityData.id);
+            }
+        }
+
+        if (!cityTile.cityData) {
+            return { success: false, message: 'Select a city tile for that build action' };
+        }
+
+        if (actionId === 'build_port') {
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
+            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
+        }
+
+        if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
+            return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
+        }
+
+        if (cityTile.owner !== 'player') {
+            cityTile.owner = 'player';
+        }
+
+        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
+        const production = cityTile.cityData.production || (cityTile.cityData.production = { food: 0, industry: 0, gold: 0 });
+
+        if (actionId === 'establish_town') {
+            cityTile.cityData.kind = 'city';
+            cityTile.building = 'town';
+            cityTile.importance = Math.max(cityTile.importance || 5, 7);
+            cityTile.cityData.population = Math.min((cityTile.cityData.population || 4) + 2, 14);
+            production.food += 1;
+            production.industry += 1;
+            production.gold += 1;
+            const foundation = gameMap?.getTownFoundationBonuses(cityTile.x, cityTile.y) || { food: 0, gold: 0, manpower: 0, notes: [] };
+            production.food += foundation.food;
+            production.gold += foundation.gold;
+            if (foundation.manpower) {
+                this.player.resources.manpower += foundation.manpower * 20;
+            }
+            if (foundation.notes.length > 0) {
+                cityTile.cityData.foundationBonus = foundation.notes.join(', ');
+            }
+        } else if (actionId === 'build_fort') {
+            cityTile.cityData.fortLevel = (cityTile.cityData.fortLevel || 0) + 1;
+            cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.15;
+            cityTile.cityData.garrison = (cityTile.cityData.garrison || 0) + 1;
+        } else if (actionId === 'build_road') {
+            infra.roads = Math.min((infra.roads || 0) + 1, 8);
+            production.gold += 1;
+            this.expandRoadNetworkFromCity(cityTile);
+        } else if (actionId === 'establish_monastery') {
+            cityTile.cityData.monastery = true;
+            this.player.resources.prestige += 6;
+            production.gold += 1;
+        } else if (actionId === 'build_caravan_camp') {
+            cityTile.cityData.caravanCamp = true;
+            production.gold += 2 + (this.player.techEffects.tradePostBonus || 0);
+        } else if (actionId === 'build_port') {
+            cityTile.cityData.port = true;
+            cityTile.cityData.navalYard = true;
+            production.gold += 2;
+        } else if (actionId === 'build_farm') {
+            infra.agriculture = Math.min((infra.agriculture || 0) + 1, 8);
+            production.food += 2;
+        } else if (actionId === 'irrigate') {
+            cityTile.cityData.irrigated = true;
+            production.food += 2;
+            production.gold += 1;
+        } else if (actionId === 'plant_forest') {
+            cityTile.cityData.forestManaged = true;
+            production.industry += 1;
+            cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.05;
+        } else if (actionId === 'build_canal') {
+            cityTile.cityData.canal = true;
+            infra.roads = Math.min((infra.roads || 0) + 1, 8);
+            production.gold += 2;
+            this.expandRoadNetworkFromCity(cityTile);
+        }
+
+        gameMap?.markTerritoryDirty();
+        return { success: true, actionId, actionName: action.name };
     }
 
     /**
@@ -462,26 +1249,63 @@ class GameState {
         // Check if unit has movement remaining
         if (unit.currentMovement <= 0) return false;
 
-        // Calculate distance
-        const distance = Math.abs(newPosition.x - unit.position.x) +
-            Math.abs(newPosition.y - unit.position.y);
+        const maxMovement = unit.currentMovement;
 
-        // Cannot move onto occupied tile.
-        const occupied = this.units.some(u =>
+        const blockingUnit = this.units.find(u =>
             u.id !== unit.id &&
             u.position.x === newPosition.x &&
             u.position.y === newPosition.y
         );
-        if (occupied) return false;
+
+        if (blockingUnit && blockingUnit.owner === unit.owner && blockingUnit.bonuses?.transportCapacity) {
+            const carrying = blockingUnit.carryingUnits || (blockingUnit.carryingUnits = []);
+            if (carrying.length < blockingUnit.bonuses.transportCapacity) {
+                carrying.push(unit.id);
+                // Remove unit from map but keep in units array marked as carried
+                unit.isCarried = true;
+                unit.carrierId = blockingUnit.id;
+                unit.position = { x: -1, y: -1 };
+                unit.currentMovement = 0;
+                if (window.uiManager) uiManager.showNotification(`${unit.name} embarked on ${blockingUnit.name}`, 'success');
+                return true;
+            }
+        }
 
         // Terrain restrictions.
         const destination = gameMap?.getTile(newPosition.x, newPosition.y);
         if (!destination) return false;
-        if (destination.terrain === 'water' && unit.type !== 'special') return false;
+        if (destination.terrain === 'water') {
+            if (!this.isWaterCapable(unit)) return false;
+        } else if (this.isWaterOnlyUnit(unit)) {
+            return false;
+        }
 
-        if (distance <= unit.currentMovement) {
-            unit.position = newPosition;
-            unit.currentMovement -= distance;
+        if (destination.fort && destination.fort.owner !== unit.owner && !blockingUnit) {
+            const fortAssault = this.resolveFortAssault(unit, destination);
+            if (window.uiManager) {
+                const outcome = fortAssault.destroyed
+                    ? `${unit.name} breached enemy fortification`
+                    : `${unit.name} was repelled by enemy fortification`;
+                uiManager.showNotification(outcome, fortAssault.destroyed ? 'success' : 'error');
+            }
+            if (fortAssault.success && fortAssault.destroyed) {
+                unit.position = { x: newPosition.x, y: newPosition.y };
+                this.captureTerritory(unit, newPosition);
+            }
+            return fortAssault.success;
+        }
+
+        const travelCost = this.estimateTravelCost(unit, unit.position, newPosition);
+        if (travelCost <= maxMovement) {
+            if (blockingUnit) {
+                if (blockingUnit.owner === unit.owner) return false;
+                unit.currentMovement = 0;
+                return this.resolveBattleOnMove(unit, blockingUnit, newPosition);
+            }
+
+            unit.fortified = false;
+            unit.position = { ...newPosition };
+            unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
             // Reveal fog of war around new position for player units
             if (unit.owner === 'player' && gameMap) {
@@ -492,9 +1316,56 @@ class GameState {
             this.captureTerritory(unit, newPosition);
 
             return true;
+        } else {
+            // Set destination for future turns if it's too far
+            unit.destination = { ...newPosition };
+            if (window.uiManager) {
+                uiManager.showNotification(`${unit.name} destination set to ${newPosition.x},${newPosition.y}`, 'info');
+            }
+            // Move as much as possible towards destination this turn
+            this.processUnitDestination(unit);
+            return true;
         }
 
-        return false;
+    }
+
+    /**
+     * Unload units from a transport
+     */
+    unloadUnits(transportId) {
+        const transport = this.units.find(u => u.id === transportId);
+        if (!transport || !transport.carryingUnits || transport.carryingUnits.length === 0) return { success: false, message: 'No units to unload' };
+
+        // Try to find a land tile adjacent to the transport
+        const spawnPos = this.findAvailableSpawnPosition(
+            transport.position.x,
+            transport.position.y,
+            [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }],
+            1
+        );
+
+        if (!spawnPos) return { success: false, message: 'No suitable landing spot adjacent' };
+
+        const carried = transport.carryingUnits.pop();
+        const unitId = (carried && typeof carried === 'object') ? carried.id : carried;
+        const unit = this.units.find(u => u.id === unitId);
+        if (!unit) {
+            if (carried !== undefined) {
+                transport.carryingUnits.push(carried);
+            }
+            return { success: false, message: 'Carried unit not found in state' };
+        }
+
+        unit.isCarried = false;
+        unit.carrierId = null;
+        unit.position = { ...spawnPos };
+        unit.currentMovement = 0; // Unloading ends unit turn
+
+        if (window.uiManager) {
+            uiManager.showNotification(`${unit.name} disembarked at ${spawnPos.x},${spawnPos.y}`, 'success');
+            gameMap?.requestRender();
+        }
+        return { success: true };
     }
 
     /**
@@ -567,16 +1438,23 @@ class GameState {
      * End current turn
      */
     async endTurn() {
-        if (this.isPaused) return;
+        if (this.isPaused) {
+            return { paused: true };
+        }
 
         // If it was player's turn, now it's enemy's turn
         console.log(`Ending turn ${this.turn}`);
 
         // 1. Process Enemy Turn
-        if (window.aiManager) {
+        if (typeof aiManager !== 'undefined' && aiManager) {
             this.isPaused = true; // Pause player input
-            await aiManager.processTurn();
-            this.isPaused = false;
+            try {
+                await aiManager.processTurn();
+            } catch (error) {
+                console.error('AI turn failed:', error);
+            } finally {
+                this.isPaused = false;
+            }
         }
 
         // 2. Start New Turn for Player
@@ -599,19 +1477,27 @@ class GameState {
         this.addResources(
             Math.floor(baseGold * goldBonus) + territoryBonus,
             Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-            basePrestige
+            basePrestige + (this.player.techEffects.prestigePerTurn || 0)
         );
 
         // City gold output
         this.addResources(cityProduction.gold, 0, 0);
 
-        // Reset unit movement
+        // Reset unit movement before any automated destination processing.
         this.units.forEach(unit => {
             const unitType = getUnitById(unit.typeId);
             if (unitType) {
-                unit.currentMovement = unitType.stats.movement;
+                const navalBonus = unit.type === 'naval' ? (this.player.techEffects.navalMovement || 0) : 0;
+                unit.currentMovement = unitType.stats.movement + (this.player.techEffects.movement || 0) + navalBonus;
             }
         });
+
+        // Process units with destination or automation
+        this.processAutomatedUnits();
+        this.revealCarriedUnitVision();
+
+        // Healing phase: towns, fortified positions, and nearby support units.
+        this.processUnitHealing();
 
         // Pay unit upkeep
         let totalUpkeep = 0;
@@ -634,7 +1520,7 @@ class GameState {
             income: {
                 gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold,
                 manpower: Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-                prestige: basePrestige
+                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0)
             },
             upkeep: totalUpkeep,
             cityProduction
@@ -652,9 +1538,14 @@ class GameState {
             const infra = tile.cityData?.infrastructure;
             const pop = tile.cityData?.population || 4;
             if (!p) return;
-            totals.food += p.food;
-            totals.gold += Math.floor(p.gold + (infra?.roads || 0) * 0.8 + pop * 0.35);
-            totals.manpower += Math.floor((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6);
+            const foodMultiplier = this.player.techEffects.foodMultiplier || 1;
+            const goldMultiplier = this.player.techEffects.goldMultiplier || 1;
+            const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
+            const tradeBonus = tile.cityData?.caravanCamp ? 2 + (this.player.techEffects.tradePostBonus || 0) : 0;
+            const portBonus = tile.cityData?.port ? 2 : 0;
+            totals.food += Math.floor(p.food * foodMultiplier);
+            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
+            totals.manpower += Math.floor(((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6) * manpowerMultiplier);
         });
 
         return totals;
@@ -707,7 +1598,8 @@ class GameState {
             units: this.units,
             buildings: this.buildings,
             territories: this.territories,
-            cityOwnership: this.captureCityOwnership()
+            cityOwnership: this.captureCityOwnership(),
+            fortifications: this.captureFortifications()
         };
     }
 
@@ -720,6 +1612,49 @@ class GameState {
             owner: tile.owner || null,
             faction: tile.faction || null
         }));
+    }
+
+    captureFortifications() {
+        if (!gameMap) return [];
+        const forts = [];
+        for (let y = 0; y < gameMap.height; y++) {
+            for (let x = 0; x < gameMap.width; x++) {
+                const tile = gameMap.getTile(x, y);
+                if (!tile?.fort) continue;
+                forts.push({
+                    x,
+                    y,
+                    ...tile.fort
+                });
+            }
+        }
+        return forts;
+    }
+
+    restoreFortifications(fortifications = []) {
+        if (!gameMap) return;
+        for (let y = 0; y < gameMap.height; y++) {
+            for (let x = 0; x < gameMap.width; x++) {
+                const tile = gameMap.getTile(x, y);
+                if (tile) tile.fort = null;
+            }
+        }
+
+        fortifications.forEach((fort) => {
+            if (!Number.isInteger(fort?.x) || !Number.isInteger(fort?.y)) return;
+            const tile = gameMap.getTile(fort.x, fort.y);
+            if (!tile || tile.terrain === 'water') return;
+            tile.fort = {
+                id: fort.id || `fort_${fort.x}_${fort.y}`,
+                owner: fort.owner || 'neutral',
+                health: Number.isFinite(fort.health) ? fort.health : 90,
+                maxHealth: Number.isFinite(fort.maxHealth) ? fort.maxHealth : 90,
+                defenseBonus: Number.isFinite(fort.defenseBonus) ? fort.defenseBonus : 0.22,
+                attack: Number.isFinite(fort.attack) ? fort.attack : 10,
+                garrisonBonus: Number.isFinite(fort.garrisonBonus) ? fort.garrisonBonus : 0.12,
+                builtTurn: Number.isFinite(fort.builtTurn) ? fort.builtTurn : this.turn
+            };
+        });
     }
 
     restoreCityOwnership(cityOwnership = []) {
@@ -828,6 +1763,8 @@ class GameState {
                 .filter(Boolean);
         }
 
+        (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
+
         gameMap.getCityTiles('player').forEach(tile => gameMap.revealArea(tile.x, tile.y, 4));
         this.units
             .filter(unit => unit.owner === 'player')
@@ -851,16 +1788,56 @@ class GameState {
 
         this.selectedLeader = data.selectedLeader;
         this.player = data.player;
+        if (!this.player.techResearched) this.player.techResearched = [];
+        if (!this.player.techEffects) {
+            this.player.techEffects = {
+                movement: 0,
+                foodMultiplier: 1,
+                goldMultiplier: 1,
+                manpowerMultiplier: 1,
+                cavalryAttackMultiplier: 1,
+                navalAttackMultiplier: 1,
+                siegeAttackMultiplier: 1,
+                researchDiscount: 0,
+                prestigePerTurn: 0,
+                tradePostBonus: 0,
+                navalMovement: 0
+            };
+        }
         this.turn = data.turn;
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;
         this.units = data.units;
+        this.normalizeTransportCargoReferences();
         this.buildings = data.buildings;
         this.territories = data.territories;
         this.restoreCityOwnership(data.cityOwnership || []);
+        this.restoreFortifications(data.fortifications || []);
         this.initialized = true;
 
         return true;
+    }
+
+    normalizeTransportCargoReferences() {
+        if (!Array.isArray(this.units)) return;
+        const unitsById = new Map(this.units
+            .filter(unit => unit?.id)
+            .map(unit => [unit.id, unit]));
+
+        this.units.forEach((unit) => {
+            if (!unit || !Array.isArray(unit.carryingUnits)) return;
+            unit.carryingUnits = unit.carryingUnits
+                .map((entry) => (entry && typeof entry === 'object') ? entry.id : entry)
+                .filter((id) => typeof id === 'string' && unitsById.has(id));
+
+            unit.carryingUnits.forEach((carriedId) => {
+                const carriedUnit = unitsById.get(carriedId);
+                if (!carriedUnit) return;
+                carriedUnit.isCarried = true;
+                carriedUnit.carrierId = unit.id;
+                carriedUnit.position = { x: -1, y: -1 };
+            });
+        });
     }
 
     /**

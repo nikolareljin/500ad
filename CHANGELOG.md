@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-22
+
+### Added
+- Added a temporary health ring that appears around recently damaged units on the map (green at high health, grading to red at low health).
+- Added a new recruitable support unit: `Field Healer` (`healer`) with high adjacent healing output.
+- Added unit-built permanent fortifications on map tiles via unit fortify action.
+- Added fortification persistence to save/load data.
+- Added enemy unit inspection panel with estimated stats and enemy-specific visual cues.
+- Added leader portrait rendering in leader selection/detail panels from `assets/images/leaders/`.
+- Added GitHub Pages deployment workflow that publishes only the static game runtime files.
+
+### Changed
+- Updated `Fortify` action to create/maintain defensive forts, apply fortified stance, and feed turn-based healing.
+- Updated combat messaging to include the nearest town context for battle location readability.
+- Updated loading screen branding to use the Byzantine eagle SVG emblem/background treatment.
+- Updated UI typography to support a local embedded accent font for selected titles/names.
+
+### Fixed
+- Fixed unit healing flow by supporting recovery from friendly towns, fortified positions, and adjacent healer/support units.
+- Fixed enemy-fort tile movement by requiring assault resolution before entering undefended enemy forts.
+- Fixed an attack-action exploit by blocking unit attacks when the selected unit has no movement left.
+- Fixed turn processing order so movement resets before automated destination movement is processed.
+- Fixed `build_port` validation to check adjacent-water prerequisites before deducting resources.
+- Fixed unit action panel behavior where `Move` incorrectly triggered attack logic.
+- Fixed reference-map startup behavior by checking asset availability before loading the optional image.
+- Fixed docs to match expanded map dimensions (`320x180`, 57,600 tiles) and current geography bounds.
+- Fixed continue/load flow to resume ambient music after loading a saved game.
+- Fixed transport embark/unload persistence by storing carried unit IDs and normalizing cargo on load.
+- Fixed carried units being processed by automation while embarked.
+- Fixed minimap territory overlay rendering to reuse realm-grid storage and reduce allocation churn.
+
 ## [1.1.0] - 2026-02-20
 
 ### Added
