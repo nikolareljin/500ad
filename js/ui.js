@@ -791,14 +791,26 @@ class UIManager {
     /**
      * Show unit panel
      */
-    showUnitPanel(unit) {
+    showUnitPanel(unit, options = {}) {
         const panel = document.getElementById('unit-panel');
         if (!panel) return;
+        const enemyView = Boolean(options.enemyView);
+        const estimatedView = Boolean(options.estimatedView);
 
         panel.classList.add('active');
+        panel.classList.toggle('enemy-panel', enemyView);
         this.positionUnitPanel();
 
         document.getElementById('selected-unit-name').textContent = unit.name;
+        const metaEl = document.getElementById('unit-panel-meta');
+        if (metaEl) {
+            if (enemyView) {
+                const factionName = this.formatFactionName(unit.faction || unit.owner || 'enemy');
+                metaEl.textContent = `Enemy force: ${factionName}${estimatedView ? ' • Estimated strength' : ''}`;
+            } else {
+                metaEl.textContent = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+            }
+        }
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
             let unitIcon = '⚔️';
@@ -825,10 +837,25 @@ class UIManager {
             container.appendChild(nameSpan);
             portrait.appendChild(container);
         }
-        document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
-        document.getElementById('unit-attack').textContent = unit.stats.attack;
-        document.getElementById('unit-defense').textContent = unit.stats.defense;
-        document.getElementById('unit-movement').textContent = `${unit.currentMovement.toFixed(1)}/${unit.stats.movement}`;
+        const statLabels = document.querySelectorAll('#unit-panel .stat-label');
+        if (statLabels.length >= 4) {
+            statLabels[0].textContent = estimatedView ? 'Health (est.)' : 'Health';
+            statLabels[1].textContent = estimatedView ? 'Attack (est.)' : 'Attack';
+            statLabels[2].textContent = estimatedView ? 'Defense (est.)' : 'Defense';
+            statLabels[3].textContent = estimatedView ? 'Movement (est.)' : 'Movement';
+        }
+
+        if (estimatedView) {
+            document.getElementById('unit-health-value').textContent = this.formatEstimatedHealth(unit);
+            document.getElementById('unit-attack').textContent = this.formatEstimatedRange(unit.stats.attack, 0.18);
+            document.getElementById('unit-defense').textContent = this.formatEstimatedRange(unit.stats.defense, 0.18);
+            document.getElementById('unit-movement').textContent = this.formatEstimatedRange(unit.currentMovement, 0.25, { decimals: 1 });
+        } else {
+            document.getElementById('unit-health-value').textContent = `${unit.currentHealth}/${unit.stats.health}`;
+            document.getElementById('unit-attack').textContent = unit.stats.attack;
+            document.getElementById('unit-defense').textContent = unit.stats.defense;
+            document.getElementById('unit-movement').textContent = `${unit.currentMovement.toFixed(1)}/${unit.stats.movement}`;
+        }
 
         const healthBar = document.getElementById('unit-health-bar');
         if (healthBar) {
@@ -836,8 +863,63 @@ class UIManager {
             healthBar.style.width = `${healthPercent}%`;
         }
 
+        if (enemyView) {
+            const container = document.querySelector('.unit-actions');
+            if (container) {
+                container.innerHTML = '<div class="unit-intel-note">Intelligence is approximate. Exact combat values, morale, and bonuses are unknown.</div>';
+            }
+            return;
+        }
+
         // Add special action buttons
         this.updateUnitActionButtons(unit);
+    }
+
+    showEnemyUnitPanel(unit) {
+        this.showUnitPanel(unit, { enemyView: true, estimatedView: true });
+    }
+
+    formatFactionName(factionId) {
+        if (!factionId) return 'Unknown';
+        const labels = {
+            byzantine: 'Byzantines',
+            arab: 'Arabs',
+            bulgar: 'Bulgars',
+            frank: 'Franks',
+            sassanid: 'Sassanids',
+            tribal: 'Tribal Confederation',
+            enemy: 'Enemy Army',
+            neutral: 'Neutral'
+        };
+        if (labels[factionId]) return labels[factionId];
+        return String(factionId)
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (m) => m.toUpperCase());
+    }
+
+    formatEstimatedRange(value, uncertainty = 0.15, options = {}) {
+        const decimals = Number.isFinite(options.decimals) ? options.decimals : 0;
+        const n = Number.isFinite(value) ? Number(value) : 0;
+        const spread = Math.max(decimals > 0 ? 0.2 : 1, Math.abs(n) * uncertainty);
+        const factor = 10 ** decimals;
+        const low = Math.max(0, Math.floor((n - spread) * factor) / factor);
+        const high = Math.max(low, Math.ceil((n + spread) * factor) / factor);
+        const fmt = (x) => decimals > 0 ? x.toFixed(decimals) : String(Math.round(x));
+        return low === high ? `~${fmt(low)}` : `~${fmt(low)}-${fmt(high)}`;
+    }
+
+    formatEstimatedHealth(unit) {
+        const hpRatio = Math.max(0, Math.min(1, (unit.currentHealth || 0) / Math.max(1, unit.stats?.health || 1)));
+        let condition = 'Unknown';
+        if (hpRatio >= 0.8) condition = 'Strong';
+        else if (hpRatio >= 0.55) condition = 'Steady';
+        else if (hpRatio >= 0.3) condition = 'Worn';
+        else condition = 'Critical';
+
+        const spread = Math.max(8, Math.floor((unit.stats.health || 1) * 0.12));
+        const low = Math.max(0, Math.min(unit.stats.health, unit.currentHealth - spread));
+        const high = Math.max(low, Math.min(unit.stats.health, unit.currentHealth + spread));
+        return `${condition} (~${low}-${high}/${unit.stats.health})`;
     }
 
     positionUnitPanel() {
@@ -1233,7 +1315,8 @@ class UIManager {
      * Close unit panel
      */
     closeUnitPanel() {
-        document.getElementById('unit-panel')?.classList.remove('active');
+        const panel = document.getElementById('unit-panel');
+        panel?.classList.remove('active', 'enemy-panel');
         gameState.selectedUnit = null;
         gameMap?.render();
     }

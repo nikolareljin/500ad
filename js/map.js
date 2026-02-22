@@ -1244,6 +1244,10 @@ class GameMap {
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }
+        } else if (unit && unit.owner !== 'player' && !gameState.selectedUnit) {
+            if (window.uiManager) {
+                window.uiManager.showEnemyUnitPanel(unit);
+            }
         } else if (gameState.selectedUnit) {
             // Try to move selected unit
             const moved = gameState.moveUnit(gameState.selectedUnit.id, { x, y });
