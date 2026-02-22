@@ -37,4 +37,5 @@ Units recover health at end of turn from these sources:
 - Campaign starts now center on the selected leader's realm instead of always starting at Constantinople.
 - Enemy/alternate-faction leaders can begin from leader-specific historical zones (for example, Italian, Bulgarian, Arab, or Persian theaters).
 - Enemy town control varies by selected century through historical control overrides.
+- In `Managing an Empire`, player-controlled capital seats can be tracked as `primary` or `secondary` (by realm/leader priority), allowing starts and camera focus to prefer the active primary capital even when multiple historic capitals are controlled.
 - Some leaders can start as a field army (nomadic-style start) in `Building the Civilization`, with no initial town under player control.

@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-02-22
+
+### Added
+- Added a lightweight repo-managed `scripts/git-hooks/pre-commit` hook to guard release branches by requiring `VERSION` to match `release/X.Y.Z` when enabled via `core.hooksPath`.
+
+### Fixed
+- Fixed leader selection state reset so starting a new game after changing century/faction requires a fresh ruler selection and does not reuse the previous leader's realm/town setup.
+- Fixed GitHub Pages deployment timing by publishing from the `production` tag, so deployed builds reflect the finalized auto-tagged release state.
+- Fixed app/save version drift by deriving runtime save versioning from generated `assets/version.js` (backed by `VERSION`) instead of a separate hardcoded JS semver constant.
+- Fixed release branch version validation in CI by adding a dedicated `release-version-check` workflow and CI-aware branch-name detection in `scripts/check_release_version.sh`.
+- Fixed empire-scenario start anchoring so leader-specific starting capitals (for example, Justinian at Constantinople) remain the primary army/camera focus even when other controlled capital-class cities (such as Rome) are also owned.
+- Added primary/secondary capital-role assignment for player-controlled capital seats (with faction-specific capital-seat priority, including fallback seats such as Nicaea), so start anchoring and camera focus can prefer the active primary capital after territorial changes.
+
 ## [1.2.1] - 2026-02-22
 
 ### Added

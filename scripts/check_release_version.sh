@@ -21,12 +21,28 @@ grep -Fq "**Version $VERSION**" README.md || {
   exit 1
 }
 
-grep -Fq "const SAVE_VERSION = '$VERSION';" js/state.js || {
-  echo "Save format version in js/state.js is not synced to VERSION=$VERSION. Run ./scripts/version_set.sh \"$VERSION\" to sync all files." >&2
+grep -Fq "const SAVE_VERSION = resolveAppVersion();" js/state.js || {
+  echo "js/state.js must derive SAVE_VERSION from resolveAppVersion() (backed by assets/version.js)." >&2
   exit 1
 }
 
-branch="$(git rev-parse --abbrev-ref HEAD)"
+grep -Fq "window.APP_VERSION" js/state.js || {
+  echo "js/state.js must reference window.APP_VERSION as the runtime version source." >&2
+  exit 1
+}
+
+if grep -nE "const[[:space:]]+SAVE_VERSION[[:space:]]*=[[:space:]]*'([0-9]+\\.){2}[0-9]+'" js/state.js >/dev/null; then
+  echo "Hardcoded SAVE_VERSION literal detected in js/state.js. Use resolveAppVersion() and VERSION/assets/version.js as the single source of truth." >&2
+  exit 1
+fi
+
+branch="${GITHUB_HEAD_REF:-}"
+if [[ -z "$branch" && "${GITHUB_REF_TYPE:-}" == "branch" ]]; then
+  branch="${GITHUB_REF_NAME:-}"
+fi
+if [[ -z "$branch" ]]; then
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+fi
 if [[ "$branch" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
   branch_version="${BASH_REMATCH[1]}"
   if [[ "$branch_version" != "$VERSION" ]]; then

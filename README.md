@@ -331,7 +331,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.1** - Enemy/alternate-faction historical starts, century-based enemy control, and nomadic campaign starts
+**Version 1.2.2** - Leader selection reset improvements and production-tag GitHub Pages deployment (see changelog for full details)
 
 ## License
 

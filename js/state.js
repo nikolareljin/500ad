@@ -178,6 +178,14 @@ const LEADER_START_PROFILES = {
     }
 };
 
+const CIVILIZATION_CAPITAL_SEATS = {
+    byzantine: ['constantinople', 'nicaea', 'thessalonica', 'ravenna', 'rome'],
+    arab: ['damascus', 'baghdad', 'jerusalem', 'fustat'],
+    bulgar: ['preslav', 'serdica', 'skopje', 'belgrade'],
+    frank: ['rome', 'aachen', 'paris', 'milan', 'venice'],
+    sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv']
+};
+
 const CENTURY_TOWN_CONTROL_OVERRIDES = {
     '6': {
         ravenna: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
@@ -207,7 +215,17 @@ const CENTURY_TOWN_CONTROL_OVERRIDES = {
     }
 };
 
-const SAVE_VERSION = '1.2.1';
+function resolveAppVersion() {
+    const raw = (typeof window !== 'undefined') ? window.APP_VERSION : '';
+    const version = typeof raw === 'string' ? raw.trim() : '';
+    if (/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(version)) {
+        return version;
+    }
+    console.warn('window.APP_VERSION is missing or invalid; falling back to 0.0.0');
+    return '0.0.0';
+}
+
+const SAVE_VERSION = resolveAppVersion();
 
 const TECHNOLOGY_TREE = {
     military_logistics: {
@@ -491,6 +509,50 @@ class GameState {
         };
     }
 
+    getCapitalSeatPriority(playerFaction = null) {
+        const faction = playerFaction || this.player?.faction || this.selectedFaction || 'byzantine';
+        const leaderStartProfile = this.getLeaderStartProfile(faction);
+        const priority = [];
+        const pushUnique = (townId) => {
+            if (!townId || priority.includes(townId)) return;
+            priority.push(townId);
+        };
+
+        pushUnique(leaderStartProfile?.startTownId);
+        (CIVILIZATION_CAPITAL_SEATS[faction] || []).forEach(pushUnique);
+
+        return priority;
+    }
+
+    isCapitalSeatTile(tile, playerFaction = null) {
+        if (!tile?.cityData) return false;
+        const seatIds = new Set(this.getCapitalSeatPriority(playerFaction));
+        return tile.cityData.kind === 'capital' || seatIds.has(tile.cityData.id);
+    }
+
+    refreshPlayerCapitalRoles(playerFaction = null) {
+        if (!gameMap) return;
+        const faction = playerFaction || this.player?.faction || this.selectedFaction || 'byzantine';
+        const playerCities = gameMap.getCityTiles('player');
+        const capitalPriority = this.getCapitalSeatPriority(faction);
+        const capitalSeats = playerCities.filter((tile) => this.isCapitalSeatTile(tile, faction));
+
+        (gameMap.getCityTiles() || []).forEach((tile) => {
+            if (tile?.cityData) tile.cityData.capitalRole = null;
+        });
+
+        if (capitalSeats.length === 0) return;
+
+        const primaryCapital = capitalPriority
+            .map((townId) => capitalSeats.find((tile) => tile.cityData?.id === townId))
+            .find(Boolean)
+            || capitalSeats[0];
+
+        capitalSeats.forEach((tile) => {
+            tile.cityData.capitalRole = (tile === primaryCapital) ? 'primary' : 'secondary';
+        });
+    }
+
     isNomadicBuildStart(profile, scenario) {
         return scenario === SCENARIOS.building && Boolean(profile?.nomadicBuildStart);
     }
@@ -556,6 +618,7 @@ class GameState {
                 }
             }
         });
+        this.refreshPlayerCapitalRoles(playerFaction);
 
         if (scenario === SCENARIOS.empire) {
             this.player.resources.gold += 650;
@@ -1056,9 +1119,13 @@ class GameState {
         if (playerCities.length === 0 && !nomadicBuildStart) return;
 
         let startPos = null;
+        let anchorCity = null;
         if (playerCities.length > 0) {
-            const capital = playerCities.find(t => t.cityData?.kind === 'capital') || playerCities[0];
-            startPos = { x: capital.x, y: capital.y };
+            anchorCity = playerCities.find((tile) => tile.cityData?.capitalRole === 'primary')
+                || playerCities.find((tile) => tile.cityData?.id === leaderStartProfile.startTownId)
+                || playerCities.find(t => t.cityData?.kind === 'capital')
+                || playerCities[0];
+            startPos = { x: anchorCity.x, y: anchorCity.y };
         } else if (nomadicBuildStart) {
             const anchorTown = HISTORIC_TOWNS.find(t => t.id === leaderStartProfile.startTownId);
             if (anchorTown) startPos = { x: anchorTown.x, y: anchorTown.y };
@@ -1104,7 +1171,7 @@ class GameState {
         // Empire scenario starts with distributed garrisons.
         if (scenario === SCENARIOS.empire) {
             playerCities.forEach((city, idx) => {
-                if (idx === 0) return;
+                if (city === anchorCity) return;
                 const garrisonType = idx % 2 === 0 ? 'skutatoi' : 'archers';
                 const spawnPos = this.findAvailableSpawnPosition(
                     city.x,
@@ -1646,6 +1713,7 @@ class GameState {
         }
 
         gameMap.markTerritoryDirty();
+        this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
         this.checkWinLossConditions();
     }
 
@@ -1986,6 +2054,7 @@ class GameState {
                 .map(tile => tile.cityData?.id)
                 .filter(Boolean);
         }
+        this.refreshPlayerCapitalRoles(playerFaction);
 
         (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
 
