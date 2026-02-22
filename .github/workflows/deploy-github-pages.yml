@@ -23,7 +23,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Deploy the release artifact pinned by the production tag so Pages matches the finalized tagged release.
+          # Intentionally deploy from the production tag for both push and workflow_dispatch triggers.
+          # Manual runs are for re-deploying the finalized release artifact, not branch-preview testing.
           ref: refs/tags/production
 
       - name: Setup Pages

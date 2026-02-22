@@ -31,7 +31,7 @@ grep -Fq "window.APP_VERSION" js/state.js || {
   exit 1
 }
 
-if rg -n "const[[:space:]]+SAVE_VERSION[[:space:]]*=[[:space:]]*'([0-9]+\\.){2}[0-9]+'" js/state.js >/dev/null; then
+if grep -nE "const[[:space:]]+SAVE_VERSION[[:space:]]*=[[:space:]]*'([0-9]+\\.){2}[0-9]+'" js/state.js >/dev/null; then
   echo "Hardcoded SAVE_VERSION literal detected in js/state.js. Use resolveAppVersion() and VERSION/assets/version.js as the single source of truth." >&2
   exit 1
 fi
