@@ -639,7 +639,6 @@ class UIManager {
             this.showNotification('Build actions require a player-owned tile', 'error');
             return;
         }
-        if (!tile.owner) tile.owner = 'player';
 
         const choices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
             id: actionId,
@@ -871,6 +870,12 @@ class UIManager {
     updateUnitActionButtons(unit) {
         const container = document.querySelector('.unit-actions');
         if (!container) return;
+        const withClickSound = (handler) => () => {
+            if (typeof audioManager !== 'undefined' && audioManager?.playUISound) {
+                audioManager.playUISound('click');
+            }
+            handler();
+        };
 
         // Clear existing custom buttons (everything except move/attack/fortify if they are static)
         // For simplicity, let's just rebuild the whole set
@@ -880,23 +885,23 @@ class UIManager {
         moveBtn.className = 'action-btn';
         moveBtn.id = 'btn-move-unit';
         moveBtn.textContent = 'Move';
-        moveBtn.onclick = () => {
+        moveBtn.onclick = withClickSound(() => {
             this.showNotification('Select a destination tile to move this unit.', 'info');
-        };
+        });
         container.appendChild(moveBtn);
 
         const attackBtn = document.createElement('button');
         attackBtn.className = 'action-btn';
         attackBtn.id = 'btn-attack-unit';
         attackBtn.textContent = 'Attack';
-        attackBtn.onclick = () => this.attackWithSelectedUnit();
+        attackBtn.onclick = withClickSound(() => this.attackWithSelectedUnit());
         container.appendChild(attackBtn);
 
         const fortBtn = document.createElement('button');
         fortBtn.className = 'action-btn';
         fortBtn.id = 'btn-fortify-unit';
         fortBtn.textContent = 'Fortify';
-        fortBtn.onclick = () => this.fortifySelectedUnit();
+        fortBtn.onclick = withClickSound(() => this.fortifySelectedUnit());
         container.appendChild(fortBtn);
 
         // Engineer special actions
@@ -904,7 +909,7 @@ class UIManager {
             const buildRoadBtn = document.createElement('button');
             buildRoadBtn.className = 'action-btn';
             buildRoadBtn.textContent = 'Build Road';
-            buildRoadBtn.onclick = () => {
+            buildRoadBtn.onclick = withClickSound(() => {
                 const result = gameState.applyUnitBuildAction(unit, 'build_road');
                 if (result.success) {
                     this.showNotification('Road construction started', 'success');
@@ -912,18 +917,18 @@ class UIManager {
                 } else {
                     this.showNotification(result.message, 'error');
                 }
-            };
+            });
             container.appendChild(buildRoadBtn);
 
             const automateBtn = document.createElement('button');
             automateBtn.className = `action-btn ${unit.automated ? 'active' : ''}`;
             automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
-            automateBtn.onclick = () => {
+            automateBtn.onclick = withClickSound(() => {
                 unit.automated = !unit.automated;
                 automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
                 automateBtn.classList.toggle('active', unit.automated);
                 this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
-            };
+            });
             container.appendChild(automateBtn);
         }
 
@@ -932,14 +937,14 @@ class UIManager {
             const unloadBtn = document.createElement('button');
             unloadBtn.className = 'action-btn';
             unloadBtn.textContent = `Unload (${unit.carryingUnits.length})`;
-            unloadBtn.onclick = () => {
+            unloadBtn.onclick = withClickSound(() => {
                 const result = gameState.unloadUnits(unit.id);
                 if (result.success) {
                     this.updateUnitActionButtons(unit);
                 } else {
                     this.showNotification(result.message, 'error');
                 }
-            };
+            });
             container.appendChild(unloadBtn);
         }
 
@@ -948,11 +953,11 @@ class UIManager {
             const cancelDestBtn = document.createElement('button');
             cancelDestBtn.className = 'action-btn danger';
             cancelDestBtn.textContent = 'Cancel Route';
-            cancelDestBtn.onclick = () => {
+            cancelDestBtn.onclick = withClickSound(() => {
                 unit.destination = null;
                 this.showNotification('Route cancelled', 'info');
                 this.updateUnitActionButtons(unit);
-            };
+            });
             container.appendChild(cancelDestBtn);
         }
     }
