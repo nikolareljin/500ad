@@ -505,6 +505,7 @@ class UIManager {
             gameMap?.markTerritoryDirty();
             this.initializeGameView();
             this.updateHUD();
+            audioManager.playMusic('500ad_ambient');
             this.showNotification('Game loaded', 'success');
         } else {
             this.showScreen('mainMenu');
