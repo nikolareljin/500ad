@@ -90,6 +90,37 @@ const EMPIRE_CORE_TOWNS = {
     sassanid: ['ctesiphon', 'tbilisi', 'isfahan', 'rayy', 'merv', 'samarkand', 'bukhara', 'herat', 'balkh', 'kabul']
 };
 
+const CENTURY_EMPIRE_CORE_TOWNS = {
+    '6': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'antioch', 'alexandria', 'ravenna'],
+        frank: ['rome', 'milan', 'aachen', 'paris', 'toledo', 'cordoba'],
+        bulgar: ['belgrade', 'vienna'],
+        arab: ['mecca', 'medina', 'sanaa', 'aden'],
+        sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv', 'herat', 'balkh', 'kabul', 'tbilisi']
+    },
+    '7': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'alexandria', 'ravenna'],
+        frank: ['aachen', 'paris', 'rome', 'milan', 'toledo', 'cordoba'],
+        bulgar: ['preslav', 'belgrade'],
+        arab: ['damascus', 'aleppo', 'fustat', 'mecca', 'medina', 'basra'],
+        sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv', 'herat']
+    },
+    '10': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond', 'serdica'],
+        frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'massilia'],
+        bulgar: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev'],
+        arab: ['baghdad', 'damascus', 'aleppo', 'basra', 'fustat', 'mecca', 'medina'],
+        sassanid: ['isfahan', 'rayy', 'merv', 'herat', 'balkh', 'samarkand', 'bukhara']
+    },
+    '11': {
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'trebizond', 'athens', 'serdica'],
+        frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'london', 'prague'],
+        bulgar: ['preslav', 'belgrade', 'skopje', 'serdica'],
+        arab: ['iconium', 'caesarea', 'edessa', 'antioch', 'aleppo', 'damascus', 'baghdad', 'isfahan', 'rayy'],
+        sassanid: ['isfahan', 'rayy', 'merv', 'herat', 'samarkand', 'bukhara']
+    }
+};
+
 const LEADER_START_PROFILES = {
     totila: {
         startTownId: 'ravenna',
@@ -413,13 +444,18 @@ class GameState {
         return fallbackTown;
     }
 
+    getEmpireCoreTownsForCentury(faction) {
+        const century = String(this.selectedCentury || '');
+        return CENTURY_EMPIRE_CORE_TOWNS[century]?.[faction] || EMPIRE_CORE_TOWNS[faction] || [];
+    }
+
     getLeaderStartProfile(playerFaction) {
         const leaderId = this.selectedLeader?.id;
         const override = leaderId ? LEADER_START_PROFILES[leaderId] : null;
         const fallbackTown = this.getStartingTownForFaction(playerFaction);
         return {
             startTownId: override?.startTownId || fallbackTown.id,
-            empireCoreTowns: override?.empireCoreTowns || EMPIRE_CORE_TOWNS[playerFaction] || [],
+            empireCoreTowns: override?.empireCoreTowns || this.getEmpireCoreTownsForCentury(playerFaction),
             nomadicBuildStart: Boolean(override?.nomadicBuildStart)
         };
     }
