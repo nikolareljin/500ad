@@ -207,7 +207,7 @@ const CENTURY_TOWN_CONTROL_OVERRIDES = {
     }
 };
 
-const SAVE_VERSION = '1.2.0';
+const SAVE_VERSION = '1.2.1';
 
 const TECHNOLOGY_TREE = {
     military_logistics: {
@@ -1768,11 +1768,15 @@ class GameState {
 
         // Loss: No units left or no player-controlled cities.
         const playerCities = gameMap?.getCityTiles('player') || [];
+        const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
+        const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
+        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario);
         const hasNoUnits = playerUnits.length === 0;
         const hasNoCities = playerCities.length === 0;
-        if (hasNoUnits || hasNoCities) {
+        const lostByCities = hasNoCities && !allowNoCityStart;
+        if (hasNoUnits || lostByCities) {
             if (window.uiManager) {
-                if (hasNoCities) {
+                if (lostByCities) {
                     uiManager.showGameOver(false, 'Your empire has lost its last city.');
                 } else {
                     uiManager.showGameOver(false);
