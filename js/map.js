@@ -228,16 +228,36 @@ class GameMap {
             this.referenceMapReady = false;
             return;
         }
-        const image = new Image();
-        image.onload = () => {
-            this.referenceMapImage = image;
-            this.referenceMapReady = true;
-            this.requestRender();
+        const referenceMapPath = './large_map_1.jpg';
+        const loadReferenceImage = () => {
+            const image = new Image();
+            image.onload = () => {
+                this.referenceMapImage = image;
+                this.referenceMapReady = true;
+                this.requestRender();
+            };
+            image.onerror = () => {
+                this.referenceMapReady = false;
+            };
+            image.src = referenceMapPath;
         };
-        image.onerror = () => {
-            this.referenceMapReady = false;
-        };
-        image.src = 'large_map_1.jpg';
+
+        if (typeof fetch !== 'function') {
+            loadReferenceImage();
+            return;
+        }
+
+        fetch(referenceMapPath, { method: 'HEAD', cache: 'no-store' })
+            .then((response) => {
+                if (!response.ok) {
+                    this.referenceMapReady = false;
+                    return;
+                }
+                loadReferenceImage();
+            })
+            .catch(() => {
+                this.referenceMapReady = false;
+            });
     }
 
     /**

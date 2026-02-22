@@ -702,6 +702,10 @@ class UIManager {
             this.showNotification('Select one of your units first', 'error');
             return;
         }
+        if (selected.currentMovement <= 0) {
+            this.showNotification(`${selected.name} has no movement remaining this turn`, 'error');
+            return;
+        }
         if (!gameMap?.selectedTile) {
             this.showNotification('Select a target tile', 'error');
             return;
@@ -825,7 +829,9 @@ class UIManager {
         moveBtn.className = 'action-btn';
         moveBtn.id = 'btn-move-unit';
         moveBtn.textContent = 'Move';
-        moveBtn.onclick = () => this.attackWithSelectedUnit(); // Legacy naming? Wait, selectTile handles movement
+        moveBtn.onclick = () => {
+            this.showNotification('Select a destination tile to move this unit.', 'info');
+        };
         container.appendChild(moveBtn);
 
         const attackBtn = document.createElement('button');

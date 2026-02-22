@@ -1127,6 +1127,14 @@ class GameState {
             return { success: false, message: 'Select a city tile for that build action' };
         }
 
+        if (actionId === 'build_port') {
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
+            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
+        }
+
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
             return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
         }
@@ -1167,11 +1175,6 @@ class GameState {
             cityTile.cityData.caravanCamp = true;
             production.gold += 2 + (this.player.techEffects.tradePostBonus || 0);
         } else if (actionId === 'build_port') {
-            const nearWater = [
-                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
-            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
             cityTile.cityData.port = true;
             cityTile.cityData.navalYard = true;
             production.gold += 2;
@@ -1438,13 +1441,7 @@ class GameState {
         // City gold output
         this.addResources(cityProduction.gold, 0, 0);
 
-        // Process units with destination or automation
-        this.processAutomatedUnits();
-
-        // Healing phase: towns, fortified positions, and nearby support units.
-        this.processUnitHealing();
-
-        // Reset unit movement
+        // Reset unit movement before any automated destination processing.
         this.units.forEach(unit => {
             const unitType = getUnitById(unit.typeId);
             if (unitType) {
@@ -1452,6 +1449,12 @@ class GameState {
                 unit.currentMovement = unitType.stats.movement + (this.player.techEffects.movement || 0) + navalBonus;
             }
         });
+
+        // Process units with destination or automation
+        this.processAutomatedUnits();
+
+        // Healing phase: towns, fortified positions, and nearby support units.
+        this.processUnitHealing();
 
         // Pay unit upkeep
         let totalUpkeep = 0;
