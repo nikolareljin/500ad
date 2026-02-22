@@ -12,6 +12,8 @@ class AudioManager {
         this.musicTracks = {};
         this.initialized = false;
         this.audioContext = null;
+        this.assetAvailability = new Map();
+        this.musicRequestToken = 0;
     }
 
     /**
@@ -39,7 +41,24 @@ class AudioManager {
     /**
      * Play background music
      */
-    playMusic(trackName, loop = true) {
+    async canLoadAsset(path) {
+        if (!path) return false;
+        if (this.assetAvailability.has(path)) {
+            return this.assetAvailability.get(path);
+        }
+        try {
+            const response = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+            const ok = response.ok;
+            this.assetAvailability.set(path, ok);
+            return ok;
+        } catch (error) {
+            console.log('Audio asset check failed:', path, error);
+            this.assetAvailability.set(path, false);
+            return false;
+        }
+    }
+
+    async playMusic(trackName, loop = true) {
         if (!this.initialized) {
             this.initialize();
         }
@@ -59,9 +78,20 @@ class AudioManager {
         audio.volume = this.musicVolume;
         audio.loop = loop;
 
-        // You would set audio.src to actual music file here
-        // audio.src = `assets/audio/music/${trackName}.mp3`;
-        audio.src = `assets/audio/music/${trackName}.mp3`;
+        const src = `assets/audio/music/${trackName}.mp3`;
+        const requestToken = ++this.musicRequestToken;
+        const canLoad = await this.canLoadAsset(src);
+        if (!canLoad) {
+            console.log(`Music file not available: ${src}`);
+            if (this.currentMusic === audio) this.currentMusic = null;
+            return;
+        }
+
+        if (requestToken !== this.musicRequestToken) {
+            return;
+        }
+
+        audio.src = src;
 
         this.currentMusic = audio;
 
@@ -101,6 +131,7 @@ class AudioManager {
      * Stop music
      */
     stopMusic() {
+        this.musicRequestToken++;
         if (this.currentMusic) {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;

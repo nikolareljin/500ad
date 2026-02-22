@@ -21,12 +21,13 @@ class AIManager {
             return;
         }
 
+        // Focus once at the start instead of every enemy action to avoid excessive camera jumps/renders.
+        if (gameMap && enemyUnits[0]) {
+            gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
+            gameMap.requestRender();
+        }
+
         for (const unit of enemyUnits) {
-            // Focus map on the unit that is acting
-            if (gameMap) {
-                gameMap.centerOn(unit.position.x, unit.position.y);
-                gameMap.requestRender();
-            }
 
             await this.processUnit(unit);
             // Small delay between unit actions for visual clarity

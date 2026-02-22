@@ -884,7 +884,7 @@ class GameMap {
                         ? 'rgba(107, 44, 145, 0.8)'
                         : 'rgba(139, 0, 0, 0.8)';
                     this.ctx.strokeStyle = '#d9be6a';
-                    this.ctx.lineWidth = 2;
+                    this.ctx.lineWidth = Math.max(1, tileSize * 0.07);
                     this.ctx.beginPath();
                     this.ctx.moveTo(cx, cy - size);
                     this.ctx.lineTo(cx + size * 0.9, cy - size * 0.15);

@@ -700,6 +700,8 @@ class GameState {
     processUnitHealing() {
         this.units.forEach((unit) => {
             if (unit.currentHealth <= 0) return;
+            // Carried units are off-map while embarked and do not heal independently.
+            if (unit.isCarried) return;
 
             const tile = gameMap?.getTile(unit.position.x, unit.position.y);
             if (!tile) return;
@@ -730,6 +732,20 @@ class GameState {
                     this.processUnitAutomation(unit);
                 }
             }
+        });
+    }
+
+    revealCarriedUnitVision() {
+        if (!gameMap) return;
+        this.units.forEach((transport) => {
+            if (transport.owner !== 'player' || !Array.isArray(transport.carryingUnits) || transport.carryingUnits.length === 0) return;
+            if (!Number.isFinite(transport.position?.x) || !Number.isFinite(transport.position?.y)) return;
+            transport.carryingUnits.forEach((entry) => {
+                const carriedId = (entry && typeof entry === 'object') ? entry.id : entry;
+                const carriedUnit = this.units.find(u => u.id === carriedId);
+                if (!carriedUnit || !carriedUnit.isCarried) return;
+                gameMap.revealArea(transport.position.x, transport.position.y, 3);
+            });
         });
     }
 
@@ -1478,6 +1494,7 @@ class GameState {
 
         // Process units with destination or automation
         this.processAutomatedUnits();
+        this.revealCarriedUnitVision();
 
         // Healing phase: towns, fortified positions, and nearby support units.
         this.processUnitHealing();
@@ -1818,6 +1835,7 @@ class GameState {
                 if (!carriedUnit) return;
                 carriedUnit.isCarried = true;
                 carriedUnit.carrierId = unit.id;
+                carriedUnit.position = { x: -1, y: -1 };
             });
         });
     }
