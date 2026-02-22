@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-22
+
 ### Added
 - Added a temporary health ring that appears around recently damaged units on the map (green at high health, grading to red at low health).
 - Added a new recruitable support unit: `Field Healer` (`healer`) with high adjacent healing output.
