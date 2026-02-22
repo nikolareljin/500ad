@@ -1301,7 +1301,7 @@ class UIManager {
         requestAnimationFrame(() => {
             window.game?.handleResize();
             initializeMinimap();
-            const playerCities = gameMap?.getCityTiles?.('player') || [];
+            const playerCities = gameMap?.getCityTiles('player') || [];
             const focusCity = playerCities.find(tile => tile.cityData?.kind === 'capital') || playerCities[0];
             if (focusCity) {
                 gameMap?.centerOn(focusCity.x, focusCity.y);

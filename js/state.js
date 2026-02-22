@@ -109,7 +109,7 @@ const CENTURY_EMPIRE_CORE_TOWNS = {
         sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv', 'herat']
     },
     '10': {
-        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond', 'serdica'],
+        byzantine: ['constantinople', 'thessalonica', 'nicaea', 'ancyra', 'caesarea', 'iconium', 'antioch', 'trebizond'],
         frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'massilia'],
         bulgar: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev'],
         arab: ['baghdad', 'damascus', 'aleppo', 'basra', 'fustat', 'mecca', 'medina'],
@@ -118,7 +118,7 @@ const CENTURY_EMPIRE_CORE_TOWNS = {
     '11': {
         byzantine: ['constantinople', 'thessalonica', 'nicaea', 'trebizond', 'athens', 'serdica'],
         frank: ['aachen', 'paris', 'rome', 'venice', 'milan', 'london', 'prague'],
-        bulgar: ['preslav', 'belgrade', 'skopje', 'serdica'],
+        bulgar: ['preslav', 'belgrade', 'skopje'],
         arab: ['iconium', 'caesarea', 'edessa', 'antioch', 'aleppo', 'damascus', 'baghdad', 'isfahan', 'rayy'],
         sassanid: ['isfahan', 'rayy', 'merv', 'herat', 'samarkand', 'bukhara']
     }
@@ -473,8 +473,11 @@ class GameState {
     }
 
     getEmpireCoreTownsForCentury(faction) {
-        const century = String(this.selectedCentury || '');
-        return CENTURY_EMPIRE_CORE_TOWNS[century]?.[faction] || EMPIRE_CORE_TOWNS[faction] || [];
+        const selectedCentury = this.selectedCentury;
+        if (selectedCentury == null) {
+            return EMPIRE_CORE_TOWNS[faction] || [];
+        }
+        return CENTURY_EMPIRE_CORE_TOWNS[String(selectedCentury)]?.[faction] || EMPIRE_CORE_TOWNS[faction] || [];
     }
 
     getLeaderStartProfile(playerFaction) {
@@ -498,7 +501,11 @@ class GameState {
             civilization: 'neutral',
             stance: 'neutral'
         };
-        const centuryOverrides = CENTURY_TOWN_CONTROL_OVERRIDES[String(this.selectedCentury || '')] || {};
+        const selectedCentury = this.selectedCentury;
+        if (selectedCentury == null) {
+            return base;
+        }
+        const centuryOverrides = CENTURY_TOWN_CONTROL_OVERRIDES[String(selectedCentury)] || {};
         const override = centuryOverrides[townId];
         return override ? { ...base, ...override } : base;
     }
@@ -1803,6 +1810,7 @@ class GameState {
             version: SAVE_VERSION,
             timestamp: Date.now(),
             selectedLeader: this.selectedLeader,
+            selectedCentury: this.selectedCentury,
             player: this.player,
             turn: this.turn,
             gameMode: this.gameMode,
@@ -2003,6 +2011,7 @@ class GameState {
         }
 
         this.selectedLeader = data.selectedLeader;
+        this.selectedCentury = data.selectedCentury ?? this.selectedCentury ?? '6';
         this.player = data.player;
         if (!this.player.techResearched) this.player.techResearched = [];
         if (!this.player.techEffects) {
