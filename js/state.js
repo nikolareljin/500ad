@@ -405,6 +405,10 @@ class GameState {
             || Boolean(unit.bonuses?.waterTraversal);
     }
 
+    isWaterOnlyUnit(unit) {
+        return unit?.type === 'naval' || unit?.category === 'transport';
+    }
+
     getBattleType(defenderTile, attacker, defender) {
         if (defenderTile?.cityData) return 'siege';
         if (defenderTile?.terrain === 'forest' || defenderTile?.terrain === 'hills' || defenderTile?.terrain === 'mountains') {
@@ -666,7 +670,7 @@ class GameState {
         }
 
         return {
-            success: destroyed && !attackerDied,
+            success: !attackerDied,
             destroyed,
             attackerDied,
             damageToFort,
@@ -980,8 +984,9 @@ class GameState {
         if (occupied) return null;
 
         const waterCapable = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
+        const waterOnly = unitType.type === 'naval' || unitType.category === 'transport';
         if (tile.terrain === 'water' && !waterCapable) return null;
-        if (tile.terrain !== 'water' && waterCapable && unitType.type === 'naval') return null;
+        if (tile.terrain !== 'water' && waterOnly) return null;
 
         // Check if player can afford
         if (!this.canAfford(unitType.cost.gold, unitType.cost.manpower)) {
@@ -1095,7 +1100,11 @@ class GameState {
     }
 
     applyCityBuildAction(cityTile, actionId) {
-        if (!cityTile || cityTile.owner !== 'player') {
+        const isPlayerControlled = cityTile && (
+            cityTile.owner === 'player' ||
+            gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player'
+        );
+        if (!isPlayerControlled) {
             return { success: false, message: 'Build actions require a player-owned tile' };
         }
 
@@ -1135,6 +1144,10 @@ class GameState {
 
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
             return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
+        }
+
+        if (cityTile.owner !== 'player') {
+            cityTile.owner = 'player';
         }
 
         const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
@@ -1231,9 +1244,10 @@ class GameState {
         if (blockingUnit && blockingUnit.owner === unit.owner && blockingUnit.bonuses?.transportCapacity) {
             const carrying = blockingUnit.carryingUnits || (blockingUnit.carryingUnits = []);
             if (carrying.length < blockingUnit.bonuses.transportCapacity) {
-                carrying.push(unit);
+                carrying.push(unit.id);
                 // Remove unit from map but keep in units array marked as carried
                 unit.isCarried = true;
+                unit.carrierId = blockingUnit.id;
                 unit.position = { x: -1, y: -1 };
                 unit.currentMovement = 0;
                 if (window.uiManager) uiManager.showNotification(`${unit.name} embarked on ${blockingUnit.name}`, 'success');
@@ -1244,7 +1258,11 @@ class GameState {
         // Terrain restrictions.
         const destination = gameMap?.getTile(newPosition.x, newPosition.y);
         if (!destination) return false;
-        if (destination.terrain === 'water' && !this.isWaterCapable(unit)) return false;
+        if (destination.terrain === 'water') {
+            if (!this.isWaterCapable(unit)) return false;
+        } else if (this.isWaterOnlyUnit(unit)) {
+            return false;
+        }
 
         if (destination.fort && destination.fort.owner !== unit.owner && !blockingUnit) {
             const fortAssault = this.resolveFortAssault(unit, destination);
@@ -1254,7 +1272,7 @@ class GameState {
                     : `${unit.name} was repelled by enemy fortification`;
                 uiManager.showNotification(outcome, fortAssault.destroyed ? 'success' : 'error');
             }
-            if (fortAssault.success) {
+            if (fortAssault.success && fortAssault.destroyed) {
                 unit.position = { x: newPosition.x, y: newPosition.y };
                 this.captureTerritory(unit, newPosition);
             }
@@ -1312,8 +1330,18 @@ class GameState {
 
         if (!spawnPos) return { success: false, message: 'No suitable landing spot adjacent' };
 
-        const unit = transport.carryingUnits.pop();
+        const carried = transport.carryingUnits.pop();
+        const unitId = (carried && typeof carried === 'object') ? carried.id : carried;
+        const unit = this.units.find(u => u.id === unitId);
+        if (!unit) {
+            if (carried !== undefined) {
+                transport.carryingUnits.push(carried);
+            }
+            return { success: false, message: 'Carried unit not found in state' };
+        }
+
         unit.isCarried = false;
+        unit.carrierId = null;
         unit.position = { ...spawnPos };
         unit.currentMovement = 0; // Unloading ends unit turn
 
@@ -1763,6 +1791,7 @@ class GameState {
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;
         this.units = data.units;
+        this.normalizeTransportCargoReferences();
         this.buildings = data.buildings;
         this.territories = data.territories;
         this.restoreCityOwnership(data.cityOwnership || []);
@@ -1770,6 +1799,27 @@ class GameState {
         this.initialized = true;
 
         return true;
+    }
+
+    normalizeTransportCargoReferences() {
+        if (!Array.isArray(this.units)) return;
+        const unitsById = new Map(this.units
+            .filter(unit => unit?.id)
+            .map(unit => [unit.id, unit]));
+
+        this.units.forEach((unit) => {
+            if (!unit || !Array.isArray(unit.carryingUnits)) return;
+            unit.carryingUnits = unit.carryingUnits
+                .map((entry) => (entry && typeof entry === 'object') ? entry.id : entry)
+                .filter((id) => typeof id === 'string' && unitsById.has(id));
+
+            unit.carryingUnits.forEach((carriedId) => {
+                const carriedUnit = unitsById.get(carriedId);
+                if (!carriedUnit) return;
+                carriedUnit.isCarried = true;
+                carriedUnit.carrierId = unit.id;
+            });
+        });
     }
 
     /**
