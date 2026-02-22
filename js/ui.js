@@ -138,6 +138,10 @@ class UIManager {
             this.fortifySelectedUnit();
         });
 
+        window.addEventListener('resize', () => {
+            this.positionUnitPanel();
+        });
+
         // Close modal on overlay click
         this.modalOverlay?.addEventListener('click', (e) => {
             if (e.target === this.modalOverlay) {
@@ -771,6 +775,7 @@ class UIManager {
         if (!panel) return;
 
         panel.classList.add('active');
+        this.positionUnitPanel();
 
         document.getElementById('selected-unit-name').textContent = unit.name;
         const portrait = document.getElementById('selected-unit-portrait');
@@ -812,6 +817,31 @@ class UIManager {
 
         // Add special action buttons
         this.updateUnitActionButtons(unit);
+    }
+
+    positionUnitPanel() {
+        const panel = document.getElementById('unit-panel');
+        if (!panel) return;
+
+        // Mobile layout pins the panel to the bottom via CSS.
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            panel.style.top = '';
+            panel.style.maxHeight = '';
+            return;
+        }
+
+        const hud = document.querySelector('.game-hud');
+        const gameScreen = document.getElementById('game-screen');
+        if (!hud || !gameScreen) return;
+
+        const hudRect = hud.getBoundingClientRect();
+        const screenRect = gameScreen.getBoundingClientRect();
+        const topOffset = Math.ceil(hudRect.bottom - screenRect.top + 8);
+        const bottomMargin = 88;
+        const maxHeight = Math.max(220, Math.floor(window.innerHeight - topOffset - bottomMargin));
+
+        panel.style.top = `${topOffset}px`;
+        panel.style.maxHeight = `${maxHeight}px`;
     }
 
     /**
