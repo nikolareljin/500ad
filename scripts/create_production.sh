@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/create_production.sh -t <tag> [--name <name>] [--remote <name>] [--repo <path>] [--fetch-tags]
+Usage: ./scripts/create_production.sh -t <tag> [--name <name>|--tag-name <name>|--branch <name>] [--remote <name>] [--repo <path>] [--fetch-tags]
 
 Update a production-style tag (default: production) to point at an existing release tag.
 EOF
@@ -18,19 +18,39 @@ fetch_tags=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -t|--tag)
-      release_tag="${2:-}"
+      if [[ $# -lt 2 || -z ${2:-} ]]; then
+        echo "Missing required tag argument (-t <tag>)" >&2
+        usage >&2
+        exit 2
+      fi
+      release_tag="$2"
       shift 2
       ;;
     --name|--tag-name|--branch)
-      production_tag="${2:-}"
+      if [[ $# -lt 2 || -z ${2:-} ]]; then
+        echo "Missing value for $1" >&2
+        usage >&2
+        exit 2
+      fi
+      production_tag="$2"
       shift 2
       ;;
     --remote)
-      remote_name="${2:-}"
+      if [[ $# -lt 2 || -z ${2:-} ]]; then
+        echo "Missing value for $1" >&2
+        usage >&2
+        exit 2
+      fi
+      remote_name="$2"
       shift 2
       ;;
     --repo)
-      repo_dir="${2:-}"
+      if [[ $# -lt 2 || -z ${2:-} ]]; then
+        echo "Missing value for $1" >&2
+        usage >&2
+        exit 2
+      fi
+      repo_dir="$2"
       shift 2
       ;;
     --fetch-tags)
