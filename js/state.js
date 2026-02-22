@@ -853,12 +853,14 @@ class GameState {
             ? [
                 { type: 'skutatoi', count: 5 },
                 { type: 'kavallarioi', count: 4 },
-                { type: 'archers', count: 3 }
+                { type: 'archers', count: 3 },
+                { type: 'civil_engineers', count: 1 }
             ]
             : [
                 { type: 'skutatoi', count: 3 },
                 { type: 'kavallarioi', count: 2 },
-                { type: 'archers', count: 2 }
+                { type: 'archers', count: 2 },
+                { type: 'civil_engineers', count: 1 }
             ];
 
         baseUnits.forEach(({ type, count }) => {
@@ -1006,8 +1008,9 @@ class GameState {
         if (!cityTile?.cityData) return ['skutatoi'];
         const infra = cityTile.cityData.infrastructure || {};
         const researched = new Set(this.player?.techResearched || []);
-        const options = ['skutatoi', 'archers', 'kavallarioi'];
+        const options = ['skutatoi', 'archers', 'kavallarioi', 'civil_engineers'];
 
+        if ((infra.industry || 0) >= 1) options.push('civil_engineers');
         if ((infra.industry || 0) >= 2) options.push('engineers');
         if ((infra.industry || 0) >= 3 || researched.has('siegecraft')) options.push('mangonel');
         if ((infra.agriculture || 0) >= 2) options.push('camel_riders');
@@ -1015,8 +1018,14 @@ class GameState {
         if ((infra.roads || 0) >= 3 || researched.has('monastic_scholarship')) options.push('spy');
         if ((infra.roads || 0) >= 3 || researched.has('caravan_routes')) options.push('caravan');
         if ((infra.industry || 0) >= 3 && (infra.agriculture || 0) >= 3 && researched.has('cavalry_tactics')) options.push('war_elephants');
-        if (cityTile.cityData.port || cityTile.cityData.navalYard) options.push('transport');
-        if ((cityTile.cityData.port || cityTile.cityData.navalYard) && researched.has('naval_architecture')) options.push('dromon');
+        if (cityTile.cityData.port || cityTile.cityData.navalYard) {
+            options.push('transport');
+            options.push('merchant_ship');
+        }
+        if ((cityTile.cityData.port || cityTile.cityData.navalYard) && researched.has('naval_architecture')) {
+            options.push('dromon');
+            options.push('dromon_greekfire');
+        }
         if ((infra.industry || 0) >= 4 && researched.has('naval_architecture')) options.push('greekfire');
         if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
         if (cityTile.cityData.monastery || researched.has('monastic_scholarship') || (infra.industry || 0) >= 4) options.push('priests');

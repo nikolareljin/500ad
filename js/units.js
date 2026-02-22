@@ -563,7 +563,7 @@ const UNIT_TYPES = {
         },
         civil_engineers: {
             id: 'civil_engineers',
-            name: 'Civil Engineers',
+            name: 'Engineers',
             type: 'special',
             category: 'infrastructure',
             description: 'Specialists in building roads and improving city infrastructure',
