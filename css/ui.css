@@ -198,6 +198,19 @@
     object-fit: cover;
 }
 
+.leader-portrait-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--parchment-dark), var(--parchment));
+    color: var(--deep-red);
+    text-shadow: none;
+}
+
+.leader-portrait.leader-portrait-fallback {
+    font-size: 3rem;
+}
+
 .leader-card h4 {
     font-size: 1rem;
     margin-bottom: var(--spacing-xs);
@@ -239,6 +252,15 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.leader-portrait-large.leader-portrait-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+    background: linear-gradient(135deg, var(--parchment-dark), var(--parchment));
+    color: var(--deep-red);
 }
 
 .leader-info h3 {

@@ -317,12 +317,16 @@ class UIManager {
 
         // Determine symbol based on faction
         const symbol = leader.faction ? getFactionSymbol(leader.faction) : (this.selectedFaction ? getFactionSymbol(this.selectedFaction) : BYZANTINE_SYMBOLS.crown);
+        const portraitPath = this.getLeaderPortraitPath(leader);
+        const portraitHtml = portraitPath
+            ? `<img src="${portraitPath}" alt="${leader.name}" loading="lazy" onerror="this.remove(); this.parentElement.classList.add('leader-portrait-fallback'); this.parentElement.innerHTML='${symbol}';">`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg, var(--parchment-dark), var(--parchment));">
+                    ${symbol}
+                </div>`;
 
         card.innerHTML = `
             <div class="leader-portrait">
-                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;background:linear-gradient(135deg, var(--parchment-dark), var(--parchment));">
-                    ${symbol}
-                </div>
+                ${portraitHtml}
             </div>
             <h4>${leader.name}</h4>
             <p>${leader.title}</p>
@@ -368,7 +372,15 @@ class UIManager {
         // Update portrait
         const portrait = document.getElementById('leader-portrait-large');
         if (portrait) {
-            portrait.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem;">👑</div>';
+            portrait.classList.remove('leader-portrait-fallback');
+            const symbol = leader.faction ? getFactionSymbol(leader.faction) : (this.selectedFaction ? getFactionSymbol(this.selectedFaction) : BYZANTINE_SYMBOLS.crown);
+            const portraitPath = this.getLeaderPortraitPath(leader);
+            if (portraitPath) {
+                portrait.innerHTML = `<img src="${portraitPath}" alt="${leader.name}" onerror="this.remove(); this.parentElement.classList.add('leader-portrait-fallback'); this.parentElement.innerHTML='${symbol}';">`;
+            } else {
+                portrait.classList.add('leader-portrait-fallback');
+                portrait.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem;">${symbol}</div>`;
+            }
         }
 
         // Update info
@@ -412,6 +424,15 @@ class UIManager {
         }
 
         this.selectedLeaderCard = leader;
+    }
+
+    getLeaderPortraitPath(leader) {
+        const file = leader?.portrait;
+        if (!file) return null;
+        if (file.startsWith('http://') || file.startsWith('https://') || file.startsWith('assets/')) {
+            return file;
+        }
+        return `assets/images/leaders/${file}`;
     }
 
     /**
