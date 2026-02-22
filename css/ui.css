@@ -82,6 +82,12 @@
     margin-bottom: var(--spacing-lg);
 }
 
+#leader-selection .screen-header h2 {
+    font-family: var(--font-accent);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+}
+
 .back-btn {
     padding: var(--spacing-sm) var(--spacing-lg);
     font-family: var(--font-body);
