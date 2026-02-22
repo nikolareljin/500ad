@@ -220,7 +220,7 @@ class GameState {
             return false;
         }
 
-        const civilization = this.resolveCivilization(faction);
+        const civilization = this.resolveCivilization(faction, leader);
         this.selectedLeader = leader;
         this.selectedCentury = century;
         this.selectedFaction = civilization;
@@ -279,9 +279,42 @@ class GameState {
         return true;
     }
 
-    resolveCivilization(faction) {
+    resolveCivilization(faction, leader = null) {
+        if (leader?.civilization && CIVILIZATION_ALIASES[leader.civilization]) {
+            return CIVILIZATION_ALIASES[leader.civilization];
+        }
+        if (faction === 'enemies') {
+            const inferred = this.inferCivilizationFromLeader(leader);
+            if (inferred) return inferred;
+        }
         const normalizedFaction = CIVILIZATION_ALIASES[faction] || faction;
         return normalizedFaction;
+    }
+
+    inferCivilizationFromLeader(leader) {
+        if (!leader) return null;
+        const text = `${leader.faction || ''} ${leader.title || ''} ${leader.name || ''}`.toLowerCase();
+
+        if (text.includes('sassanid') || text.includes('persian')) return 'sassanid';
+        if (text.includes('bulgar')) return 'bulgar';
+        if (text.includes('seljuk') || text.includes('rashidun') || text.includes('caliph')) return 'arab';
+        if (
+            text.includes('ostrogoth') ||
+            text.includes('goth') ||
+            text.includes('frank') ||
+            text.includes('lombard') ||
+            text.includes('visigoth')
+        ) return 'frank';
+
+        return null;
+    }
+
+    applyFactionUnitNaming(unit, faction) {
+        if (!unit) return;
+        unit.faction = faction || unit.faction;
+        if (unit.faction && unit.faction !== 'byzantine' && typeof unit.name === 'string') {
+            unit.name = unit.name.replace(/^Byzantine\s+/i, '');
+        }
     }
 
     seedAdvancedEmpireInfrastructure() {
@@ -887,7 +920,7 @@ class GameState {
                 if (!spawnPos) continue;
                 const unit = createUnit(type, spawnPos, 'player');
                 if (!unit) continue;
-                unit.faction = faction;
+                this.applyFactionUnitNaming(unit, faction);
                 this.units.push(unit);
                 this.player.unitsOwned.push(unit.id);
                 gameMap.revealArea(unit.position.x, unit.position.y, 3);
@@ -908,7 +941,7 @@ class GameState {
                 if (!spawnPos) return;
                 const garrison = createUnit(garrisonType, spawnPos, 'player');
                 if (!garrison) return;
-                garrison.faction = faction;
+                this.applyFactionUnitNaming(garrison, faction);
                 this.units.push(garrison);
                 this.player.unitsOwned.push(garrison.id);
                 gameMap.revealArea(garrison.position.x, garrison.position.y, 2);
@@ -927,7 +960,7 @@ class GameState {
             const unitType = baseTypes[i % baseTypes.length];
             const unit = createUnit(unitType, spawnPos, owner);
             if (!unit) continue;
-            unit.faction = faction;
+            this.applyFactionUnitNaming(unit, faction);
             this.units.push(unit);
         }
     }
@@ -1015,6 +1048,7 @@ class GameState {
         // Create unit
         const unit = createUnit(unitTypeId, position, 'player');
         if (unit) {
+            this.applyFactionUnitNaming(unit, this.player?.faction || this.selectedFaction || 'byzantine');
             this.units.push(unit);
             this.player.unitsOwned.push(unit.id);
         }

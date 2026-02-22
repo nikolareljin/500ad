@@ -1301,7 +1301,13 @@ class UIManager {
         requestAnimationFrame(() => {
             window.game?.handleResize();
             initializeMinimap();
-            gameMap?.render();
+            const playerCities = gameMap?.getCityTiles?.('player') || [];
+            const focusCity = playerCities.find(tile => tile.cityData?.kind === 'capital') || playerCities[0];
+            if (focusCity) {
+                gameMap?.centerOn(focusCity.x, focusCity.y);
+            } else {
+                gameMap?.render();
+            }
         });
     }
 
