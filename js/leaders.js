@@ -13,7 +13,7 @@ const LEADERS = {
                 title: 'The Great',
                 years: '527-565 AD',
                 era: 'early',
-                portrait: 'justinian_portrait_1765580754728.png',
+                portrait: 'justinian.png',
                 stats: { military: 7, economy: 9, diplomacy: 8 },
                 abilities: [
                     { name: 'Reconquest', description: '+20% siege damage, -10% building costs' },
@@ -28,7 +28,7 @@ const LEADERS = {
                 title: 'The Legendary General',
                 years: '505-565 AD',
                 era: 'early',
-                portrait: 'belisarius_portrait_1765580769411.png',
+                portrait: 'belisarius.png',
                 stats: { military: 10, economy: 6, diplomacy: 7 },
                 abilities: [
                     { name: 'Cavalry Master', description: '+30% cavalry attack and movement' },
@@ -118,7 +118,7 @@ const LEADERS = {
                 title: 'Bulgar-Slayer',
                 years: '976-1025 AD',
                 era: 'middle',
-                portrait: 'basil_ii_portrait_1765580783143.png',
+                portrait: 'basil_ii.png',
                 stats: { military: 10, economy: 8, diplomacy: 5 },
                 abilities: [
                     { name: 'Relentless Conquest', description: '+25% attack, -20% unit upkeep' },
