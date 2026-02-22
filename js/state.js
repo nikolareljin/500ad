@@ -258,12 +258,9 @@ class GameState {
         if (scenario === SCENARIOS.empire) {
             const empireStartTechs = [
                 'military_logistics',
-                'siegecraft',
                 'naval_architecture',
                 'cavalry_tactics',
-                'caravan_routes',
-                'irrigation_systems',
-                'monastic_scholarship'
+                'irrigation_systems'
             ];
             empireStartTechs.forEach((techId) => {
                 if (!this.player.techResearched.includes(techId)) {
