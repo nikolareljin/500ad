@@ -171,9 +171,18 @@ class UIManager {
      */
     showLeaderSelection() {
         this.showScreen('leaderSelection');
+        this.clearLeaderSelection();
         this.populateCenturies();
         this.populateScenarios();
         this.switchCentury(this.selectedCentury);
+    }
+
+    clearLeaderSelection() {
+        this.selectedLeaderCard = null;
+        document.querySelectorAll('.leader-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.getElementById('leader-detail')?.classList.remove('active');
     }
 
     populateScenarios() {
@@ -241,6 +250,7 @@ class UIManager {
      */
     switchCentury(century) {
         this.selectedCentury = century;
+        this.clearLeaderSelection();
 
         // Update tabs
         document.querySelectorAll('.century-tab').forEach(tab => {
@@ -282,6 +292,7 @@ class UIManager {
      */
     switchFaction(faction) {
         this.selectedFaction = faction;
+        this.clearLeaderSelection();
 
         // Update tabs
         document.querySelectorAll('.faction-tab').forEach(tab => {

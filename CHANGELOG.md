@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-02-22
+
+### Fixed
+- Fixed leader selection state reset so starting a new game after changing century/faction requires a fresh ruler selection and does not reuse the previous leader's realm/town setup.
+
 ## [1.2.1] - 2026-02-22
 
 ### Added
