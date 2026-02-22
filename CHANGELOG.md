@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - Updated new-campaign camera focus to center on the selected side's starting realm (or starting army for no-city starts).
+- Updated historical realm footprints to vary by selected leader within the same century (for example, `Belisarius` vs `Justinian`, `Alexios I` vs `Basil II`).
 
 ### Fixed
 - Fixed enemy-leader campaigns incorrectly opening from Constantinople/Byzantine starting view.
