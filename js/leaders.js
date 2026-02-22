@@ -44,8 +44,10 @@ const LEADERS = {
                 name: 'Khosrow I',
                 title: 'Anushiruvan',
                 faction: 'Sassanid Empire',
+                civilization: 'sassanid',
                 years: '531-579 AD',
                 era: 'early',
+                portrait: 'khosrow_i.svg',
                 stats: { military: 9, economy: 10, diplomacy: 8 },
                 abilities: [
                     { name: 'Shahanshah', description: '+25% resource generation' },
@@ -59,8 +61,10 @@ const LEADERS = {
                 name: 'Totila',
                 title: 'King of the Ostrogoths',
                 faction: 'Ostrogothic Kingdom',
+                civilization: 'frank',
                 years: '541-552 AD',
                 era: 'early',
+                portrait: 'totila.svg',
                 stats: { military: 9, economy: 5, diplomacy: 6 },
                 abilities: [
                     { name: 'Gothic Resistance', description: '+40% defense in Italy' },
@@ -81,6 +85,7 @@ const LEADERS = {
                 title: 'The Reformer',
                 years: '610-641 AD',
                 era: 'early',
+                portrait: 'heraclius.svg',
                 stats: { military: 8, economy: 8, diplomacy: 7 },
                 abilities: [
                     { name: 'Theme System', description: '+20% manpower regeneration' },
@@ -96,8 +101,10 @@ const LEADERS = {
                 name: 'Khalid ibn al-Walid',
                 title: 'Sword of Allah',
                 faction: 'Rashidun Caliphate',
+                civilization: 'arab',
                 years: '585-642 AD',
                 era: 'early',
+                portrait: 'khalid.svg',
                 stats: { military: 10, economy: 6, diplomacy: 5 },
                 abilities: [
                     { name: 'Desert Warfare', description: '+50% speed in desert' },
@@ -135,6 +142,8 @@ const LEADERS = {
                 title: 'The Rebel General',
                 years: '976-979 AD (Rebellion)',
                 era: 'middle',
+                civilization: 'byzantine',
+                portrait: 'bardas_skleros.svg',
                 stats: { military: 9, economy: 6, diplomacy: 7 },
                 abilities: [
                     { name: 'Anatolian Support', description: '+40% recruitment speed in East' },
@@ -150,8 +159,10 @@ const LEADERS = {
                 name: 'Samuel of Bulgaria',
                 title: 'Tsar of the Bulgarians',
                 faction: 'First Bulgarian Empire',
+                civilization: 'bulgar',
                 years: '997-1014 AD',
                 era: 'middle',
+                portrait: 'samuel.svg',
                 stats: { military: 8, economy: 7, diplomacy: 6 },
                 abilities: [
                     { name: 'Mountain Ambush', description: '+40% attack in hills/mountains' },
@@ -172,6 +183,7 @@ const LEADERS = {
                 title: 'The Restorer',
                 years: '1081-1118 AD',
                 era: 'late',
+                portrait: 'alexios_i.svg',
                 stats: { military: 7, economy: 8, diplomacy: 10 },
                 abilities: [
                     { name: 'Diplomatic Genius', description: '-30% mercenary costs' },
@@ -187,8 +199,10 @@ const LEADERS = {
                 name: 'Alp Arslan',
                 title: 'The Valiant Lion',
                 faction: 'Seljuk Empire',
+                civilization: 'arab',
                 years: '1063-1072 AD',
                 era: 'late',
+                portrait: 'alp_arslan.svg',
                 stats: { military: 10, economy: 7, diplomacy: 6 },
                 abilities: [
                     { name: 'Manzikert Tactics', description: '+50% damage against heavy infantry' },

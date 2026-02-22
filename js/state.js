@@ -90,6 +90,33 @@ const EMPIRE_CORE_TOWNS = {
     sassanid: ['ctesiphon', 'tbilisi', 'isfahan', 'rayy', 'merv', 'samarkand', 'bukhara', 'herat', 'balkh', 'kabul']
 };
 
+const LEADER_START_PROFILES = {
+    totila: {
+        startTownId: 'ravenna',
+        empireCoreTowns: ['ravenna', 'rome', 'milan', 'naples', 'venice']
+    },
+    khosrow1: {
+        startTownId: 'ctesiphon',
+        empireCoreTowns: ['ctesiphon', 'isfahan', 'rayy', 'tbilisi', 'merv', 'herat']
+    },
+    khalid: {
+        startTownId: 'damascus',
+        empireCoreTowns: ['damascus', 'aleppo', 'jerusalem', 'medina', 'mecca', 'fustat']
+    },
+    samuel: {
+        startTownId: 'preslav',
+        empireCoreTowns: ['preslav', 'belgrade', 'serdica', 'skopje', 'kiev']
+    },
+    alp_arslan: {
+        startTownId: 'caesarea',
+        empireCoreTowns: ['caesarea', 'iconium', 'edessa', 'aleppo', 'rayy', 'isfahan']
+    },
+    bardas_skleros: {
+        startTownId: 'caesarea',
+        empireCoreTowns: ['caesarea', 'ancyra', 'iconium', 'edessa', 'trebizond']
+    }
+};
+
 const SAVE_VERSION = '1.2.0';
 
 const TECHNOLOGY_TREE = {
@@ -355,9 +382,20 @@ class GameState {
         return fallbackTown;
     }
 
+    getLeaderStartProfile(playerFaction) {
+        const leaderId = this.selectedLeader?.id;
+        const override = leaderId ? LEADER_START_PROFILES[leaderId] : null;
+        const fallbackTown = this.getStartingTownForFaction(playerFaction);
+        return {
+            startTownId: override?.startTownId || fallbackTown.id,
+            empireCoreTowns: override?.empireCoreTowns || EMPIRE_CORE_TOWNS[playerFaction] || []
+        };
+    }
+
     setupScenarioTowns(playerFaction, scenario) {
-        const playerEmpireCore = new Set(EMPIRE_CORE_TOWNS[playerFaction] || []);
-        const startingTownId = this.getStartingTownForFaction(playerFaction).id;
+        const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
+        const playerEmpireCore = new Set(leaderStartProfile.empireCoreTowns || []);
+        const startingTownId = leaderStartProfile.startTownId;
         this.player.territories = [];
 
         HISTORIC_TOWNS.forEach((town) => {
