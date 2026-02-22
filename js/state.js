@@ -959,7 +959,6 @@ class GameState {
             this.addResources(-gold, -manpower, -prestige);
             return true;
         }
-        return false;
     }
 
     /**
