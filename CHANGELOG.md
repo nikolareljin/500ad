@@ -6,6 +6,9 @@ All notable changes to this project are documented in this file.
 
 ## [1.2.2] - 2026-02-22
 
+### Added
+- Added a lightweight repo-managed `scripts/git-hooks/pre-commit` hook to guard release branches by requiring `VERSION` to match `release/X.Y.Z` when enabled via `core.hooksPath`.
+
 ### Fixed
 - Fixed leader selection state reset so starting a new game after changing century/faction requires a fresh ruler selection and does not reuse the previous leader's realm/town setup.
 - Fixed GitHub Pages deployment timing by publishing from the `production` tag, so deployed builds reflect the finalized auto-tagged release state.
