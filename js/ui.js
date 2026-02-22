@@ -1313,7 +1313,12 @@ class UIManager {
             window.game?.handleResize();
             initializeMinimap();
             const playerCities = gameMap?.getCityTiles('player') || [];
-            const focusCity = playerCities.find(tile => tile.cityData?.kind === 'capital') || playerCities[0];
+            const playerFaction = gameState?.player?.faction || gameState?.selectedFaction || this.selectedFaction || 'byzantine';
+            const preferredStartTownId = gameState?.getLeaderStartProfile?.(playerFaction)?.startTownId;
+            const focusCity = playerCities.find(tile => tile.cityData?.capitalRole === 'primary')
+                || playerCities.find(tile => tile.cityData?.id === preferredStartTownId)
+                || playerCities.find(tile => tile.cityData?.kind === 'capital')
+                || playerCities[0];
             if (focusCity) {
                 gameMap?.centerOn(focusCity.x, focusCity.y);
             } else {

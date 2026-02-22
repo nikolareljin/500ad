@@ -383,6 +383,7 @@ class GameMap {
                     id: town.id,
                     name: town.name,
                     kind: town.type,
+                    capitalRole: null,
                     population: town.type === 'capital' ? 6 : 4,
                     production: {
                         food: town.type === 'capital' ? 5 : 3,
