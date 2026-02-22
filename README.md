@@ -11,22 +11,22 @@ How to [run this locally](#run)?
 ## 📸 Screenshots & Walkthrough
 
 ### Main Menu
-![Main Menu](docs/media/main_menu.png)
+![Main Menu](docs/screenshots/main_menu.png)
 
 ### Leader Selection
-![Leader Selection](docs/media/leader_selection.png)
+![Leader Selection](docs/screenshots/leader_selection.png)
 
 ### Gameplay - Mediterranean Map
-![Gameplay Map](docs/media/gameplay_map.png)
+![Gameplay Map](docs/screenshots/gameplay.png)
 
 ### Map Navigation
 <img width="1341" height="611" alt="image" src="https://github.com/user-attachments/assets/3f1b685d-0429-421a-9a46-1f376294e16b" />
 
 
 ### 🎥 Video Walkthrough
-Watch the complete gameplay walkthrough showing map navigation, unit movement, and fog of war system:
+Watch the complete gameplay walkthrough showing map navigation, unit movement, and the new technology/recruitment systems:
 
-![Gameplay Walkthrough](docs/media/gameplay_walkthrough.webp)
+![Gameplay Walkthrough](docs/screenshots/demo.webp)
 
 *The walkthrough demonstrates the 200x120 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
 
@@ -38,9 +38,10 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 
 ### Historical Accuracy
 - **12 Playable Leaders**: From Justinian I to Constantine XI Palaiologos
-- **15+ Military Units**: Historically accurate Byzantine forces including Cataphracts, Varangian Guard, and Greek Fire
+- **20+ Military Units**: Historically accurate Byzantine forces including Cataphracts, Varangian Guard, Greek Fire, and **Advanced Naval Merchant Vessels**.
 - **Three Historical Eras**: Early (500-717), Middle (717-1025), and Late (1025-1453) Byzantine periods
 - **Authentic Leaders**: Each with unique abilities based on historical achievements
+- **Historic Road Network**: Control major ancient trade routes including the Via Egnatia and Silk Road branches.
 
 ### Massive Geographic Map
 - **200x120 Tile Map**: 24,000 tiles covering Europe, the Mediterranean, Mesopotamia, Arabia, and Ethiopia
@@ -60,6 +61,9 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 
 ### Gameplay
 - **Turn-Based Strategy**: Tactical combat with resource management
+- **Infrastructure System**: Recruit **Engineers** to build a permanent road network, improving travel speed between your cities.
+- **Naval Transport**: Embark land units onto **Transports** and **Merchant Ships** to cross the Mediterranean.
+- **Technology Tree**: Unlock powerful civic and military upgrades like *Siegecraft*, *Naval Architecture*, and *Military Logistics*.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
@@ -148,8 +152,12 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Horse Archers**: Light cavalry with bows
 - **Tagmata**: Elite professional cavalry
 
-### Special Units
-- **Greek Fire Siphon**: Devastating incendiary weapon
+### Special & Naval Units
+- **Engineer Unit**: Specialized non-combat unit for building roads and improving city infrastructure
+- **Merchant Galley**: Large transport capable of carrying 3 land units with trade bonuses
+- **Greek Fire Dromon**: Elite warship equipped with the deadly Greek Fire siphon for ship-to-ship and siege combat
+- **Transport Ship**: Basic naval transport for moving troops across seas
+- **Greek Fire Siphon**: Devastating incendiary weapon for land sieges
 - **Siege Engineers**: Fortification specialists
 - **Orthodox Priests**: Morale and healing support
 - **Field Healer**: Dedicated battlefield medical unit with strong adjacent healing

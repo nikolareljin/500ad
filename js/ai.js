@@ -22,6 +22,12 @@ class AIManager {
         }
 
         for (const unit of enemyUnits) {
+            // Focus map on the unit that is acting
+            if (gameMap) {
+                gameMap.centerOn(unit.position.x, unit.position.y);
+                gameMap.requestRender();
+            }
+
             await this.processUnit(unit);
             // Small delay between unit actions for visual clarity
             await new Promise(resolve => setTimeout(resolve, this.thinkingDelay));
