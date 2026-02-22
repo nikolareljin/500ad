@@ -1,9 +1,11 @@
 name: Deploy To GitHub Pages
 
 on:
-  push:
-    tags:
-      - production
+  workflow_run:
+    workflows:
+      - Auto Tag Release
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -17,13 +19,14 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Intentionally deploy from the production tag for both push and workflow_dispatch triggers.
+          # Intentionally deploy from the production tag for both workflow_run and workflow_dispatch triggers.
           # Manual runs are for re-deploying the finalized release artifact, not branch-preview testing.
           ref: refs/tags/production
 
