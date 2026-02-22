@@ -61,6 +61,7 @@ class AudioManager {
 
         // You would set audio.src to actual music file here
         // audio.src = `assets/audio/music/${trackName}.mp3`;
+        audio.src = `assets/audio/music/${trackName}.mp3`;
 
         this.currentMusic = audio;
 

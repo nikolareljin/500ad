@@ -451,7 +451,9 @@ class UIManager {
         if (success) {
             this.initializeGameView();
             this.updateHUD();
-            audioManager.playMusic('battle_theme');
+            // For battles, use: battle_theme
+            // For ambient music, use: 500ad_ambient
+            audioManager.playMusic('500ad_ambient');
             this.showNotification(
                 `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`,
                 'info'
