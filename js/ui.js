@@ -1142,6 +1142,9 @@ class UIManager {
                     <strong>Historical Accuracy:</strong> All leaders, units, and scenarios are based 
                     on actual Byzantine history.
                 </p>
+		<p style="margin-bottom:1rem;">
+		    Game developed by <a href="https://www.linkedin.com/in/nikolareljin">Nikola Reljin</a>.
+		</p>
                 <p style="margin-bottom:1.5rem;">
                     <strong>Version:</strong> ${window.APP_VERSION || 'dev'}
                 </p>
