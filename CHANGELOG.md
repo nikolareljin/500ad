@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-22
+
+### Added
+- Added leader-specific campaign start zones (including enemy leaders) and local portrait placeholders for additional leaders.
+- Added century-based historical town-control overrides so enemy factions control different towns by era.
+- Added nomadic field-army starts for selected leaders in the `Building the Civilization` scenario.
+
+### Changed
+- Updated new-campaign camera focus to center on the selected side's starting realm (or starting army for no-city starts).
+
+### Fixed
+- Fixed enemy-leader campaigns incorrectly opening from Constantinople/Byzantine starting view.
+- Fixed non-Byzantine unit names showing `Byzantine ...` labels for enemy/player forces when playing alternate factions.
+
 ## [1.2.0] - 2026-02-22
 
 ### Added
