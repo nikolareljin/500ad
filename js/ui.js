@@ -1143,7 +1143,7 @@ class UIManager {
                     on actual Byzantine history.
                 </p>
 		<p style="margin-bottom:1rem;">
-		    Game developed by <a href="https://www.linkedin.com/in/nikolareljin">Nikola Reljin</a>.
+		    Game developed by <a href="https://www.linkedin.com/in/nikolareljin" target="_blank" rel="noopener noreferrer">Nikola Reljin</a>. Please check my other  <a href="https://github.com/nikolareljin?tab=repositories" target="_blank" rel="noopener noreferrer">Github repositories</a>.
 		</p>
                 <p style="margin-bottom:1.5rem;">
                     <strong>Version:</strong> ${window.APP_VERSION || 'dev'}
