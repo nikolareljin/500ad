@@ -331,7 +331,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.2** - Leader selection reset improvements and production-tag GitHub Pages deployment (see changelog for full details)
+**Version 1.2.3** - Leader selection reset improvements and production-tag GitHub Pages deployment (see changelog for full details)
 
 ## License
 
