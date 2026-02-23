@@ -261,11 +261,6 @@ This starts a local server, opens the browser automatically, and runs `scripts/u
 ./scripts/update.sh
 ```
 
-Compatibility alias:
-```bash
-./script/update.sh
-```
-
 ### Version Management (Single Source of Truth)
 - `VERSION` is the canonical release version used for checks and tagging.
 - Set/sync a new version:

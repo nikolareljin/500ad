@@ -228,7 +228,7 @@ class GameMap {
             this.referenceMapReady = false;
             return;
         }
-        const referenceMapPath = './large_map_1.jpg';
+        const referenceMapPath = './assets/images/large_map_1.jpg';
         const loadReferenceImage = () => {
             const image = new Image();
             image.onload = () => {
