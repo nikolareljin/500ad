@@ -387,9 +387,11 @@ p {
 }
 
 .choice-btn-disabled {
-    opacity: 0.55;
     cursor: not-allowed;
     filter: saturate(0.65);
+    color: rgba(248, 250, 252, 0.8);
+    border-color: rgba(212, 175, 55, 0.45);
+    background: rgba(30, 41, 59, 0.55);
 }
 
 .choice-btn-subtitle {
@@ -405,7 +407,7 @@ p {
 }
 
 .choice-btn-detail-disabled {
-    opacity: 0.95;
+    opacity: 1;
     color: #f7c7c7;
 }
 

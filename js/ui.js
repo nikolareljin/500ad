@@ -599,7 +599,7 @@ class UIManager {
                     this.showNotification(currentStatus.reasons.join('; '), 'error');
                     return;
                 }
-                const spawnTile = currentStatus.spawnTile || this.findRecruitSpawnTile(tile, unitId);
+                const spawnTile = currentStatus.spawnTile;
                 if (!spawnTile) {
                     const unit = getUnitById(unitId);
                     const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
