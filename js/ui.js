@@ -691,10 +691,10 @@ class UIManager {
 
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
-            <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true" style="opacity:0.55;cursor:not-allowed;filter:saturate(0.65);"' : ''}>
+            <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
                 <span class="btn-text">${option.title}</span>
-                <small style="display:block;opacity:0.75;margin-top:0.2rem;">${option.subtitle || ''}</small>
-                ${option.detail ? `<small style="display:block;opacity:${option.disabled ? '0.95' : '0.7'};margin-top:0.2rem;color:${option.disabled ? '#f7c7c7' : 'inherit'};">${option.detail}</small>` : ''}
+                <small class="choice-btn-subtitle">${option.subtitle || ''}</small>
+                ${option.detail ? `<small class="choice-btn-detail${option.disabled ? ' choice-btn-detail-disabled' : ''}">${option.detail}</small>` : ''}
             </button>
         `).join('');
 
