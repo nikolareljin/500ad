@@ -36,12 +36,24 @@ jobs:
             }
 
             // Fallback to associated PR lookup (can be eventually consistent immediately after merge).
-            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner,
-              repo,
-              commit_sha: sha,
-            });
-            const merged = prs.data.find((pr) => pr.merged_at && (pr.base.ref === "main" || pr.base.ref === "master"));
+            let merged = null;
+            const maxAttempts = 5;
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+              const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: sha,
+              });
+              merged = prs.data.find((pr) => pr.merged_at && (pr.base.ref === "main" || pr.base.ref === "master"));
+              if (merged) {
+                core.info(`Found associated merged PR on attempt ${attempt}/${maxAttempts}.`);
+                break;
+              }
+              if (attempt < maxAttempts) {
+                core.info(`No merged PR associated with the latest commit yet (attempt ${attempt}/${maxAttempts}); retrying...`);
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+              }
+            }
             if (!merged) {
               core.info("No merged PR associated with the latest commit.");
               core.setOutput("version", "");
@@ -59,14 +71,23 @@ jobs:
 
       - name: Check tag availability
         if: ${{ steps.release.outputs.version != '' }}
+        id: tag_check
         shell: bash
         run: |
           set -euo pipefail
           version="${{ steps.release.outputs.version }}"
+          current_sha="${GITHUB_SHA}"
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
-            echo "Tag $version already exists."
-            exit 1
+            tag_sha="$(git rev-list -n 1 "refs/tags/$version")"
+            if [[ "$tag_sha" != "$current_sha" ]]; then
+              echo "Tag $version already exists but points to $tag_sha (expected $current_sha)."
+              exit 1
+            fi
+            echo "Tag $version already exists on current commit; continuing so reruns can refresh production tag."
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          echo "tag_exists=false" >> "$GITHUB_OUTPUT"
 
       - name: Validate release version sync
         if: ${{ steps.release.outputs.version != '' }}
@@ -74,7 +95,7 @@ jobs:
         run: ./scripts/check_release_version.sh
 
       - name: Create and push release tag
-        if: ${{ steps.release.outputs.version != '' }}
+        if: ${{ steps.release.outputs.version != '' && steps.tag_check.outputs.tag_exists != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
