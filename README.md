@@ -21,9 +21,11 @@ How to [run this locally](#run)?
 ### Gameplay - Mediterranean Map
 ![Gameplay Map](docs/screenshots/gameplay.png)
 
-### Map Navigation
-<img width="1341" height="611" alt="image" src="https://github.com/user-attachments/assets/3f1b685d-0429-421a-9a46-1f376294e16b" />
+### Technology & Research
+![Technology Modal](docs/screenshots/technology.png)
 
+### Enemy Turn Processing
+![Turn Processing](docs/screenshots/turn_processing.png)
 
 ### 🎥 Video Walkthrough
 Watch the complete gameplay walkthrough showing map navigation, unit movement, and the new technology/recruitment systems:
@@ -326,7 +328,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.3** - Recruitment UI improvements, updated default scenario selection, and enhanced mobile unit movement (see changelog for full details)
+**Version 1.2.4** - Updated README screenshots and walkthrough media to reflect the current UI and gameplay presentation.
 
 ## License
 
