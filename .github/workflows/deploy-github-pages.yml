@@ -1,9 +1,11 @@
 name: Deploy To GitHub Pages
 
 on:
-  push:
-    tags:
-      - production
+  workflow_run:
+    workflows:
+      - Auto Tag Release
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -16,14 +18,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  should-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      run_build: ${{ steps.decide.outputs.run_build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Decide whether deploy should run
+        id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
+            echo "run_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          production_sha="$(git rev-list -n 1 refs/tags/production 2>/dev/null || true)"
+          workflow_sha="${{ github.event.workflow_run.head_sha }}"
+          if [[ -n "$production_sha" && "$production_sha" == "$workflow_sha" ]]; then
+            echo "run_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Production tag does not match Auto Tag Release workflow commit; skipping redundant Pages deploy."
+          echo "run_build=false" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: should-deploy
+    if: needs.should-deploy.outputs.run_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Intentionally deploy from the production tag for both push and workflow_dispatch triggers.
+          # Intentionally deploy from the production tag for both workflow_run and workflow_dispatch triggers.
           # Manual runs are for re-deploying the finalized release artifact, not branch-preview testing.
           ref: refs/tags/production
 
@@ -50,6 +90,7 @@ jobs:
 
   deploy:
     needs: build
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

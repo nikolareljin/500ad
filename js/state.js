@@ -292,6 +292,28 @@ const BUILD_ACTIONS = {
     build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6 }
 };
 
+const RECRUITMENT_UNIT_CATALOG = [
+    'skutatoi',
+    'archers',
+    'kavallarioi',
+    'civil_engineers',
+    'engineers',
+    'mangonel',
+    'camel_riders',
+    'explorer',
+    'spy',
+    'caravan',
+    'war_elephants',
+    'transport',
+    'merchant_ship',
+    'dromon',
+    'dromon_greekfire',
+    'greekfire',
+    'mountain_infantry',
+    'priests',
+    'healer'
+];
+
 function parseSemver(version) {
     const raw = String(version || '').trim();
     const parts = raw.split('.');
@@ -338,13 +360,13 @@ class GameState {
         this.territories = [];
         this.selectedUnit = null;
         this.isPaused = false;
-        this.selectedScenario = SCENARIOS.building;
+        this.selectedScenario = SCENARIOS.empire;
     }
 
     /**
      * Initialize a new game with selected leader, century, faction, and scenario
      */
-    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.building) {
+    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.empire) {
         const leader = getLeaderById(leaderId);
         if (!leader) {
             console.error('Leader not found:', leaderId);
@@ -1304,40 +1326,136 @@ class GameState {
         return unit;
     }
 
-    getRecruitableUnitTypes(cityTile) {
-        if (!cityTile?.cityData) return ['skutatoi'];
+    getRecruitSpawnTile(cityTile, unitTypeId) {
+        if (!cityTile || !Number.isFinite(cityTile.x) || !Number.isFinite(cityTile.y) || !gameMap) return null;
+        const unitType = getUnitById(unitTypeId);
+        if (!unitType) return null;
+
+        const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
+        const offsets = [
+            { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
+            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+        ];
+
+        for (const offset of offsets) {
+            const x = cityTile.x + offset.x;
+            const y = cityTile.y + offset.y;
+            const mapTile = gameMap.getTile(x, y);
+            if (!mapTile) continue;
+            if (wantsWater && mapTile.terrain !== 'water') continue;
+            if (!wantsWater && mapTile.terrain === 'water') continue;
+
+            const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
+            if (occupied) continue;
+            return { x, y };
+        }
+
+        return null;
+    }
+
+    getRecruitmentOptionStatus(cityTile, unitId) {
+        const unit = getUnitById(unitId);
+        if (!unit) {
+            return { unitId, unit: null, available: false, reasons: ['Unit data missing'], spawnTile: null };
+        }
+
+        const reasons = [];
+        if (!cityTile?.cityData) {
+            return { unitId, unit, available: false, reasons: ['Requires a city'], spawnTile: null };
+        }
+
         const infra = cityTile.cityData.infrastructure || {};
         const researched = new Set(this.player?.techResearched || []);
-        const options = ['skutatoi', 'archers', 'kavallarioi', 'civil_engineers'];
+        const hasPort = Boolean(cityTile.cityData.port || cityTile.cityData.navalYard);
+        const requireTech = (techId, label) => {
+            if (!researched.has(techId)) reasons.push(`Requires ${label}`);
+        };
+        const requireInfra = (key, min, label) => {
+            if ((infra[key] || 0) < min) reasons.push(`Requires ${label} ${min}`);
+        };
 
-        if ((infra.industry || 0) >= 1) options.push('civil_engineers');
-        if ((infra.industry || 0) >= 2) options.push('engineers');
-        if ((infra.industry || 0) >= 3 || researched.has('siegecraft')) options.push('mangonel');
-        if ((infra.agriculture || 0) >= 2) options.push('camel_riders');
-        if ((infra.roads || 0) >= 2) options.push('explorer');
-        if ((infra.roads || 0) >= 3 || researched.has('monastic_scholarship')) options.push('spy');
-        if ((infra.roads || 0) >= 3 || researched.has('caravan_routes')) options.push('caravan');
-        if ((infra.industry || 0) >= 3 && (infra.agriculture || 0) >= 3 && researched.has('cavalry_tactics')) options.push('war_elephants');
-        if (cityTile.cityData.port || cityTile.cityData.navalYard) {
-            options.push('transport');
-            options.push('merchant_ship');
+        switch (unitId) {
+        case 'engineers':
+            requireInfra('industry', 2, 'Industry');
+            break;
+        case 'mangonel':
+            if ((infra.industry || 0) < 3 && !researched.has('siegecraft')) reasons.push('Requires Industry 3 or Siegecraft');
+            break;
+        case 'camel_riders':
+            requireInfra('agriculture', 2, 'Agriculture');
+            break;
+        case 'explorer':
+            requireInfra('roads', 2, 'Roads');
+            break;
+        case 'spy':
+            if ((infra.roads || 0) < 3 && !researched.has('monastic_scholarship')) reasons.push('Requires Roads 3 or Monastic Scholarship');
+            break;
+        case 'caravan':
+            if ((infra.roads || 0) < 3 && !researched.has('caravan_routes')) reasons.push('Requires Roads 3 or Caravan Routes');
+            break;
+        case 'war_elephants':
+            requireInfra('industry', 3, 'Industry');
+            requireInfra('agriculture', 3, 'Agriculture');
+            requireTech('cavalry_tactics', 'Cavalry Tactics');
+            break;
+        case 'transport':
+        case 'merchant_ship':
+            if (!hasPort) reasons.push('Requires Port / Naval Yard');
+            break;
+        case 'dromon':
+        case 'dromon_greekfire':
+            if (!hasPort) reasons.push('Requires Port / Naval Yard');
+            requireTech('naval_architecture', 'Naval Architecture');
+            break;
+        case 'greekfire':
+            requireInfra('industry', 4, 'Industry');
+            requireTech('naval_architecture', 'Naval Architecture');
+            break;
+        case 'mountain_infantry':
+            requireInfra('agriculture', 3, 'Agriculture');
+            break;
+        case 'priests':
+            if (!cityTile.cityData.monastery && !researched.has('monastic_scholarship') && (infra.industry || 0) < 4) {
+                reasons.push('Requires Monastery, Monastic Scholarship, or Industry 4');
+            }
+            break;
+        case 'healer':
+            if ((infra.agriculture || 0) < 2 && !cityTile.cityData.monastery) reasons.push('Requires Agriculture 2 or Monastery');
+            break;
+        default:
+            break;
         }
-        if ((cityTile.cityData.port || cityTile.cityData.navalYard) && researched.has('naval_architecture')) {
-            options.push('dromon');
-            options.push('dromon_greekfire');
-        }
-        if ((infra.industry || 0) >= 4 && researched.has('naval_architecture')) options.push('greekfire');
-        if ((infra.agriculture || 0) >= 3) options.push('mountain_infantry');
-        if (cityTile.cityData.monastery || researched.has('monastic_scholarship') || (infra.industry || 0) >= 4) options.push('priests');
-        if ((infra.agriculture || 0) >= 2 || cityTile.cityData.monastery) options.push('healer');
 
-        const unique = [];
-        options.forEach((unitId) => {
-            if (unique.includes(unitId)) return;
-            if (!getUnitById(unitId)) return;
-            unique.push(unitId);
-        });
-        return unique;
+        const resources = this.player?.resources || {};
+        const missingGold = Math.max(0, (unit.cost?.gold || 0) - (resources.gold || 0));
+        const missingManpower = Math.max(0, (unit.cost?.manpower || 0) - (resources.manpower || 0));
+        if (missingGold > 0 || missingManpower > 0) {
+            const missing = [];
+            if (missingGold > 0) missing.push(`${missingGold} gold`);
+            if (missingManpower > 0) missing.push(`${missingManpower} manpower`);
+            reasons.push(`Missing ${missing.join(', ')}`);
+        }
+
+        const spawnTile = this.getRecruitSpawnTile(cityTile, unitId);
+        if (!spawnTile) {
+            const isNaval = unit.type === 'naval' || unit.category === 'transport';
+            reasons.push(isNaval ? 'No open adjacent water tile' : 'No open adjacent land tile');
+        }
+
+        return { unitId, unit, available: reasons.length === 0, reasons, spawnTile };
+    }
+
+    getRecruitmentOptions(cityTile) {
+        return RECRUITMENT_UNIT_CATALOG
+            .filter((unitId) => Boolean(getUnitById(unitId)))
+            .map((unitId) => this.getRecruitmentOptionStatus(cityTile, unitId));
+    }
+
+    getRecruitableUnitTypes(cityTile) {
+        if (!cityTile?.cityData) return ['skutatoi'];
+        return this.getRecruitmentOptions(cityTile)
+            .filter((entry) => entry.available)
+            .map((entry) => entry.unitId);
     }
 
     getAvailableTechnologies() {

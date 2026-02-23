@@ -10,7 +10,7 @@ class UIManager {
         this.modals = {};
         this.selectedCentury = '6';
         this.selectedFaction = 'byzantine';
-        this.selectedScenario = SCENARIOS.building;
+        this.selectedScenario = SCENARIOS.empire;
         this.selectedLeaderCard = null;
     }
 
@@ -581,21 +581,25 @@ class UIManager {
             return;
         }
 
-        const choices = gameState.getRecruitableUnitTypes(tile)
-            .map((unitId) => {
-                const unit = getUnitById(unitId);
-                return {
-                    id: unitId,
-                    title: `${unit?.name || unitId}`,
-                    subtitle: unit ? `${unit.cost.gold}g / ${unit.cost.manpower}m` : ''
-                };
-            });
+        const choices = gameState.getRecruitmentOptions(tile)
+            .map((entry) => ({
+                id: entry.unitId,
+                title: `${entry.unit?.name || entry.unitId}`,
+                subtitle: entry.unit ? `${entry.unit.cost.gold}g / ${entry.unit.cost.manpower}m` : '',
+                detail: entry.available ? 'Available' : entry.reasons.join(' • '),
+                disabled: !entry.available
+            }));
 
         this.showChoiceModal(
             `Recruit at ${tile.cityData.name}`,
             choices,
             (unitId) => {
-                const spawnTile = this.findRecruitSpawnTile(tile, unitId);
+                const currentStatus = gameState.getRecruitmentOptionStatus(tile, unitId);
+                if (!currentStatus.available) {
+                    this.showNotification(currentStatus.reasons.join('; '), 'error');
+                    return;
+                }
+                const spawnTile = currentStatus.spawnTile;
                 if (!spawnTile) {
                     const unit = getUnitById(unitId);
                     const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
@@ -618,28 +622,7 @@ class UIManager {
     }
 
     findRecruitSpawnTile(cityTile, unitId) {
-        const unitType = getUnitById(unitId);
-        if (!unitType) return null;
-        const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
-        const offsets = [
-            { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
-            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-        ];
-
-        for (const offset of offsets) {
-            const x = cityTile.x + offset.x;
-            const y = cityTile.y + offset.y;
-            const mapTile = gameMap.getTile(x, y);
-            if (!mapTile) continue;
-            if (wantsWater && mapTile.terrain !== 'water') continue;
-            if (!wantsWater && mapTile.terrain === 'water') continue;
-
-            const occupied = gameState.units.some(u => u.position.x === x && u.position.y === y);
-            if (occupied) continue;
-            return { x, y };
-        }
-
-        return null;
+        return gameState.getRecruitSpawnTile(cityTile, unitId);
     }
 
     buildInSelectedCity() {
@@ -708,9 +691,10 @@ class UIManager {
 
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
-            <button class="menu-btn choice-btn" data-choice="${option.id}">
+            <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
                 <span class="btn-text">${option.title}</span>
-                <small style="display:block;opacity:0.75;margin-top:0.2rem;">${option.subtitle || ''}</small>
+                <small class="choice-btn-subtitle">${option.subtitle || ''}</small>
+                ${option.detail ? `<small class="choice-btn-detail${option.disabled ? ' choice-btn-detail-disabled' : ''}">${option.detail}</small>` : ''}
             </button>
         `).join('');
 
@@ -727,6 +711,7 @@ class UIManager {
         this.showModal(content);
         this.modalContent?.querySelectorAll('.choice-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
+                if (btn.disabled) return;
                 const id = btn.getAttribute('data-choice');
                 this.closeModal();
                 onSelect(id);
@@ -983,6 +968,7 @@ class UIManager {
         moveBtn.id = 'btn-move-unit';
         moveBtn.textContent = 'Move';
         moveBtn.onclick = withClickSound(() => {
+            this.hideUnitPanelForMapTargeting();
             this.showNotification('Select a destination tile to move this unit.', 'info');
         });
         container.appendChild(moveBtn);
@@ -1356,7 +1342,15 @@ class UIManager {
         const panel = document.getElementById('unit-panel');
         panel?.classList.remove('active', 'enemy-panel');
         gameState.selectedUnit = null;
-        gameMap?.render();
+        gameMap?.requestRender();
+    }
+
+    hideUnitPanelForMapTargeting() {
+        if (!window.matchMedia('(max-width: 768px)').matches) return;
+        const panel = document.getElementById('unit-panel');
+        if (!panel?.classList.contains('active')) return;
+        panel.classList.remove('active');
+        gameMap?.requestRender();
     }
 }
 
