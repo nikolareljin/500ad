@@ -2,9 +2,12 @@
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
 
-⚠️**Work in progress** - keep in mind this is far from being a polished product.
+Watch the complete gameplay walkthrough showing map navigation, unit movement, and the new technology/recruitment systems:
 
-<img width="1073" height="869" alt="image" src="https://github.com/user-attachments/assets/f737700d-48cc-43f1-a8bb-4cec39aa3567" />
+![Gameplay Walkthrough](docs/screenshots/demo.webp)
+
+*The walkthrough demonstrates the 320x180 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
+
 
 ▶️ Check it online at: https://nikolareljin.github.io/500ad/ 
 
@@ -26,13 +29,6 @@ How to [run this locally](#run)?
 
 ### Enemy Turn Processing
 ![Turn Processing](docs/screenshots/turn_processing.png)
-
-### 🎥 Video Walkthrough
-Watch the complete gameplay walkthrough showing map navigation, unit movement, and the new technology/recruitment systems:
-
-![Gameplay Walkthrough](docs/screenshots/demo.webp)
-
-*The walkthrough demonstrates the 320x180 tile historic Byzantine-world map with accurate geography, pan controls, and fog of war revealing as you explore.*
 
 ## Overview
 
