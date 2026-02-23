@@ -17,6 +17,9 @@ All notable changes to this project are documented in this file.
 - Fixed release auto-tagging reliability by replacing the shared auto-tag workflow with a repo-local workflow that detects merged `release/*` PRs from the merge commit message (with API fallback) before creating release and `production` tags.
 - Fixed empire-scenario start anchoring so leader-specific starting capitals (for example, Justinian at Constantinople) remain the primary army/camera focus even when other controlled capital-class cities (such as Rome) are also owned.
 - Added primary/secondary capital-role assignment for player-controlled capital seats (with faction-specific capital-seat priority, including fallback seats such as Nicaea), so start anchoring and camera focus can prefer the active primary capital after territorial changes.
+- Fixed city recruitment UI to display naval and advanced units as disabled when unavailable (instead of hiding them) and show clear missing requirements such as port access, technology, resources, or adjacent spawn tiles.
+- Changed the default campaign scenario selection to `Managing an Empire` for new game setup.
+- Fixed mobile unit movement flow by hiding the unit panel (while keeping the unit selected) after tapping `Move`, so destination tiles remain tappable on small screens.
 
 ## [1.2.1] - 2026-02-22
 
