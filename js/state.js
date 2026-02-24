@@ -1120,7 +1120,7 @@ class GameState {
         }
 
         if (actionId === 'build_road') {
-            tile.road = true;
+            tile.road = 'dirt';
             if (tile.cityData) {
                 const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
                 infra.roads = Math.min((infra.roads || 0) + 1, 8);
@@ -1375,55 +1375,55 @@ class GameState {
         };
 
         switch (unitId) {
-        case 'engineers':
-            requireInfra('industry', 2, 'Industry');
-            break;
-        case 'mangonel':
-            if ((infra.industry || 0) < 3 && !researched.has('siegecraft')) reasons.push('Requires Industry 3 or Siegecraft');
-            break;
-        case 'camel_riders':
-            requireInfra('agriculture', 2, 'Agriculture');
-            break;
-        case 'explorer':
-            requireInfra('roads', 2, 'Roads');
-            break;
-        case 'spy':
-            if ((infra.roads || 0) < 3 && !researched.has('monastic_scholarship')) reasons.push('Requires Roads 3 or Monastic Scholarship');
-            break;
-        case 'caravan':
-            if ((infra.roads || 0) < 3 && !researched.has('caravan_routes')) reasons.push('Requires Roads 3 or Caravan Routes');
-            break;
-        case 'war_elephants':
-            requireInfra('industry', 3, 'Industry');
-            requireInfra('agriculture', 3, 'Agriculture');
-            requireTech('cavalry_tactics', 'Cavalry Tactics');
-            break;
-        case 'transport':
-        case 'merchant_ship':
-            if (!hasPort) reasons.push('Requires Port / Naval Yard');
-            break;
-        case 'dromon':
-        case 'dromon_greekfire':
-            if (!hasPort) reasons.push('Requires Port / Naval Yard');
-            requireTech('naval_architecture', 'Naval Architecture');
-            break;
-        case 'greekfire':
-            requireInfra('industry', 4, 'Industry');
-            requireTech('naval_architecture', 'Naval Architecture');
-            break;
-        case 'mountain_infantry':
-            requireInfra('agriculture', 3, 'Agriculture');
-            break;
-        case 'priests':
-            if (!cityTile.cityData.monastery && !researched.has('monastic_scholarship') && (infra.industry || 0) < 4) {
-                reasons.push('Requires Monastery, Monastic Scholarship, or Industry 4');
-            }
-            break;
-        case 'healer':
-            if ((infra.agriculture || 0) < 2 && !cityTile.cityData.monastery) reasons.push('Requires Agriculture 2 or Monastery');
-            break;
-        default:
-            break;
+            case 'engineers':
+                requireInfra('industry', 2, 'Industry');
+                break;
+            case 'mangonel':
+                if ((infra.industry || 0) < 3 && !researched.has('siegecraft')) reasons.push('Requires Industry 3 or Siegecraft');
+                break;
+            case 'camel_riders':
+                requireInfra('agriculture', 2, 'Agriculture');
+                break;
+            case 'explorer':
+                requireInfra('roads', 2, 'Roads');
+                break;
+            case 'spy':
+                if ((infra.roads || 0) < 3 && !researched.has('monastic_scholarship')) reasons.push('Requires Roads 3 or Monastic Scholarship');
+                break;
+            case 'caravan':
+                if ((infra.roads || 0) < 3 && !researched.has('caravan_routes')) reasons.push('Requires Roads 3 or Caravan Routes');
+                break;
+            case 'war_elephants':
+                requireInfra('industry', 3, 'Industry');
+                requireInfra('agriculture', 3, 'Agriculture');
+                requireTech('cavalry_tactics', 'Cavalry Tactics');
+                break;
+            case 'transport':
+            case 'merchant_ship':
+                if (!hasPort) reasons.push('Requires Port / Naval Yard');
+                break;
+            case 'dromon':
+            case 'dromon_greekfire':
+                if (!hasPort) reasons.push('Requires Port / Naval Yard');
+                requireTech('naval_architecture', 'Naval Architecture');
+                break;
+            case 'greekfire':
+                requireInfra('industry', 4, 'Industry');
+                requireTech('naval_architecture', 'Naval Architecture');
+                break;
+            case 'mountain_infantry':
+                requireInfra('agriculture', 3, 'Agriculture');
+                break;
+            case 'priests':
+                if (!cityTile.cityData.monastery && !researched.has('monastic_scholarship') && (infra.industry || 0) < 4) {
+                    reasons.push('Requires Monastery, Monastic Scholarship, or Industry 4');
+                }
+                break;
+            case 'healer':
+                if ((infra.agriculture || 0) < 2 && !cityTile.cityData.monastery) reasons.push('Requires Agriculture 2 or Monastery');
+                break;
+            default:
+                break;
         }
 
         const resources = this.player?.resources || {};

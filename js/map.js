@@ -115,54 +115,54 @@ const HISTORIC_TOWNS = [
 ];
 
 const HISTORIC_ROADS = [
-    // Via Egnatia & Balkan routes
-    { from: 'rome', to: 'ravenna' },
-    { from: 'ravenna', to: 'venice' },
-    { from: 'belgrade', to: 'serdica' },
-    { from: 'serdica', to: 'constantinople' },
-    { from: 'constantinople', to: 'thessalonica' },
-    { from: 'thessalonica', to: 'athens' },
-    { from: 'serdica', to: 'thessalonica' },
+    // Via Egnatia & Balkan routes (Stone)
+    { from: 'rome', to: 'ravenna', type: 'stone' },
+    { from: 'ravenna', to: 'venice', type: 'stone' },
+    { from: 'belgrade', to: 'serdica', type: 'stone' },
+    { from: 'serdica', to: 'constantinople', type: 'stone' },
+    { from: 'constantinople', to: 'thessalonica', type: 'stone' },
+    { from: 'thessalonica', to: 'athens', type: 'stone' },
+    { from: 'serdica', to: 'thessalonica', type: 'stone' },
 
-    // Anatolian routes
-    { from: 'constantinople', to: 'nicaea' },
-    { from: 'nicaea', to: 'ancyra' },
-    { from: 'ancyra', to: 'caesarea' },
-    { from: 'caesarea', to: 'antioch' },
-    { from: 'nicaea', to: 'iconium' },
-    { from: 'iconium', to: 'antioch' },
-    { from: 'ancyra', to: 'trebizond' },
+    // Anatolian routes (Stone)
+    { from: 'constantinople', to: 'nicaea', type: 'stone' },
+    { from: 'nicaea', to: 'ancyra', type: 'stone' },
+    { from: 'ancyra', to: 'caesarea', type: 'stone' },
+    { from: 'caesarea', to: 'antioch', type: 'stone' },
+    { from: 'nicaea', to: 'iconium', type: 'stone' },
+    { from: 'iconium', to: 'antioch', type: 'stone' },
+    { from: 'ancyra', to: 'trebizond', type: 'stone' },
 
-    // Fertile Crescent & Persia
-    { from: 'antioch', to: 'aleppo' },
-    { from: 'aleppo', to: 'edessa' },
-    { from: 'edessa', to: 'mosul' },
-    { from: 'mosul', to: 'baghdad' },
-    { from: 'baghdad', to: 'ctesiphon' },
-    { from: 'ctesiphon', to: 'isfahan' },
-    { from: 'isfahan', to: 'rayy' },
-    { from: 'rayy', to: 'merv' },
-    { from: 'merv', to: 'samarkand' },
-    { from: 'samarkand', to: 'bukhara' },
+    // Fertile Crescent & Persia (Sand)
+    { from: 'antioch', to: 'aleppo', type: 'sand' },
+    { from: 'aleppo', to: 'edessa', type: 'sand' },
+    { from: 'edessa', to: 'mosul', type: 'sand' },
+    { from: 'mosul', to: 'baghdad', type: 'sand' },
+    { from: 'baghdad', to: 'ctesiphon', type: 'sand' },
+    { from: 'ctesiphon', to: 'isfahan', type: 'sand' },
+    { from: 'isfahan', to: 'rayy', type: 'sand' },
+    { from: 'rayy', to: 'merv', type: 'sand' },
+    { from: 'merv', to: 'samarkand', type: 'sand' },
+    { from: 'samarkand', to: 'bukhara', type: 'sand' },
 
-    // Levant & Egypt
-    { from: 'antioch', to: 'damascus' },
-    { from: 'damascus', to: 'jerusalem' },
-    { from: 'jerusalem', to: 'alexandria' },
-    { from: 'alexandria', to: 'fustat' },
+    // Levant & Egypt (Sand)
+    { from: 'antioch', to: 'damascus', type: 'sand' },
+    { from: 'damascus', to: 'jerusalem', type: 'sand' },
+    { from: 'jerusalem', to: 'alexandria', type: 'sand' },
+    { from: 'alexandria', to: 'fustat', type: 'sand' },
 
-    // North Africa
-    { from: 'fustat', to: 'tripoli' },
-    { from: 'tripoli', to: 'carthage' },
-    { from: 'carthage', to: 'cordoba' },
+    // North Africa (Sand)
+    { from: 'fustat', to: 'tripoli', type: 'sand' },
+    { from: 'tripoli', to: 'carthage', type: 'sand' },
+    { from: 'carthage', to: 'cordoba', type: 'sand' },
 
-    // Europe
-    { from: 'aachen', to: 'paris' },
-    { from: 'paris', to: 'massilia' },
-    { from: 'massilia', to: 'milan' },
-    { from: 'milan', to: 'venice' },
-    { from: 'aachen', to: 'vienna' },
-    { from: 'vienna', to: 'belgrade' }
+    // Europe (Dirt)
+    { from: 'aachen', to: 'paris', type: 'dirt' },
+    { from: 'paris', to: 'massilia', type: 'dirt' },
+    { from: 'massilia', to: 'milan', type: 'dirt' },
+    { from: 'milan', to: 'venice', type: 'dirt' },
+    { from: 'aachen', to: 'vienna', type: 'dirt' },
+    { from: 'vienna', to: 'belgrade', type: 'dirt' }
 ];
 
 const TERRAIN_TYPES = {
@@ -635,7 +635,8 @@ class GameMap {
         const cy = tile.y * tileSize + tileSize / 2;
 
         if (roads > 0) {
-            this.ctx.strokeStyle = 'rgba(180, 150, 95, 0.7)';
+            const isRomanCity = tile.cityData?.kind === 'capital' || (tile.importance || 0) >= 8;
+            this.ctx.strokeStyle = isRomanCity ? 'rgba(120, 125, 130, 0.8)' : 'rgba(180, 150, 95, 0.7)';
             this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
             this.ctx.beginPath();
             this.ctx.moveTo(cx - tileSize * 0.5, cy);
@@ -688,7 +689,8 @@ class GameMap {
             const npy = ny * tileSize + tileSize / 2;
 
             if (roads > 1) {
-                this.ctx.strokeStyle = 'rgba(190, 160, 100, 0.5)';
+                const isRomanCity = tile.cityData?.kind === 'capital' || (tile.importance || 0) >= 8;
+                this.ctx.strokeStyle = isRomanCity ? 'rgba(120, 125, 130, 0.5)' : 'rgba(190, 160, 100, 0.5)';
                 this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
                 this.ctx.beginPath();
                 this.ctx.moveTo(cx, cy);
@@ -898,12 +900,7 @@ class GameMap {
                 }
 
                 if (tile.road && tile.terrain !== 'water') {
-                    this.ctx.strokeStyle = 'rgba(190, 160, 95, 0.8)';
-                    this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(px + tileSize * 0.2, py + tileSize * 0.5);
-                    this.ctx.lineTo(px + tileSize * 0.8, py + tileSize * 0.5);
-                    this.ctx.stroke();
+                    this.drawRoad(tile, px, py, tileSize);
                 }
 
                 // Gray fog of war for undiscovered areas with softened boundaries.
@@ -1051,6 +1048,66 @@ class GameMap {
 
         // Prevent context menu
         this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    /**
+     * Draw road with type-specific color and neighbor connections
+     */
+    drawRoad(tile, px, py, tileSize) {
+        if (!tile.road || tile.terrain === 'water') return;
+
+        const cx = px + tileSize / 2;
+        const cy = py + tileSize / 2;
+
+        let roadColor = 'rgba(190, 160, 95, 0.8)'; // Default dirt-yellow
+        let lineWidth = Math.max(1, tileSize * 0.12);
+
+        if (tile.road === 'stone') {
+            roadColor = 'rgba(120, 125, 130, 0.9)'; // Gray stone for Roman roads
+            lineWidth = Math.max(1.5, tileSize * 0.16);
+        } else if (tile.road === 'dirt') {
+            roadColor = 'rgba(130, 95, 65, 0.85)'; // Deep brown for dirt roads
+            lineWidth = Math.max(1, tileSize * 0.10);
+        } else if (tile.road === 'sand') {
+            roadColor = 'rgba(230, 200, 150, 0.75)'; // Light sandy/silk road
+            lineWidth = Math.max(1, tileSize * 0.12);
+        }
+
+        this.ctx.strokeStyle = roadColor;
+        this.ctx.lineWidth = lineWidth;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        // Check 4-way neighbors to draw connections
+        const neighbors = [
+            { dx: 0, dy: -1 }, // North
+            { dx: 1, dy: 0 },  // East
+            { dx: 0, dy: 1 },  // South
+            { dx: -1, dy: 0 }  // West
+        ];
+
+        let hasConnection = false;
+        neighbors.forEach(offset => {
+            const nx = tile.x + offset.dx;
+            const ny = tile.y + offset.dy;
+            const neighbor = this.getTile(nx, ny);
+
+            if (neighbor && neighbor.road) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(cx, cy);
+                this.ctx.lineTo(cx + offset.dx * tileSize / 2, cy + offset.dy * tileSize / 2);
+                this.ctx.stroke();
+                hasConnection = true;
+            }
+        });
+
+        // For stone roads, add some texture/width at the center
+        if (tile.road === 'stone') {
+            this.ctx.fillStyle = roadColor;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, lineWidth * 0.8, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
     }
 
     /**
@@ -1342,7 +1399,10 @@ class GameMap {
             while (true) {
                 const tile = this.getTile(x0, y0);
                 if (tile && tile.terrain !== 'water') {
-                    tile.road = true;
+                    // Upgrade road type if a better one already exists, or just set it
+                    if (!tile.road || (road.type === 'stone' && tile.road !== 'stone')) {
+                        tile.road = road.type || 'dirt';
+                    }
                 }
 
                 if (x0 === x1 && y0 === y1) break;
