@@ -239,7 +239,8 @@ p {
 }
 
 .game-subtitle {
-    font-family: var(--font-display);
+    /* font-family: var(--font-display); */
+    font-family: var(--font-accent);
     font-size: 1.2rem;
     color: var(--parchment);
     margin-bottom: var(--spacing-xl);
