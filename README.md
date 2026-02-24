@@ -326,7 +326,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.2.3** - Recruitment UI improvements, updated default scenario selection, and enhanced mobile unit movement (see changelog for full details)
+**Version 1.3.0** - Recruitment UI improvements, updated default scenario selection, and enhanced mobile unit movement (see changelog for full details)
 
 ## License
 
