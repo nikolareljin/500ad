@@ -2,7 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## Releases
+
+## [1.2.4] - 2026-02-23
+
+### Changed
+- Refreshed README screenshots and walkthrough media to match the current UI (main menu, leader selection, gameplay, technology, and turn-processing screens).
+- Updated the README screenshot section layout to use the local `Technology & Research` and `Enemy Turn Processing` captures instead of the older external map-navigation image.
 
 ## [1.2.3] - 2026-02-23
 
