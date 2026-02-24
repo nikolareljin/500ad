@@ -47,7 +47,7 @@ const LEADERS = {
                 civilization: 'sassanid',
                 years: '531-579 AD',
                 era: 'early',
-                portrait: 'khosrow_i.jpg',
+                portrait: 'khosrow_i.png',
                 stats: { military: 9, economy: 10, diplomacy: 8 },
                 abilities: [
                     { name: 'Shahanshah', description: '+25% resource generation' },
