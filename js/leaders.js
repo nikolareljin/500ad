@@ -85,7 +85,7 @@ const LEADERS = {
                 title: 'The Reformer',
                 years: '610-641 AD',
                 era: 'early',
-                portrait: 'heraclius.jpg',
+                portrait: 'heraclius.png',
                 stats: { military: 8, economy: 8, diplomacy: 7 },
                 abilities: [
                     { name: 'Theme System', description: '+20% manpower regeneration' },
