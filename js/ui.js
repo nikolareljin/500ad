@@ -812,21 +812,18 @@ class UIManager {
         }
         const portrait = document.getElementById('selected-unit-portrait');
         if (portrait) {
-            let unitIcon = '⚔️';
-            if (unit.type === 'cavalry') unitIcon = '🐎';
-            if (unit.type === 'naval' || unit.category === 'transport') unitIcon = '⛵';
-            if (unit.category === 'ranged') unitIcon = '🏹';
-            if (unit.category === 'siege') unitIcon = '🛡️';
-            if (unit.category === 'intel') unitIcon = '🕵️';
-            if (unit.category === 'support') unitIcon = '⛪';
-            if (unit.category === 'economic') unitIcon = '🐪';
+            const unitType = getUnitById(unit.typeId);
+            const symbol = unit.symbol || unitType?.symbol || '⚔️';
+
             portrait.textContent = '';
             const container = document.createElement('div');
-            container.className = 'unit-portrait-content';
+            container.className = `unit-portrait-content ${unit.owner === 'player' ? 'player-unit' : 'enemy-unit'}`;
+            container.dataset.category = unit.category;
 
             const iconSpan = document.createElement('span');
             iconSpan.className = 'unit-portrait-icon';
-            iconSpan.textContent = unitIcon;
+            iconSpan.textContent = symbol;
+            if (symbol.length > 2) iconSpan.style.fontSize = '1.8rem';
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'unit-portrait-name';

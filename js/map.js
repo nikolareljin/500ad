@@ -1114,37 +1114,87 @@ class GameMap {
             this.ctx.stroke();
         }
 
-        // Unit circle
-        this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
+        const unitType = getUnitById(unit.typeId);
+        const size = tileSize * 0.4;
+
+        this.ctx.save();
+
+        // Shadow for depth
+        this.ctx.shadowBlur = 4;
+        this.ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        this.ctx.shadowOffsetY = 2;
+
+        // Draw shape based on type
         this.ctx.beginPath();
-        this.ctx.arc(
-            cx,
-            cy,
-            tileSize / 3,
-            0,
-            Math.PI * 2
-        );
+        if (unit.type === 'infantry') {
+            // Shield-like rounded bottom
+            this.ctx.moveTo(cx - size, cy - size * 0.8);
+            this.ctx.lineTo(cx + size, cy - size * 0.8);
+            this.ctx.lineTo(cx + size, cy + size * 0.2);
+            this.ctx.quadraticCurveTo(cx + size, cy + size, cx, cy + size);
+            this.ctx.quadraticCurveTo(cx - size, cy + size, cx - size, cy + size * 0.2);
+            this.ctx.closePath();
+        } else if (unit.type === 'cavalry') {
+            // Circular badge
+            this.ctx.arc(cx, cy, size, 0, Math.PI * 2);
+        } else if (unit.type === 'naval') {
+            // Boat hull shape
+            this.ctx.moveTo(cx - size, cy - size * 0.3);
+            this.ctx.lineTo(cx + size, cy - size * 0.3);
+            this.ctx.lineTo(cx + size * 0.7, cy + size * 0.8);
+            this.ctx.lineTo(cx - size * 0.7, cy + size * 0.8);
+            this.ctx.closePath();
+        } else {
+            // Hexagon for special/others
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3 - Math.PI / 2;
+                this.ctx.lineTo(cx + size * Math.cos(angle), cy + size * Math.sin(angle));
+            }
+            this.ctx.closePath();
+        }
+
+        const gradient = this.ctx.createLinearGradient(cx - size, cy - size, cx + size, cy + size);
+        if (unit.owner === 'player') {
+            gradient.addColorStop(0, '#9B59B6');
+            gradient.addColorStop(1, '#6C3483');
+        } else {
+            gradient.addColorStop(0, '#E74C3C');
+            gradient.addColorStop(1, '#943126');
+        }
+
+        this.ctx.fillStyle = gradient;
         this.ctx.fill();
 
-        // Border
-        this.ctx.strokeStyle = '#D4AF37';
-        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetY = 0;
+
+        // Border based on category
+        let borderColor = '#D4AF37';
+        let lineWidth = 1.5;
+        if (unit.category === 'elite') {
+            lineWidth = 3;
+            borderColor = '#FFFDE7';
+        } else if (unit.category === 'heavy' || unit.category === 'superheavy') {
+            lineWidth = 2.5;
+            borderColor = '#F1C40F';
+        }
+
+        this.ctx.strokeStyle = borderColor;
+        this.ctx.lineWidth = lineWidth;
         this.ctx.stroke();
 
-        // Icon
-        this.ctx.fillStyle = '#F8F9FA';
-        this.ctx.font = `${Math.floor(tileSize * 0.4)}px Arial`;
+        // Icon/Symbol
+        this.ctx.fillStyle = '#FFFFFF';
+        // Adjust font size for combined symbols like '🏇🏹'
+        const symbol = unit.symbol || unitType?.symbol || '⚔️';
+        const fontSize = Math.floor(tileSize * (symbol.length > 2 ? 0.3 : 0.45));
+        this.ctx.font = `bold ${fontSize}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        let icon = '⚔';
-        if (unit.type === 'cavalry') icon = '🐎';
-        if (unit.type === 'naval' || unit.category === 'transport') icon = '⛵';
-        if (unit.category === 'siege') icon = '🛡';
-        if (unit.category === 'ranged') icon = '🏹';
-        if (unit.category === 'intel') icon = '🕵';
-        if (unit.category === 'support') icon = '⛪';
-        if (unit.category === 'economic') icon = '🐪';
-        this.ctx.fillText(icon, cx, cy);
+
+        this.ctx.fillText(symbol, cx, cy);
+
+        this.ctx.restore();
     }
 
     getUnitHealthColor(ratio) {

@@ -29,7 +29,8 @@ const UNIT_TYPES = {
                 vsInfantry: 1.2,
                 vsCavalry: 0.8
             },
-            icon: 'skutatoi.png'
+            icon: 'skutatoi.png',
+            symbol: '🛡️'
         },
 
         psilos: {
@@ -55,7 +56,8 @@ const UNIT_TYPES = {
                 vsInfantry: 1.1,
                 terrain: 1.3
             },
-            icon: 'psilos.png'
+            icon: 'psilos.png',
+            symbol: '🎯'
         },
 
         archers: {
@@ -81,7 +83,8 @@ const UNIT_TYPES = {
                 vsInfantry: 1.3,
                 vsCavalry: 1.1
             },
-            icon: 'archers.png'
+            icon: 'archers.png',
+            symbol: '🏹'
         },
 
         varangian: {
@@ -108,7 +111,8 @@ const UNIT_TYPES = {
                 vsCavalry: 1.2,
                 morale: 2.0
             },
-            icon: 'varangian.png'
+            icon: 'varangian.png',
+            symbol: '🪓'
         },
 
         mountain_infantry: {
@@ -134,7 +138,8 @@ const UNIT_TYPES = {
                 terrain: 1.5,
                 vsInfantry: 1.1
             },
-            icon: 'mountain_infantry.png'
+            icon: 'mountain_infantry.png',
+            symbol: '🏔️'
         }
     },
 
@@ -164,7 +169,8 @@ const UNIT_TYPES = {
                 vsCavalry: 1.3,
                 charge: 2.0
             },
-            icon: 'cataphract.png'
+            icon: 'cataphract.png',
+            symbol: '🏇'
         },
 
         klibanophoroi: {
@@ -192,7 +198,8 @@ const UNIT_TYPES = {
                 charge: 2.5,
                 arrowResist: 0.5
             },
-            icon: 'klibanophoroi.png'
+            icon: 'klibanophoroi.png',
+            symbol: '🎖️'
         },
 
         kavallarioi: {
@@ -218,7 +225,8 @@ const UNIT_TYPES = {
                 vsInfantry: 1.3,
                 vsCavalry: 1.0
             },
-            icon: 'kavallarioi.png'
+            icon: 'kavallarioi.png',
+            symbol: '🐎'
         },
 
         horsearchers: {
@@ -245,7 +253,8 @@ const UNIT_TYPES = {
                 vsCavalry: 0.9,
                 mobility: 1.5
             },
-            icon: 'horsearchers.png'
+            icon: 'horsearchers.png',
+            symbol: '🏇🏹'
         },
 
         tagmata: {
@@ -272,7 +281,8 @@ const UNIT_TYPES = {
                 vsCavalry: 1.3,
                 morale: 1.5
             },
-            icon: 'tagmata.png'
+            icon: 'tagmata.png',
+            symbol: '👑'
         },
 
         camel_riders: {
@@ -298,7 +308,8 @@ const UNIT_TYPES = {
                 mobility: 1.35,
                 vsCavalry: 1.15
             },
-            icon: 'camel_riders.png'
+            icon: 'camel_riders.png',
+            symbol: '🐪'
         },
 
         war_elephants: {
@@ -324,7 +335,8 @@ const UNIT_TYPES = {
                 charge: 2.2,
                 vsInfantry: 1.6
             },
-            icon: 'war_elephants.png'
+            icon: 'war_elephants.png',
+            symbol: '🐘'
         }
     },
 
@@ -354,7 +366,8 @@ const UNIT_TYPES = {
                 vsShips: 3.0,
                 areaEffect: true
             },
-            icon: 'greekfire.png'
+            icon: 'greekfire.png',
+            symbol: '🔥'
         },
 
         engineers: {
@@ -380,7 +393,8 @@ const UNIT_TYPES = {
                 vsBuildings: 2.5,
                 vsFortifications: 3.0
             },
-            icon: 'engineers.png'
+            icon: 'engineers.png',
+            symbol: '⚙️'
         },
 
         mangonel: {
@@ -406,7 +420,8 @@ const UNIT_TYPES = {
                 vsBuildings: 2.6,
                 areaEffect: true
             },
-            icon: 'mangonel.png'
+            icon: 'mangonel.png',
+            symbol: '☄️'
         },
 
         priests: {
@@ -432,7 +447,8 @@ const UNIT_TYPES = {
                 moraleBoost: 1.5,
                 healingRate: 10
             },
-            icon: 'priests.png'
+            icon: 'priests.png',
+            symbol: '☦️'
         },
 
         healer: {
@@ -458,7 +474,8 @@ const UNIT_TYPES = {
                 healingRate: 16,
                 moraleBoost: 1.2
             },
-            icon: 'healer.png'
+            icon: 'healer.png',
+            symbol: '🩹'
         },
 
         caravan: {
@@ -483,7 +500,8 @@ const UNIT_TYPES = {
             bonuses: {
                 tradeBoost: 1.3
             },
-            icon: 'caravan.png'
+            icon: 'caravan.png',
+            symbol: '💰'
         },
 
         explorer: {
@@ -509,7 +527,8 @@ const UNIT_TYPES = {
                 mobility: 1.6,
                 vision: 2
             },
-            icon: 'explorer.png'
+            icon: 'explorer.png',
+            symbol: '🧭'
         },
 
         spy: {
@@ -534,7 +553,8 @@ const UNIT_TYPES = {
             bonuses: {
                 ambush: 1.8
             },
-            icon: 'spy.png'
+            icon: 'spy.png',
+            symbol: '🕵️'
         },
 
         transport: {
@@ -559,7 +579,8 @@ const UNIT_TYPES = {
             bonuses: {
                 waterTraversal: true
             },
-            icon: 'transport.png'
+            icon: 'transport.png',
+            symbol: '🚣'
         },
         civil_engineers: {
             id: 'civil_engineers',
@@ -584,7 +605,8 @@ const UNIT_TYPES = {
                 buildRoad: true,
                 improveInfra: true
             },
-            icon: 'civil_engineers.png'
+            icon: 'civil_engineers.png',
+            symbol: '🛠️'
         }
     },
 
@@ -612,7 +634,8 @@ const UNIT_TYPES = {
                 vsShips: 1.6,
                 waterTraversal: true
             },
-            icon: 'dromon.png'
+            icon: 'dromon.png',
+            symbol: '⛵'
         },
         dromon_greekfire: {
             id: 'dromon_greekfire',
@@ -639,7 +662,8 @@ const UNIT_TYPES = {
                 greekFire: true,
                 waterTraversal: true
             },
-            icon: 'dromon_greekfire.png'
+            icon: 'dromon_greekfire.png',
+            symbol: '⛵🔥'
         },
         merchant_ship: {
             id: 'merchant_ship',
@@ -665,7 +689,8 @@ const UNIT_TYPES = {
                 tradeBoost: 1.2,
                 waterTraversal: true
             },
-            icon: 'merchant_ship.png'
+            icon: 'merchant_ship.png',
+            symbol: '🚢'
         }
     }
 };
@@ -756,6 +781,7 @@ function createUnit(unitTypeId, position, owner) {
         experience: 0,
         level: 1,
         morale: 100,
+        symbol: unitType.symbol || '⚔️',
         bonuses: { ...unitType.bonuses }
     };
 }
