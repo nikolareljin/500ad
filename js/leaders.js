@@ -64,7 +64,7 @@ const LEADERS = {
                 civilization: 'frank',
                 years: '541-552 AD',
                 era: 'early',
-                portrait: 'totila.jpg',
+                portrait: 'totila.png',
                 stats: { military: 9, economy: 5, diplomacy: 6 },
                 abilities: [
                     { name: 'Gothic Resistance', description: '+40% defense in Italy' },
@@ -104,7 +104,7 @@ const LEADERS = {
                 civilization: 'arab',
                 years: '585-642 AD',
                 era: 'early',
-                portrait: 'khalid.jpg',
+                portrait: 'khalid.png',
                 stats: { military: 10, economy: 6, diplomacy: 5 },
                 abilities: [
                     { name: 'Desert Warfare', description: '+50% speed in desert' },
@@ -143,7 +143,7 @@ const LEADERS = {
                 years: '976-979 AD (Rebellion)',
                 era: 'middle',
                 civilization: 'byzantine',
-                portrait: 'bardas_skleros.jpg',
+                portrait: 'bardas_skleros.png',
                 stats: { military: 9, economy: 6, diplomacy: 7 },
                 abilities: [
                     { name: 'Anatolian Support', description: '+40% recruitment speed in East' },
@@ -162,7 +162,7 @@ const LEADERS = {
                 civilization: 'bulgar',
                 years: '997-1014 AD',
                 era: 'middle',
-                portrait: 'samuel.jpg',
+                portrait: 'samuel.png',
                 stats: { military: 8, economy: 7, diplomacy: 6 },
                 abilities: [
                     { name: 'Mountain Ambush', description: '+40% attack in hills/mountains' },
@@ -183,7 +183,7 @@ const LEADERS = {
                 title: 'The Restorer',
                 years: '1081-1118 AD',
                 era: 'late',
-                portrait: 'alexios_i.jpg',
+                portrait: 'alexios_i.png',
                 stats: { military: 7, economy: 8, diplomacy: 10 },
                 abilities: [
                     { name: 'Diplomatic Genius', description: '-30% mercenary costs' },
@@ -202,7 +202,7 @@ const LEADERS = {
                 civilization: 'arab',
                 years: '1063-1072 AD',
                 era: 'late',
-                portrait: 'alp_arslan.jpg',
+                portrait: 'alp_arslan.png',
                 stats: { military: 10, economy: 7, diplomacy: 6 },
                 abilities: [
                     { name: 'Manzikert Tactics', description: '+50% damage against heavy infantry' },
