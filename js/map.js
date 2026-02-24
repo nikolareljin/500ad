@@ -115,54 +115,54 @@ const HISTORIC_TOWNS = [
 ];
 
 const HISTORIC_ROADS = [
-    // Via Egnatia & Balkan routes
-    { from: 'rome', to: 'ravenna' },
-    { from: 'ravenna', to: 'venice' },
-    { from: 'belgrade', to: 'serdica' },
-    { from: 'serdica', to: 'constantinople' },
-    { from: 'constantinople', to: 'thessalonica' },
-    { from: 'thessalonica', to: 'athens' },
-    { from: 'serdica', to: 'thessalonica' },
+    // Via Egnatia & Balkan routes (Stone)
+    { from: 'rome', to: 'ravenna', type: 'stone' },
+    { from: 'ravenna', to: 'venice', type: 'stone' },
+    { from: 'belgrade', to: 'serdica', type: 'stone' },
+    { from: 'serdica', to: 'constantinople', type: 'stone' },
+    { from: 'constantinople', to: 'thessalonica', type: 'stone' },
+    { from: 'thessalonica', to: 'athens', type: 'stone' },
+    { from: 'serdica', to: 'thessalonica', type: 'stone' },
 
-    // Anatolian routes
-    { from: 'constantinople', to: 'nicaea' },
-    { from: 'nicaea', to: 'ancyra' },
-    { from: 'ancyra', to: 'caesarea' },
-    { from: 'caesarea', to: 'antioch' },
-    { from: 'nicaea', to: 'iconium' },
-    { from: 'iconium', to: 'antioch' },
-    { from: 'ancyra', to: 'trebizond' },
+    // Anatolian routes (Stone)
+    { from: 'constantinople', to: 'nicaea', type: 'stone' },
+    { from: 'nicaea', to: 'ancyra', type: 'stone' },
+    { from: 'ancyra', to: 'caesarea', type: 'stone' },
+    { from: 'caesarea', to: 'antioch', type: 'stone' },
+    { from: 'nicaea', to: 'iconium', type: 'stone' },
+    { from: 'iconium', to: 'antioch', type: 'stone' },
+    { from: 'ancyra', to: 'trebizond', type: 'stone' },
 
-    // Fertile Crescent & Persia
-    { from: 'antioch', to: 'aleppo' },
-    { from: 'aleppo', to: 'edessa' },
-    { from: 'edessa', to: 'mosul' },
-    { from: 'mosul', to: 'baghdad' },
-    { from: 'baghdad', to: 'ctesiphon' },
-    { from: 'ctesiphon', to: 'isfahan' },
-    { from: 'isfahan', to: 'rayy' },
-    { from: 'rayy', to: 'merv' },
-    { from: 'merv', to: 'samarkand' },
-    { from: 'samarkand', to: 'bukhara' },
+    // Fertile Crescent & Persia (Sand)
+    { from: 'antioch', to: 'aleppo', type: 'sand' },
+    { from: 'aleppo', to: 'edessa', type: 'sand' },
+    { from: 'edessa', to: 'mosul', type: 'sand' },
+    { from: 'mosul', to: 'baghdad', type: 'sand' },
+    { from: 'baghdad', to: 'ctesiphon', type: 'sand' },
+    { from: 'ctesiphon', to: 'isfahan', type: 'sand' },
+    { from: 'isfahan', to: 'rayy', type: 'sand' },
+    { from: 'rayy', to: 'merv', type: 'sand' },
+    { from: 'merv', to: 'samarkand', type: 'sand' },
+    { from: 'samarkand', to: 'bukhara', type: 'sand' },
 
-    // Levant & Egypt
-    { from: 'antioch', to: 'damascus' },
-    { from: 'damascus', to: 'jerusalem' },
-    { from: 'jerusalem', to: 'alexandria' },
-    { from: 'alexandria', to: 'fustat' },
+    // Levant & Egypt (Sand)
+    { from: 'antioch', to: 'damascus', type: 'sand' },
+    { from: 'damascus', to: 'jerusalem', type: 'sand' },
+    { from: 'jerusalem', to: 'alexandria', type: 'sand' },
+    { from: 'alexandria', to: 'fustat', type: 'sand' },
 
-    // North Africa
-    { from: 'fustat', to: 'tripoli' },
-    { from: 'tripoli', to: 'carthage' },
-    { from: 'carthage', to: 'cordoba' },
+    // North Africa (Sand)
+    { from: 'fustat', to: 'tripoli', type: 'sand' },
+    { from: 'tripoli', to: 'carthage', type: 'sand' },
+    { from: 'carthage', to: 'cordoba', type: 'sand' },
 
-    // Europe
-    { from: 'aachen', to: 'paris' },
-    { from: 'paris', to: 'massilia' },
-    { from: 'massilia', to: 'milan' },
-    { from: 'milan', to: 'venice' },
-    { from: 'aachen', to: 'vienna' },
-    { from: 'vienna', to: 'belgrade' }
+    // Europe (Dirt)
+    { from: 'aachen', to: 'paris', type: 'dirt' },
+    { from: 'paris', to: 'massilia', type: 'dirt' },
+    { from: 'massilia', to: 'milan', type: 'dirt' },
+    { from: 'milan', to: 'venice', type: 'dirt' },
+    { from: 'aachen', to: 'vienna', type: 'dirt' },
+    { from: 'vienna', to: 'belgrade', type: 'dirt' }
 ];
 
 const TERRAIN_TYPES = {
@@ -635,7 +635,8 @@ class GameMap {
         const cy = tile.y * tileSize + tileSize / 2;
 
         if (roads > 0) {
-            this.ctx.strokeStyle = 'rgba(180, 150, 95, 0.7)';
+            const isRomanCity = tile.cityData?.kind === 'capital' || (tile.importance || 0) >= 8;
+            this.ctx.strokeStyle = isRomanCity ? 'rgba(120, 125, 130, 0.8)' : 'rgba(180, 150, 95, 0.7)';
             this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
             this.ctx.beginPath();
             this.ctx.moveTo(cx - tileSize * 0.5, cy);
@@ -688,7 +689,8 @@ class GameMap {
             const npy = ny * tileSize + tileSize / 2;
 
             if (roads > 1) {
-                this.ctx.strokeStyle = 'rgba(190, 160, 100, 0.5)';
+                const isRomanCity = tile.cityData?.kind === 'capital' || (tile.importance || 0) >= 8;
+                this.ctx.strokeStyle = isRomanCity ? 'rgba(120, 125, 130, 0.5)' : 'rgba(190, 160, 100, 0.5)';
                 this.ctx.lineWidth = Math.max(1, tileSize * 0.06);
                 this.ctx.beginPath();
                 this.ctx.moveTo(cx, cy);
@@ -898,12 +900,7 @@ class GameMap {
                 }
 
                 if (tile.road && tile.terrain !== 'water') {
-                    this.ctx.strokeStyle = 'rgba(190, 160, 95, 0.8)';
-                    this.ctx.lineWidth = Math.max(1, tileSize * 0.08);
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(px + tileSize * 0.2, py + tileSize * 0.5);
-                    this.ctx.lineTo(px + tileSize * 0.8, py + tileSize * 0.5);
-                    this.ctx.stroke();
+                    this.drawRoad(tile, px, py, tileSize);
                 }
 
                 // Gray fog of war for undiscovered areas with softened boundaries.
@@ -1054,6 +1051,66 @@ class GameMap {
     }
 
     /**
+     * Draw road with type-specific color and neighbor connections
+     */
+    drawRoad(tile, px, py, tileSize) {
+        if (!tile.road || tile.terrain === 'water') return;
+
+        const cx = px + tileSize / 2;
+        const cy = py + tileSize / 2;
+
+        let roadColor = 'rgba(190, 160, 95, 0.8)'; // Default dirt-yellow
+        let lineWidth = Math.max(1, tileSize * 0.12);
+
+        if (tile.road === 'stone') {
+            roadColor = 'rgba(120, 125, 130, 0.9)'; // Gray stone for Roman roads
+            lineWidth = Math.max(1.5, tileSize * 0.16);
+        } else if (tile.road === 'dirt') {
+            roadColor = 'rgba(130, 95, 65, 0.85)'; // Deep brown for dirt roads
+            lineWidth = Math.max(1, tileSize * 0.10);
+        } else if (tile.road === 'sand') {
+            roadColor = 'rgba(230, 200, 150, 0.75)'; // Light sandy/silk road
+            lineWidth = Math.max(1, tileSize * 0.12);
+        }
+
+        this.ctx.strokeStyle = roadColor;
+        this.ctx.lineWidth = lineWidth;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
+        // Check 4-way neighbors to draw connections
+        const neighbors = [
+            { dx: 0, dy: -1 }, // North
+            { dx: 1, dy: 0 },  // East
+            { dx: 0, dy: 1 },  // South
+            { dx: -1, dy: 0 }  // West
+        ];
+
+        let hasConnection = false;
+        neighbors.forEach(offset => {
+            const nx = tile.x + offset.dx;
+            const ny = tile.y + offset.dy;
+            const neighbor = this.getTile(nx, ny);
+
+            if (neighbor && neighbor.road) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(cx, cy);
+                this.ctx.lineTo(cx + offset.dx * tileSize / 2, cy + offset.dy * tileSize / 2);
+                this.ctx.stroke();
+                hasConnection = true;
+            }
+        });
+
+        // For stone roads, add some texture/width at the center
+        if (tile.road === 'stone') {
+            this.ctx.fillStyle = roadColor;
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, lineWidth * 0.8, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
+    /**
      * Draw UI overlay
      */
     drawUI() {
@@ -1114,37 +1171,87 @@ class GameMap {
             this.ctx.stroke();
         }
 
-        // Unit circle
-        this.ctx.fillStyle = unit.owner === 'player' ? '#8E44AD' : '#8B0000';
+        const unitType = getUnitById(unit.typeId);
+        const size = tileSize * 0.4;
+
+        this.ctx.save();
+
+        // Shadow for depth
+        this.ctx.shadowBlur = 4;
+        this.ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        this.ctx.shadowOffsetY = 2;
+
+        // Draw shape based on type
         this.ctx.beginPath();
-        this.ctx.arc(
-            cx,
-            cy,
-            tileSize / 3,
-            0,
-            Math.PI * 2
-        );
+        if (unit.type === 'infantry') {
+            // Shield-like rounded bottom
+            this.ctx.moveTo(cx - size, cy - size * 0.8);
+            this.ctx.lineTo(cx + size, cy - size * 0.8);
+            this.ctx.lineTo(cx + size, cy + size * 0.2);
+            this.ctx.quadraticCurveTo(cx + size, cy + size, cx, cy + size);
+            this.ctx.quadraticCurveTo(cx - size, cy + size, cx - size, cy + size * 0.2);
+            this.ctx.closePath();
+        } else if (unit.type === 'cavalry') {
+            // Circular badge
+            this.ctx.arc(cx, cy, size, 0, Math.PI * 2);
+        } else if (unit.type === 'naval') {
+            // Boat hull shape
+            this.ctx.moveTo(cx - size, cy - size * 0.3);
+            this.ctx.lineTo(cx + size, cy - size * 0.3);
+            this.ctx.lineTo(cx + size * 0.7, cy + size * 0.8);
+            this.ctx.lineTo(cx - size * 0.7, cy + size * 0.8);
+            this.ctx.closePath();
+        } else {
+            // Hexagon for special/others
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3 - Math.PI / 2;
+                this.ctx.lineTo(cx + size * Math.cos(angle), cy + size * Math.sin(angle));
+            }
+            this.ctx.closePath();
+        }
+
+        const gradient = this.ctx.createLinearGradient(cx - size, cy - size, cx + size, cy + size);
+        if (unit.owner === 'player') {
+            gradient.addColorStop(0, '#9B59B6');
+            gradient.addColorStop(1, '#6C3483');
+        } else {
+            gradient.addColorStop(0, '#E74C3C');
+            gradient.addColorStop(1, '#943126');
+        }
+
+        this.ctx.fillStyle = gradient;
         this.ctx.fill();
 
-        // Border
-        this.ctx.strokeStyle = '#D4AF37';
-        this.ctx.lineWidth = 2;
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetY = 0;
+
+        // Border based on category
+        let borderColor = '#D4AF37';
+        let lineWidth = 1.5;
+        if (unit.category === 'elite') {
+            lineWidth = 3;
+            borderColor = '#FFFDE7';
+        } else if (unit.category === 'heavy' || unit.category === 'superheavy') {
+            lineWidth = 2.5;
+            borderColor = '#F1C40F';
+        }
+
+        this.ctx.strokeStyle = borderColor;
+        this.ctx.lineWidth = lineWidth;
         this.ctx.stroke();
 
-        // Icon
-        this.ctx.fillStyle = '#F8F9FA';
-        this.ctx.font = `${Math.floor(tileSize * 0.4)}px Arial`;
+        // Icon/Symbol
+        this.ctx.fillStyle = '#FFFFFF';
+        // Adjust font size for combined symbols like '🏇🏹'
+        const symbol = unit.symbol || unitType?.symbol || '⚔️';
+        const fontSize = Math.floor(tileSize * (symbol.length > 2 ? 0.3 : 0.45));
+        this.ctx.font = `bold ${fontSize}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        let icon = '⚔';
-        if (unit.type === 'cavalry') icon = '🐎';
-        if (unit.type === 'naval' || unit.category === 'transport') icon = '⛵';
-        if (unit.category === 'siege') icon = '🛡';
-        if (unit.category === 'ranged') icon = '🏹';
-        if (unit.category === 'intel') icon = '🕵';
-        if (unit.category === 'support') icon = '⛪';
-        if (unit.category === 'economic') icon = '🐪';
-        this.ctx.fillText(icon, cx, cy);
+
+        this.ctx.fillText(symbol, cx, cy);
+
+        this.ctx.restore();
     }
 
     getUnitHealthColor(ratio) {
@@ -1292,7 +1399,10 @@ class GameMap {
             while (true) {
                 const tile = this.getTile(x0, y0);
                 if (tile && tile.terrain !== 'water') {
-                    tile.road = true;
+                    // Upgrade road type if a better one already exists, or just set it
+                    if (!tile.road || (road.type === 'stone' && tile.road !== 'stone')) {
+                        tile.road = road.type || 'dirt';
+                    }
                 }
 
                 if (x0 === x1 && y0 === y1) break;

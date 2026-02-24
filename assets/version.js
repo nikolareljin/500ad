@@ -1,2 +1,2 @@
 // Generated from VERSION. Update with: ./scripts/version_set.sh <semver>
-window.APP_VERSION = '1.2.4';
+window.APP_VERSION = '1.3.0';

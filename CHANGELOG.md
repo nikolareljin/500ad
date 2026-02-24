@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.3.0] - 2026-02-24
+
+### Added
+- Created a high-resolution, scholarship-based portrait for Khosrow I (Anushiruvan), replacing the previous low-quality placeholder.
+- Introduced distinct geometric shapes for on-map unit differentiation: Shields for Infantry, Circles for Cavalry, Hexagons for Naval, and Octagons for Special units.
+- Added unique Unicode symbols for all 25+ unit types (e.g., 🪓 for Varangians, 🐘 for War Elephants, 🔥 for Greek Fire) to ensure quick visual identification.
+- Categorized historical roads into distinct types: Roman Stone (Gray), Dirt (Brown), and Silk Road Sand (Beige), reflecting geographical and historical context.
+- Implemented dynamic connectivity for the road network, creating fluid paths with rounded joins and seamless transitions between tiles.
+
+### Changed
+- Refined leader portraits (Alexios I, Alp Arslan, Khalid, Samuel, Totila, and Heraclius) by adding alpha transparency, removing white backgrounds for better UI blending.
+- Enhanced the Selected Unit Panel with animated portraits, faction-specific radial gradients, and category-based visual cues (e.g., platinum highlights for Elite units).
+- Updated city infrastructure rendering logic to inherit the new stone/dirt road coloring and connectivity improvements.
+- Adjusted main menu aesthetics by switching the game subtitle to the accent display font.
+- Overhauled unit rendering on the map with depth shadows, linear gradients, and reinforced borders for Heavy and Elite categories.
+
 ## [1.2.4] - 2026-02-23
 
 ### Changed
