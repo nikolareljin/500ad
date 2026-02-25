@@ -19,6 +19,9 @@ All notable changes to this project are documented in this file.
 - Updated city build actions to apply terrain/resource-informed bonuses (for example stronger forts near stone and stronger food output near fertile/resource-rich tiles).
 - Updated README documentation to describe strategic resources, terrain effects, and the expanded HUD.
 
+### Fixed
+- Fixed duplicate terrain modifier stacking in movement/combat so cavalry and mountain-unit terrain penalties/bonuses are applied once via shared terrain effects (and terrain defense is not double-counted).
+
 ## [1.3.0] - 2026-02-24
 
 ### Added

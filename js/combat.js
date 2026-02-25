@@ -41,16 +41,9 @@ function calculateCombatDamage(attacker, defender, terrain = 'plains') {
         if (attackerType.bonuses.terrain) {
             attackPower *= attackerType.bonuses.terrain;
         }
-        // Cavalry penalty in rough terrain
-        if (attackerType.type === 'cavalry') {
-            attackPower *= 0.8;
-        }
     }
     attackPower *= terrainEffects.attackMultiplier || 1;
-    const terrainDefenseBonus = (typeof TERRAIN_TYPES !== 'undefined' && TERRAIN_TYPES[terrain])
-        ? (TERRAIN_TYPES[terrain].defenseBonus || 0)
-        : 0;
-    defensePower *= (terrainEffects.defenseMultiplier || 1) * (1 + terrainDefenseBonus);
+    defensePower *= terrainEffects.defenseMultiplier || 1;
 
     // Apply morale
     const attackerMorale = attacker.morale / 100;
@@ -101,10 +94,6 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
         const defenderNaval = defender.type === 'naval' || defender.bonuses?.waterTraversal;
         if (attackerNaval && !defenderNaval) attackerDamage = Math.floor(attackerDamage * 1.15);
         if (defenderNaval && !attackerNaval) defenderDamage = Math.floor(defenderDamage * 1.15);
-    }
-
-    if (terrain === 'mountains' && (attacker.type === 'cavalry' || attacker.category === 'cavalry')) {
-        attackerDamage = Math.floor(attackerDamage * 0.75);
     }
 
     if (defender.fortified) {

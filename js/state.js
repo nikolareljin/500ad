@@ -823,13 +823,6 @@ class GameState {
         const terrainEffects = gameMap?.getTerrainEffects?.(toTile.terrain, { unit, fromTile, toTile }) || {};
         cost *= terrainEffects.moveCostMultiplier || 1;
 
-        if (unit.category === 'mountain' && (toTile.terrain === 'hills' || toTile.terrain === 'mountains')) {
-            cost *= 0.65;
-        }
-        if (unit.type === 'cavalry' && (toTile.terrain === 'forest' || toTile.terrain === 'mountains')) {
-            cost *= 1.3;
-        }
-
         if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
             cost *= 0.45;
         } else if (toTile.road && toTile.terrain !== 'water') {
