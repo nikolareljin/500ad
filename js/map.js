@@ -193,7 +193,7 @@ const TERRAIN_EFFECTS = {
         canCanal: true
     },
     forest: {
-        moveCostMultiplier: 1.15,
+        moveCostMultiplier: 1,
         attackMultiplier: 0.95,
         defenseMultiplier: 1.15,
         canFarm: false,
@@ -202,7 +202,7 @@ const TERRAIN_EFFECTS = {
         canCanal: false
     },
     hills: {
-        moveCostMultiplier: 1.2,
+        moveCostMultiplier: 1,
         attackMultiplier: 0.95,
         defenseMultiplier: 1.2,
         canFarm: false,
@@ -211,7 +211,7 @@ const TERRAIN_EFFECTS = {
         canCanal: false
     },
     mountains: {
-        moveCostMultiplier: 1.35,
+        moveCostMultiplier: 1,
         attackMultiplier: 0.9,
         defenseMultiplier: 1.3,
         canFarm: false,
@@ -1611,11 +1611,11 @@ class GameMap {
         const effects = { ...base };
         const unit = context.unit;
         if (unit?.category === 'mountain' && (terrain === 'hills' || terrain === 'mountains')) {
-            effects.moveCostMultiplier *= 0.8;
+            effects.moveCostMultiplier *= 0.65;
             effects.attackMultiplier *= 1.05;
         }
         if (unit?.type === 'cavalry' && (terrain === 'forest' || terrain === 'mountains')) {
-            effects.moveCostMultiplier *= 1.15;
+            effects.moveCostMultiplier *= 1.3;
             effects.attackMultiplier *= 0.9;
         }
         if (terrain === 'city') {
@@ -1782,7 +1782,10 @@ class GameMap {
                 const yieldNode = this.getTileResourceYield(tile);
                 if (!yieldNode) continue;
                 const proximityMultiplier = dist === 0 ? 1 : (dist === 1 ? 0.75 : 0.45);
-                totals[yieldNode.type] += Math.max(1, Math.floor(yieldNode.amount * proximityMultiplier));
+                const contribution = Math.floor(yieldNode.amount * proximityMultiplier);
+                if (contribution > 0) {
+                    totals[yieldNode.type] += contribution;
+                }
             }
         }
         return totals;
