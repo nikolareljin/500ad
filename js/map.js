@@ -174,6 +174,78 @@ const TERRAIN_TYPES = {
     city: { color: '#D4AF37', moveCost: 1, defenseBonus: 0.5 }
 };
 
+const RESOURCE_NODE_TYPES = {
+    food: { color: '#D6C05A', symbol: 'F', baseYield: 2 },
+    wood: { color: '#6B8E5F', symbol: 'W', baseYield: 2 },
+    stone: { color: '#9B8C7A', symbol: 'S', baseYield: 1 },
+    iron: { color: '#7A7A85', symbol: 'I', baseYield: 1 },
+    rare: { color: '#8B5FAF', symbol: 'R', baseYield: 1 }
+};
+
+const TERRAIN_EFFECTS = {
+    plains: {
+        moveCostMultiplier: 1,
+        attackMultiplier: 1,
+        defenseMultiplier: 1,
+        canFarm: true,
+        canIrrigate: true,
+        canPlantForest: true,
+        canCanal: true
+    },
+    forest: {
+        moveCostMultiplier: 1.15,
+        attackMultiplier: 0.95,
+        defenseMultiplier: 1.15,
+        canFarm: false,
+        canIrrigate: false,
+        canPlantForest: true,
+        canCanal: false
+    },
+    hills: {
+        moveCostMultiplier: 1.2,
+        attackMultiplier: 0.95,
+        defenseMultiplier: 1.2,
+        canFarm: false,
+        canIrrigate: false,
+        canPlantForest: true,
+        canCanal: false
+    },
+    mountains: {
+        moveCostMultiplier: 1.35,
+        attackMultiplier: 0.9,
+        defenseMultiplier: 1.3,
+        canFarm: false,
+        canIrrigate: false,
+        canPlantForest: false,
+        canCanal: false
+    },
+    water: {
+        moveCostMultiplier: 1,
+        attackMultiplier: 1,
+        defenseMultiplier: 1,
+        canFarm: false,
+        canIrrigate: false,
+        canPlantForest: false,
+        canCanal: false
+    },
+    city: {
+        moveCostMultiplier: 1,
+        attackMultiplier: 1,
+        defenseMultiplier: 1.25,
+        canFarm: true,
+        canIrrigate: true,
+        canPlantForest: true,
+        canCanal: true
+    }
+};
+
+function deterministicTileNoise(x, y, salt = 0) {
+    let h = ((x + 1) * 374761393) ^ ((y + 1) * 668265263) ^ ((salt + 1) * 700001);
+    h = (h ^ (h >>> 13)) * 1274126177;
+    h ^= h >>> 16;
+    return ((h >>> 0) % 100000) / 100000;
+}
+
 const CITY_WONDERS = {
     constantinople: 'Hagia Sophia',
     rome: 'Aurelian Walls',
@@ -278,7 +350,8 @@ class GameMap {
                     owner: null,
                     visible: true,
                     explored: false,
-                    baseColor: null
+                    baseColor: null,
+                    resourceNode: null
                 };
                 this.updateTileBaseColor(this.tiles[y][x]);
             }
@@ -288,6 +361,8 @@ class GameMap {
         this.placeHistoricalTowns();
         // Place historical main roads
         this.placeHistoricalRoads();
+        // Place strategic resources after cities/roads so placements avoid city tiles.
+        this.placeStrategicResources();
         this.markTerritoryDirty();
 
         // Ensure Constantinople is correctly set up as default start center if needed
@@ -903,6 +978,10 @@ class GameMap {
                     this.drawRoad(tile, px, py, tileSize);
                 }
 
+                if (tile.resourceNode && tile.terrain !== 'water' && !this.isFoggedTile(x, y)) {
+                    this.drawResourceNode(tile, px, py, tileSize);
+                }
+
                 // Gray fog of war for undiscovered areas with softened boundaries.
                 const fogAlpha = this.getFogAlpha(x, y);
                 if (fogAlpha > 0) {
@@ -957,6 +1036,34 @@ class GameMap {
                 else minimap.updateViewport();
             }
         });
+    }
+
+    drawResourceNode(tile, px, py, tileSize) {
+        const node = tile?.resourceNode;
+        if (!node) return;
+        const def = RESOURCE_NODE_TYPES[node.type];
+        if (!def) return;
+
+        const cx = px + tileSize * 0.78;
+        const cy = py + tileSize * 0.24;
+        const radius = Math.max(2, tileSize * 0.13);
+        this.ctx.fillStyle = 'rgba(18, 18, 18, 0.7)';
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, radius + 1.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = def.color;
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        if (tileSize >= 16) {
+            this.ctx.fillStyle = '#1a1a1a';
+            this.ctx.font = `bold ${Math.max(8, Math.floor(tileSize * 0.28))}px serif`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(def.symbol, cx, cy + 0.5);
+        }
     }
 
     setBattleHealthHighlights(unitIds = [], durationMs = 3000) {
@@ -1443,6 +1550,17 @@ class GameMap {
         return offsets.some((offset) => this.getTile(x + offset.x, y + offset.y)?.terrain === 'water');
     }
 
+    getTileNeighborhood(x, y, radius = 1) {
+        const tiles = [];
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const tile = this.getTile(x + dx, y + dy);
+                if (tile) tiles.push(tile);
+            }
+        }
+        return tiles;
+    }
+
     isRiverTile(x, y) {
         const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
         if (typeof h === 'number' && h >= 40 && h <= 52) return true;
@@ -1486,6 +1604,188 @@ class GameMap {
         }
 
         return result;
+    }
+
+    getTerrainEffects(terrain, context = {}) {
+        const base = TERRAIN_EFFECTS[terrain] || TERRAIN_EFFECTS.plains;
+        const effects = { ...base };
+        const unit = context.unit;
+        if (unit?.category === 'mountain' && (terrain === 'hills' || terrain === 'mountains')) {
+            effects.moveCostMultiplier *= 0.8;
+            effects.attackMultiplier *= 1.05;
+        }
+        if (unit?.type === 'cavalry' && (terrain === 'forest' || terrain === 'mountains')) {
+            effects.moveCostMultiplier *= 1.15;
+            effects.attackMultiplier *= 0.9;
+        }
+        if (terrain === 'city') {
+            effects.defenseMultiplier *= 1 + Math.max(0, Math.min(0.35, context.fortDefenseBonus || 0));
+        }
+        return effects;
+    }
+
+    terrainAllowsBuildAction(x, y, actionId) {
+        const tile = this.getTile(x, y);
+        if (!tile) return { allowed: false, reason: 'Invalid tile' };
+        const around = this.getTileNeighborhood(x, y, 1).filter((t) => t.terrain !== 'water');
+        const hasFertile = this.isFertileTile(x, y) || around.some((t) => this.isFertileTile(t.x, t.y));
+        const hasRiver = this.isRiverTile(x, y) || around.some((t) => this.isRiverTile(t.x, t.y));
+        const hasCoast = this.isCoastalTile(x, y) || around.some((t) => this.isCoastalTile(t.x, t.y));
+        const hasForestLand = around.some((t) => t.terrain === 'forest' || t.terrain === 'plains' || t.terrain === 'hills');
+
+        switch (actionId) {
+            case 'build_farm':
+                if (!hasFertile) return { allowed: false, reason: 'Farms require fertile or river/coastal land nearby' };
+                return { allowed: true };
+            case 'irrigate':
+                if (!(hasRiver || hasCoast || hasFertile)) return { allowed: false, reason: 'Irrigation requires river, coast, or fertile lowland nearby' };
+                return { allowed: true };
+            case 'plant_forest':
+                if (!hasForestLand) return { allowed: false, reason: 'Forest management requires nearby workable land' };
+                return { allowed: true };
+            case 'build_canal':
+                if (!(hasCoast || hasRiver)) return { allowed: false, reason: 'Canals require nearby coast or river' };
+                return { allowed: true };
+            default:
+                return { allowed: true };
+        }
+    }
+
+    getResourcePlacementWeights(tile) {
+        if (!tile || tile.terrain === 'water' || tile.terrain === 'city') return null;
+        const terrain = tile.terrain;
+        const coastal = this.isCoastalTile(tile.x, tile.y);
+        const river = this.isRiverTile(tile.x, tile.y);
+        const fertile = this.isFertileTile(tile.x, tile.y);
+        const weights = {
+            food: 0,
+            wood: 0,
+            stone: 0,
+            iron: 0,
+            rare: 0
+        };
+
+        if (terrain === 'plains') {
+            weights.food += fertile ? 4.2 : 2.1;
+            weights.wood += 0.8;
+            weights.stone += 0.6;
+            weights.rare += coastal ? 0.5 : 0.2;
+        }
+        if (terrain === 'forest') {
+            weights.wood += 4.8;
+            weights.food += fertile ? 1.8 : 0.6;
+            weights.rare += 0.4;
+            weights.stone += 0.4;
+        }
+        if (terrain === 'hills') {
+            weights.stone += 3.7;
+            weights.iron += 2.6;
+            weights.wood += 0.8;
+            weights.rare += 0.9;
+        }
+        if (terrain === 'mountains') {
+            weights.stone += 4.2;
+            weights.iron += 3.5;
+            weights.rare += 1.6;
+        }
+
+        if (river) {
+            weights.food += 1.8;
+            weights.rare += 0.2;
+        }
+        if (coastal) {
+            weights.food += 1.2;
+            weights.rare += 0.7;
+        }
+
+        return weights;
+    }
+
+    placeStrategicResources() {
+        const landTiles = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const tile = this.tiles[y][x];
+                if (!tile) continue;
+                tile.resourceNode = null;
+                if (tile.terrain === 'water' || tile.terrain === 'city') continue;
+                landTiles.push(tile);
+            }
+        }
+        if (landTiles.length === 0) return;
+
+        const targetRatios = {
+            food: 0.055,
+            wood: 0.05,
+            stone: 0.04,
+            iron: 0.03,
+            rare: 0.018
+        };
+        const minCounts = { food: 10, wood: 10, stone: 8, iron: 6, rare: 4 };
+        const selected = new Set();
+        const selectedByType = new Map(Object.keys(targetRatios).map((k) => [k, []]));
+
+        Object.keys(targetRatios).forEach((type, typeIdx) => {
+            const candidates = [];
+            for (const tile of landTiles) {
+                const weights = this.getResourcePlacementWeights(tile);
+                const weight = weights?.[type] || 0;
+                if (weight <= 0) continue;
+                const noise = deterministicTileNoise(tile.x, tile.y, 17 + typeIdx * 97);
+                candidates.push({
+                    tile,
+                    score: weight * (0.85 + noise * 0.45),
+                    noise
+                });
+            }
+            candidates.sort((a, b) => b.score - a.score);
+            const targetCount = Math.max(minCounts[type], Math.floor(landTiles.length * targetRatios[type]));
+
+            for (const candidate of candidates) {
+                if (selectedByType.get(type).length >= targetCount) break;
+                const tile = candidate.tile;
+                const key = `${tile.x},${tile.y}`;
+                if (selected.has(key)) continue;
+
+                const sameTypeTooClose = selectedByType.get(type).some((other) =>
+                    Math.abs(other.x - tile.x) + Math.abs(other.y - tile.y) <= 2
+                );
+                if (sameTypeTooClose) continue;
+
+                const richness = candidate.noise > 0.83 ? 3 : (candidate.noise > 0.52 ? 2 : 1);
+                tile.resourceNode = { type, richness };
+                selected.add(key);
+                selectedByType.get(type).push(tile);
+            }
+        });
+    }
+
+    getTileResourceYield(tile) {
+        const node = tile?.resourceNode;
+        if (!node) return null;
+        const def = RESOURCE_NODE_TYPES[node.type];
+        if (!def) return null;
+        return {
+            type: node.type,
+            amount: Math.max(1, (def.baseYield || 1) + ((node.richness || 1) - 1))
+        };
+    }
+
+    getNearbyResourceYields(x, y, radius = 2) {
+        const totals = { food: 0, wood: 0, stone: 0, iron: 0, rare: 0 };
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist > radius) continue;
+                const tile = this.getTile(x + dx, y + dy);
+                if (!tile) continue;
+                const yieldNode = this.getTileResourceYield(tile);
+                if (!yieldNode) continue;
+                const proximityMultiplier = dist === 0 ? 1 : (dist === 1 ? 0.75 : 0.45);
+                totals[yieldNode.type] += Math.max(1, Math.floor(yieldNode.amount * proximityMultiplier));
+            }
+        }
+        return totals;
     }
 
     /**

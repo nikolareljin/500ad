@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.4.0] - 2026-02-25
+
+### Added
+- Added deterministic strategic resource node distribution across the world map (`food`, `wood`, `stone`, `iron`, `rare`) with biome/terrain weighting and balanced spacing.
+- Added map rendering overlays for resource nodes so strategic deposits are visible during gameplay.
+- Added expanded HUD resource tracking for strategic stockpiles (`food`, `wood`, `stone`, `iron`, `rare`) in addition to `gold`, `manpower`, and `prestige`.
+- Added reusable terrain-effect profiles and terrain/build suitability checks for city actions (farms, irrigation, forestry, canals).
+
+### Changed
+- Updated city production to include nearby terrain context (fertility, river access, coast access) and nearby strategic resources.
+- Updated turn income to accumulate strategic stockpiles from city territory/resource access.
+- Updated movement and combat terrain calculations to use shared terrain-effect logic, improving consistency between systems.
+- Updated city build actions to apply terrain/resource-informed bonuses (for example stronger forts near stone and stronger food output near fertile/resource-rich tiles).
+- Updated README documentation to describe strategic resources, terrain effects, and the expanded HUD.
+
 ## [1.3.0] - 2026-02-24
 
 ### Added

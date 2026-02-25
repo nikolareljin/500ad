@@ -15,6 +15,12 @@ function calculateCombatDamage(attacker, defender, terrain = 'plains') {
     // Base attack values
     let attackPower = attacker.stats.attack;
     let defensePower = defender.stats.defense;
+    const terrainEffects = gameMap?.getTerrainEffects?.(terrain, {
+        unit: attacker,
+        attacker,
+        defender,
+        fortDefenseBonus: gameMap?.getTile(defender.position.x, defender.position.y)?.fort?.defenseBonus || 0
+    }) || { attackMultiplier: 1, defenseMultiplier: 1 };
 
     // Apply type bonuses
     if (defenderType.type === 'infantry' && attackerType.bonuses.vsInfantry) {
@@ -40,6 +46,11 @@ function calculateCombatDamage(attacker, defender, terrain = 'plains') {
             attackPower *= 0.8;
         }
     }
+    attackPower *= terrainEffects.attackMultiplier || 1;
+    const terrainDefenseBonus = (typeof TERRAIN_TYPES !== 'undefined' && TERRAIN_TYPES[terrain])
+        ? (TERRAIN_TYPES[terrain].defenseBonus || 0)
+        : 0;
+    defensePower *= (terrainEffects.defenseMultiplier || 1) * (1 + terrainDefenseBonus);
 
     // Apply morale
     const attackerMorale = attacker.morale / 100;
@@ -92,7 +103,7 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
         if (defenderNaval && !attackerNaval) defenderDamage = Math.floor(defenderDamage * 1.15);
     }
 
-    if (terrain === 'mountains' && attacker.type === 'cavalry') {
+    if (terrain === 'mountains' && (attacker.type === 'cavalry' || attacker.category === 'cavalry')) {
         attackerDamage = Math.floor(attackerDamage * 0.75);
     }
 
