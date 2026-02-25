@@ -23,6 +23,7 @@ All notable changes to this project are documented in this file.
 - Fixed duplicate terrain modifier stacking in movement/combat so cavalry and mountain-unit terrain penalties/bonuses are applied once via shared terrain effects (and terrain defense is not double-counted).
 - Fixed terrain movement balance regression by preventing shared terrain move-cost multipliers from compounding the base `TERRAIN_TYPES` move costs; shared effects now carry unit-specific movement modifiers only.
 - Fixed nearby strategic resource yield scaling so distance/richness can reduce contributions to `0` instead of clamping every in-range node to at least `1`.
+- Fixed fortification defense bonuses so built forts apply their defense multiplier on non-city tiles as well (not only in cities).
 
 ## [1.3.0] - 2026-02-24
 

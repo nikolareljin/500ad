@@ -1618,8 +1618,9 @@ class GameMap {
             effects.moveCostMultiplier *= 1.3;
             effects.attackMultiplier *= 0.9;
         }
-        if (terrain === 'city') {
-            effects.defenseMultiplier *= 1 + Math.max(0, Math.min(0.35, context.fortDefenseBonus || 0));
+        const fortBonus = context.fortDefenseBonus || 0;
+        if (fortBonus > 0) {
+            effects.defenseMultiplier *= 1 + Math.max(0, Math.min(0.35, fortBonus));
         }
         return effects;
     }
