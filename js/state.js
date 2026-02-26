@@ -1420,6 +1420,7 @@ class GameState {
 
     spawnFactionArmyAtTown(town, owner, faction, unitCount = 2) {
         const baseTypes = ['skutatoi', 'archers', 'kavallarioi'];
+        let spawnedAny = false;
         for (let i = 0; i < unitCount; i++) {
             const preferredOffset = { x: i % 2, y: 1 + Math.floor(i / 2) };
             const spawnPos = this.findAvailableSpawnPosition(town.x, town.y, [preferredOffset], 3);
@@ -1431,7 +1432,9 @@ class GameState {
             if (!unit) continue;
             this.applyFactionUnitNaming(unit, faction);
             this.units.push(unit);
+            spawnedAny = true;
         }
+        return spawnedAny;
     }
 
     createEnemyUnits(scenario) {
@@ -2092,7 +2095,7 @@ class GameState {
         this.recordAIWorldEvent('city_captured', {
             cityId,
             cityName: tile.cityData?.name || cityId,
-            cityFaction: this.resolveAIFactionForTile(tile, null),
+            cityFaction: oldFaction,
             oldFaction,
             // Use post-resolution ownership so neutral resistance outcomes log the actual capturer.
             capturer: tile.owner ?? unit.owner,

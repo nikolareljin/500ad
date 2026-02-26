@@ -45,6 +45,10 @@ function getAIPersonalityBehaviorDefaults(personality) {
     };
 }
 
+if (typeof window !== 'undefined') {
+    window.getAIPersonalityBehaviorDefaults = getAIPersonalityBehaviorDefaults;
+}
+
 class AIManager {
     constructor() {
         this.thinkingDelay = 350; // ms between actions
@@ -209,6 +213,8 @@ class AIManager {
     processFactionEconomy(context, plan) {
         const { state, cities, resourcePotential } = context;
         if (!state || cities.length === 0) return;
+        this.applyFactionIncome(state, resourcePotential);
+
         const profile = context.profile;
         const shouldInvest = plan.primaryFocus === 'resource'
             || plan.secondaryFocus === 'resource'
@@ -226,8 +232,6 @@ class AIManager {
 
         const infra = targetCity.cityData.infrastructure || (targetCity.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
-        stockpile.gold = Math.max(0, Math.floor((stockpile.gold || 0) + 30 + (resourcePotential.totalStrategic || 0)));
-        stockpile.manpower = Math.max(0, Math.floor((stockpile.manpower || 0) + 12));
 
         if (stockpile.gold >= 40) {
             if ((resourcePotential.food || 0) < 3) infra.agriculture = Math.min(5, (infra.agriculture || 1) + 1);
@@ -235,6 +239,15 @@ class AIManager {
             else infra.roads = Math.min(5, (infra.roads || 1) + 1);
             stockpile.gold -= 40;
         }
+    }
+
+    applyFactionIncome(state, resourcePotential) {
+        if (!state) return;
+        if (state.lastIncomeTurn === gameState.turn) return;
+        const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
+        stockpile.gold = Math.max(0, Math.floor((stockpile.gold || 0) + 30 + (resourcePotential?.totalStrategic || 0)));
+        stockpile.manpower = Math.max(0, Math.floor((stockpile.manpower || 0) + 12));
+        state.lastIncomeTurn = gameState.turn;
     }
 
     processFactionExpansion(context, plan) {
