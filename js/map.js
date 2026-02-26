@@ -159,6 +159,14 @@ function normalizeWorldGenerationConfig(config) {
             WORLD_GENERATION_DEFAULTS.resources.richnessHighThreshold
         );
     }
+    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + 0.05) {
+        merged.resources.richnessMediumThreshold = clampNumber(
+            merged.resources.richnessMediumThreshold,
+            0.1,
+            merged.resources.richnessHighThreshold - 0.05,
+            WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
+        );
+    }
     return merged;
 }
 
@@ -712,7 +720,8 @@ class GameMap {
     determineBiomeForTile(tile) {
         if (!tile || tile.terrain === 'water') return null;
         const baseTerrain = this.getBiomeBaseTerrain(tile);
-        if (baseTerrain === 'mountains' || baseTerrain === 'hills') {
+        // Mountains always use the mountains biome; hills can still shift by climate.
+        if (baseTerrain === 'mountains') {
             return 'mountains';
         }
 
@@ -756,6 +765,7 @@ class GameMap {
         if (biome === 'desert' && unit?.category === 'desert') moveCostMultiplier *= 0.82;
         if (biome === 'tundra' && unit?.category === 'mountain') moveCostMultiplier *= 0.9;
         if (biome === 'mountains' && unit?.category === 'mountain') moveCostMultiplier *= 0.92;
+        // Cavalry is intentionally penalized in forests (higher move cost = slower movement).
         if (biome === 'forest' && unit?.type === 'cavalry') moveCostMultiplier *= 1.06;
 
         return {

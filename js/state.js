@@ -2290,7 +2290,14 @@ class GameState {
         }
 
         if (data.worldGenerationConfig && typeof window !== 'undefined' && typeof window.setWorldGenerationConfig === 'function') {
-            window.setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
+            const currentGenerationConfig = (gameMap?.getGenerationConfigSnapshot?.()
+                || (typeof window.getWorldGenerationConfig === 'function' ? window.getWorldGenerationConfig() : null));
+            const savedGenerationConfigKey = JSON.stringify(data.worldGenerationConfig);
+            const currentGenerationConfigKey = currentGenerationConfig ? JSON.stringify(currentGenerationConfig) : null;
+            if (savedGenerationConfigKey !== currentGenerationConfigKey) {
+                // Controlled load flow: regenerate map to the saved generation config before restoring ownership/forts.
+                window.setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
+            }
         }
 
         this.selectedLeader = data.selectedLeader;
