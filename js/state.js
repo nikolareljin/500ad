@@ -523,8 +523,8 @@ class GameState {
         if (!this.aiFactions) this.aiFactions = {};
         const existing = this.aiFactions[resolvedFactionId] || {};
         const personality = existing.personality || this.getAIFactionPersonalityType(resolvedFactionId);
-        const behaviorDefaultsFn = (typeof globalThis !== 'undefined' && typeof globalThis.getAIPersonalityBehaviorDefaults === 'function')
-            ? globalThis.getAIPersonalityBehaviorDefaults
+        const behaviorDefaultsFn = (typeof window !== 'undefined' && typeof window.getAIPersonalityBehaviorDefaults === 'function')
+            ? window.getAIPersonalityBehaviorDefaults
             : null;
         const behaviorDefaults = behaviorDefaultsFn
             ? behaviorDefaultsFn(personality)
@@ -535,6 +535,10 @@ class GameState {
                 diplomacy: 0.5,
                 resourceFocus: 0.5
             });
+        if (!behaviorDefaultsFn && !this._aiBehaviorDefaultsFallbackWarned) {
+            this._aiBehaviorDefaultsFallbackWarned = true;
+            console.warn('AI personality defaults helper unavailable; using neutral fallback behavior values.');
+        }
         const defaults = {
             factionId: resolvedFactionId,
             personality,
@@ -605,7 +609,7 @@ class GameState {
         const playerCities = (gameMap?.getCityTiles('player') || []).length;
         const recentEvents = this.getRecentAIWorldEvents(12);
         const targetFactions = Array.isArray(factionIds) && factionIds.length
-            ? [...new Set(factionIds.filter(Boolean).map((id) => id || 'tribal'))]
+            ? [...new Set(factionIds)]
             : Object.keys(this.aiFactions || {});
         targetFactions.forEach((factionId) => {
             const state = this.ensureAIFactionState(factionId);
@@ -679,7 +683,6 @@ class GameState {
             cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
             cityTile.fort.lastReinforcedTurn = this.turn;
         }
-        cityTile.cityData = cityTile.cityData || {};
         cityTile.cityData.fortLevel = Math.max(cityTile.cityData.fortLevel || 0, 1);
         return true;
     }
@@ -2142,7 +2145,8 @@ class GameState {
             cityId,
             cityName: tile.cityData?.name || cityId,
             cityFaction: oldFaction,
-            // `oldFaction` is kept as a legacy alias for compatibility with existing event consumers.
+            // `oldFaction` is kept as a legacy alias for compatibility with older event consumers;
+            // new code should prefer `cityFaction` for "who held this city before capture".
             oldFaction,
             // Use post-resolution ownership so neutral resistance outcomes log the actual capturer.
             capturer: tile.owner ?? unit.owner,

@@ -351,7 +351,7 @@ window.setWorldGenerationConfig({
 ### AI Faction Behavior (Current Scope)
 - Enemy forces are still represented as `owner: enemy`, but now coordinate by `unit.faction` / city faction identity.
 - AI personalities influence whether factions prioritize expansion, defense, opportunistic attacks, or resource investment.
-- AI diplomacy is currently an internal behavior model (used for threat/hostility decisions), not a player-facing diplomacy UI.
+- AI diplomacy is currently an internal behavior model (using per-faction diplomacy/hostility scores for threat and targeting decisions) and is not exposed in any player-facing diplomacy UI.
 - AI reactions are driven by world-state events such as city captures and changing frontier pressure.
 
 ## Historical Notes

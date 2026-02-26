@@ -207,6 +207,7 @@ class AIManager {
 
         let delta = 0;
         if (plan.primaryFocus === 'diplomacy') delta -= 2;
+        else if (plan.primaryFocus === 'warfare') delta += 2;
         state.diplomacy.player = Math.max(-50, Math.min(100, (state.diplomacy.player || 0) + delta));
     }
 
@@ -289,10 +290,12 @@ class AIManager {
         stockpile.gold = Math.max(0, (stockpile.gold || 0) - expansionCost);
         state.lastExpansionTurn = gameState.turn;
         if (expansionMode === 'military') {
-            const town = HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId));
+            const town = (typeof HISTORIC_TOWNS !== 'undefined' && Array.isArray(HISTORIC_TOWNS))
+                ? HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId))
+                : null;
             if (town) {
                 const spawned = gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
-                if (spawned !== true) {
+                if (!spawned) {
                     this.ensureAIFortifiedCity(target);
                 }
             }
@@ -304,9 +307,10 @@ class AIManager {
             cityName: target.cityData?.name || target.name || 'Unknown city',
             mode: expansionMode
         });
-        context.neutralCities = context.neutralCities.filter((city) => city !== target);
         gameMap?.markTerritoryDirty?.();
         gameState?.refreshAIFactionState?.();
+        // Cache is invalidated by refresh; warm it once so later faction loops reuse the rebuilt cache.
+        gameState?.getAIFactionCityTiles?.(factionId);
         gameState?.updateAIFactionIntelFromWorldState?.({ skipRefresh: true, factionIds: [factionId] });
     }
 
@@ -324,7 +328,9 @@ class AIManager {
 
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
         if ((stockpile.gold || 0) >= 55) {
-            const town = HISTORIC_TOWNS.find((t) => t.id === (city.cityData?.id || city.cityId));
+            const town = (typeof HISTORIC_TOWNS !== 'undefined' && Array.isArray(HISTORIC_TOWNS))
+                ? HISTORIC_TOWNS.find((t) => t.id === (city.cityData?.id || city.cityId))
+                : null;
             if (town) {
                 const spawned = gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
                 if (spawned) {
@@ -337,9 +343,9 @@ class AIManager {
     async processUnit(unit, context, plan) {
         if (!unit || unit.currentHealth <= 0) return;
 
-        const adjacentEnemy = this.findNearbyTarget(unit, context, plan);
-        if (adjacentEnemy) {
-            this.executeAttack(unit, adjacentEnemy);
+        let nearbyTarget = this.findNearbyTarget(unit, context, plan);
+        if (nearbyTarget) {
+            this.executeAttack(unit, nearbyTarget);
             return;
         }
 
@@ -349,13 +355,13 @@ class AIManager {
             if (nextStep) {
                 const moved = gameState.moveUnit(unit.id, nextStep);
                 if (!moved) {
-                    // Failed move keeps the unit in place; check one stationary attack path and exit.
-                    const stationaryTarget = this.findNearbyTarget(unit, context, plan);
-                    if (stationaryTarget) this.executeAttack(unit, stationaryTarget);
+                    // Failed move keeps the unit in place; do a single stationary re-check and exit.
+                    nearbyTarget = this.findNearbyTarget(unit, context, plan);
+                    if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
                     return;
                 }
-                const postMoveTarget = this.findNearbyTarget(unit, context, plan);
-                if (postMoveTarget) this.executeAttack(unit, postMoveTarget);
+                nearbyTarget = this.findNearbyTarget(unit, context, plan);
+                if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
                 return;
             }
         }
@@ -463,9 +469,7 @@ class AIManager {
         if (tile.owner === 'player' || tile.owner === 'enemy') return false;
         tile.owner = 'enemy';
         tile.faction = factionId || tile.faction || 'tribal';
-        if (tile.cityData) {
-            tile.cityData.historicalCivilization = tile.cityData.historicalCivilization || tile.faction;
-        }
+        tile.cityData.historicalCivilization = tile.cityData.historicalCivilization || tile.faction;
         return true;
     }
 

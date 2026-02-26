@@ -21,6 +21,8 @@ All notable changes to this project are documented in this file.
 - Fixed AI expansion event fidelity so `city_captured.cityFaction` reflects the pre-capture faction owner (`oldFaction`) for correct intel attribution.
 - Fixed AI faction army-spawn signaling so `spawnFactionArmyAtTown(...)` returns success/failure and AI fallback fortification logic can react correctly.
 - Fixed AI faction expansion pacing/economy balance by applying explicit stockpile costs and turn-based expansion limits.
+- Fixed AI defense/expansion robustness by guarding direct `HISTORIC_TOWNS` lookups and reusing cached city-tile rebuilds after expansion-state invalidation.
+- Fixed AI diplomacy-turn behavior drift by allowing warfare-focused plans to increase hostility pressure while diplomacy-focused plans reduce it.
 
 ## [1.5.0] - 2026-02-26
 
