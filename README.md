@@ -69,6 +69,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
 - **Combat System**: Type advantages, terrain modifiers, morale, and fortification modifiers
+- **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
 - **Unit Vitality UI**: Recently damaged units show a map health ring (green -> red) to highlight their current health
 - **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
 - **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
@@ -78,6 +79,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata for future event systems
 - **Save/Load System**: Multiple save slots with auto-save
 - **Exploration**: Fog of war reveals as units move and cities are founded
+- **Dynamic Enemy Realms**: AI factions maintain territory pressure, diplomacy/threat memory (AI-side), and strategic reactions to player captures and frontier changes
 
 ### Mobile Optimized
 - **Touch Controls**: Tap to select, drag to move and pan
@@ -346,6 +348,12 @@ window.setWorldGenerationConfig({
 - These APIs are intended for trusted local modding/testing scripts only. Do not run untrusted browser-console snippets.
 - Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` for future event systems.
 
+### AI Faction Behavior (Current Scope)
+- Enemy forces are still represented as `owner: enemy`, but now coordinate by `unit.faction` / city faction identity.
+- AI personalities influence whether factions prioritize expansion, defense, opportunistic attacks, or resource investment.
+- AI diplomacy is currently an internal behavior model (used for threat/hostility decisions), not a player-facing diplomacy UI.
+- AI reactions are driven by world-state events such as city captures and changing frontier pressure.
+
 ## Historical Notes
 
 The Byzantine Empire, also known as the Eastern Roman Empire, lasted from 330 AD (founding of Constantinople) to 1453 AD (Fall of Constantinople). This game focuses on the period from 500-1453 AD, covering:
@@ -367,7 +375,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.5.0** - Seeded world generation configuration, deterministic biome rules/effects, and procedural terrain/resource modding hooks (see changelog for full details)
+**Version 1.6.0** - Multi-faction AI personalities with strategic behavior loops, persistent AI faction intel/diplomacy state, plus prior seeded world generation systems (see changelog for full details)
 
 ## License
 

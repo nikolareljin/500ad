@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.6.0] - 2026-02-26
+
+### Added
+- Added multi-faction enemy AI coordination that processes hostile forces by faction identity (for example `arab`, `bulgar`, `frank`, `sassanid`, `tribal`) instead of a single undifferentiated enemy blob.
+- Added AI personality profiles (`aggressive`, `defensive`, `opportunistic`, `diplomatic`) with per-faction strategic bias values for warfare, defense, expansion, resource investment, and diplomacy.
+- Added persistent AI faction state and world-event memory (`aiFactions`, `aiEvents`) to save data so AI personalities/intel/diplomacy persist across save/load.
+
+### Changed
+- Updated enemy turn logic to run faction-level strategic phases (diplomacy, resource investment, expansion, defense) before unit actions.
+- Updated enemy target selection to score player units/cities by faction threat context and personality priorities instead of pure nearest-distance behavior.
+
+### Fixed
+- Fixed AI state initialization/restoration gaps by rebuilding faction intel from current world state after new-game setup and save load.
+
 ## [1.5.0] - 2026-02-26
 
 ### Added
