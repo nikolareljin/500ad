@@ -60,6 +60,10 @@ class AIManager {
         return AI_PERSONALITY_PROFILES[personality] || AI_PERSONALITY_PROFILES.defensive;
     }
 
+    /**
+     * Build per-faction inputs used across planning and tactical phases for one AI turn.
+     * `threatenedCities` and `frontierCities` are derived snapshots for this turn only.
+     */
     buildFactionContext(factionId, units) {
         const state = gameState?.ensureAIFactionState?.(factionId);
         const profile = this.getPersonalityProfile(factionId);
@@ -71,7 +75,7 @@ class AIManager {
 
         const threatenedCities = cities.filter((city) => this.minDistanceToPlayerUnit(city, playerThreatUnits) <= 5);
         const frontierCities = cities.filter((city) => this.findNearestNeutralCity(city, neutralCities, 9) || this.findNearestPlayerCity(city, playerCities, 10));
-        const factionResources = this.estimateFactionResourcePotential(cities);
+        const resourcePotential = this.estimateFactionResourcePotential(cities);
 
         return {
             factionId,
@@ -85,16 +89,20 @@ class AIManager {
             recentEvents,
             threatenedCities,
             frontierCities,
-            factionResources
+            resourcePotential
         };
     }
 
+    /**
+     * Rank strategic priorities for the current faction turn and return the top focuses.
+     * Scores combine personality biases with current intel, city pressure, and resources.
+     */
     planFactionTurn(context) {
-        const { state, profile, cities, threatenedCities, neutralCities, factionResources } = context;
+        const { state, profile, cities, threatenedCities, neutralCities, resourcePotential } = context;
         const intel = state?.intel || {};
         const diplomacyScore = state?.diplomacy?.player || 0;
         const lowCitiesPressure = Math.max(0, 4 - cities.length) * 8;
-        const resourcePressure = Math.max(0, 16 - (factionResources.totalStrategic || 0));
+        const resourcePressure = Math.max(0, 16 - (resourcePotential.totalStrategic || 0));
 
         const warfareScore = (profile.aggressionBias * 50) + (intel.playerThreat || 0) + ((diplomacyScore > 25 ? 14 : 0));
         const defenseScore = (profile.defenseBias * 50) + (threatenedCities.length * 16) + (intel.playerPressure || 0);
@@ -124,6 +132,14 @@ class AIManager {
 
     async processTurn() {
         console.log('Processing enemy turn...');
+        if (!gameState || !gameMap) {
+            console.warn('Enemy turn skipped: game state/map is not ready.');
+            return;
+        }
+        if (typeof gameState.refreshAIFactionState !== 'function' || typeof gameState.updateAIFactionIntelFromWorldState !== 'function') {
+            console.warn('Enemy turn skipped: AI support methods are unavailable.');
+            return;
+        }
 
         const enemyUnits = gameState.units.filter((u) => u.owner === 'enemy');
         if (enemyUnits.length === 0) {
@@ -131,8 +147,8 @@ class AIManager {
             return;
         }
 
-        gameState?.refreshAIFactionState?.();
-        gameState?.updateAIFactionIntelFromWorldState?.();
+        gameState.refreshAIFactionState();
+        gameState.updateAIFactionIntelFromWorldState();
 
         const unitsByFaction = new Map();
         enemyUnits.forEach((unit) => {
@@ -191,7 +207,7 @@ class AIManager {
     }
 
     processFactionEconomy(context, plan) {
-        const { state, cities, factionResources } = context;
+        const { state, cities, resourcePotential } = context;
         if (!state || cities.length === 0) return;
         const profile = context.profile;
         const shouldInvest = plan.primaryFocus === 'resource'
@@ -210,12 +226,12 @@ class AIManager {
 
         const infra = targetCity.cityData.infrastructure || (targetCity.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
-        stockpile.gold = Math.max(0, Math.floor((stockpile.gold || 0) + 30 + Math.floor(factionResources.totalStrategic || 0)));
+        stockpile.gold = Math.max(0, Math.floor((stockpile.gold || 0) + 30 + (resourcePotential.totalStrategic || 0)));
         stockpile.manpower = Math.max(0, Math.floor((stockpile.manpower || 0) + 12));
 
         if (stockpile.gold >= 40) {
-            if ((factionResources.food || 0) < 3) infra.agriculture = Math.min(5, (infra.agriculture || 1) + 1);
-            else if ((factionResources.iron || 0) + (factionResources.stone || 0) > 4) infra.industry = Math.min(5, (infra.industry || 1) + 1);
+            if ((resourcePotential.food || 0) < 3) infra.agriculture = Math.min(5, (infra.agriculture || 1) + 1);
+            else if ((resourcePotential.iron || 0) + (resourcePotential.stone || 0) > 4) infra.industry = Math.min(5, (infra.industry || 1) + 1);
             else infra.roads = Math.min(5, (infra.roads || 1) + 1);
             stockpile.gold -= 40;
         }
@@ -245,12 +261,15 @@ class AIManager {
 
         // Diplomatic personalities annex peacefully more often; others stage armed takeovers.
         const peacefulChance = state.personality === 'diplomatic' ? 0.55 : (state.personality === 'opportunistic' ? 0.35 : 0.15);
-        const expansionMode = Math.random() > peacefulChance ? 'military' : 'peaceful';
+        const expansionMode = Math.random() < peacefulChance ? 'peaceful' : 'military';
         if (!this.applyAIFactionAnnexCity(target, factionId)) return;
         if (expansionMode === 'military') {
             const town = HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId));
             if (town) {
-                gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
+                const spawned = gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
+                if (!spawned) {
+                    this.ensureAIFortifiedCity(target);
+                }
             }
         }
 
@@ -263,6 +282,7 @@ class AIManager {
         context.neutralCities = context.neutralCities.filter((city) => city !== target);
         gameMap?.markTerritoryDirty?.();
         gameState?.refreshAIFactionState?.();
+        gameState?.updateAIFactionIntelFromWorldState?.({ skipRefresh: true, factionIds: [factionId] });
     }
 
     processFactionDefense(context, plan) {
@@ -274,13 +294,18 @@ class AIManager {
         const city = threatenedCities[0];
         if (!city) return;
 
-        this.ensureAIFortifiedCity(city);
+        const fortified = this.ensureAIFortifiedCity(city);
+        if (!fortified) return;
 
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
         if ((stockpile.gold || 0) >= 55) {
             const town = HISTORIC_TOWNS.find((t) => t.id === (city.cityData?.id || city.cityId));
-            if (town) gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
-            stockpile.gold = Math.max(0, stockpile.gold - 55);
+            if (town) {
+                const spawned = gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
+                if (spawned) {
+                    stockpile.gold = Math.max(0, stockpile.gold - 55);
+                }
+            }
         }
     }
 
@@ -297,7 +322,12 @@ class AIManager {
         if (target) {
             const nextStep = this.calculateNextStep(unit.position, target.position);
             if (nextStep) {
-                gameState.moveUnit(unit.id, nextStep);
+                const moved = gameState.moveUnit(unit.id, nextStep);
+                if (!moved) {
+                    const stationaryTarget = this.findNearbyTarget(unit, context, plan);
+                    if (stationaryTarget) this.executeAttack(unit, stationaryTarget);
+                    return;
+                }
                 const postMoveTarget = this.findNearbyTarget(unit, context, plan);
                 if (postMoveTarget) this.executeAttack(unit, postMoveTarget);
                 return;
@@ -427,7 +457,11 @@ class AIManager {
             builtTurn: gameState.turn
         };
         cityTile.fort.owner = 'enemy';
-        cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
+        // Increment at most once per turn; repeated calls in a turn should not stack beyond the cap.
+        if (cityTile.fort.lastReinforcedTurn !== gameState.turn) {
+            cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
+            cityTile.fort.lastReinforcedTurn = gameState.turn;
+        }
         cityTile.cityData = cityTile.cityData || {};
         cityTile.cityData.fortLevel = Math.max(cityTile.cityData.fortLevel || 0, 1);
         return true;

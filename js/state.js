@@ -455,6 +455,10 @@ class GameState {
         return true;
     }
 
+    /**
+     * Record an AI-world event. Payload shape varies by type (e.g. `city_captured`, `ai_expansion`);
+     * canonical fields (`type`, `turn`, `timestamp`) are enforced here.
+     */
     recordAIWorldEvent(type, payload = {}) {
         const entry = {
             ...payload,
@@ -484,31 +488,47 @@ class GameState {
         return defaults[factionId] || 'defensive';
     }
 
+    resolveAIFactionForTile(tile, fallback = 'tribal') {
+        return tile?.faction || tile?.cityData?.historicalCivilization || fallback;
+    }
+
     getAIFactionCityTiles(factionId) {
-        if (!gameMap || !factionId) return [];
-        return gameMap.getCityTiles()
-            .filter((tile) => tile?.owner === 'enemy' && (tile.faction || tile.cityData?.historicalCivilization) === factionId);
+        if (!gameMap) return [];
+        const resolvedFactionId = factionId || 'tribal';
+        if (!this._aiCityTilesCache || this._aiCityTilesCache.turn !== this.turn) {
+            this._aiCityTilesCache = {
+                turn: this.turn,
+                tiles: gameMap.getCityTiles() || []
+            };
+        }
+        return this._aiCityTilesCache.tiles
+            .filter((tile) => {
+                if (!tile || tile.owner !== 'enemy') return false;
+                return this.resolveAIFactionForTile(tile) === resolvedFactionId;
+            });
     }
 
     ensureAIFactionState(factionId) {
-        if (!factionId) return null;
+        const resolvedFactionId = factionId || 'tribal';
         if (!this.aiFactions) this.aiFactions = {};
-        const existing = this.aiFactions[factionId] || {};
-        const personality = existing.personality || this.getAIFactionPersonalityType(factionId);
+        const existing = this.aiFactions[resolvedFactionId] || {};
+        const personality = existing.personality || this.getAIFactionPersonalityType(resolvedFactionId);
+        const behaviorDefaultsFn = (typeof globalThis !== 'undefined' && typeof globalThis.getAIPersonalityBehaviorDefaults === 'function')
+            ? globalThis.getAIPersonalityBehaviorDefaults
+            : null;
+        const behaviorDefaults = behaviorDefaultsFn
+            ? behaviorDefaultsFn(personality)
+            : (existing.behavior || {
+                aggression: 0.5,
+                expansion: 0.5,
+                defense: 0.5,
+                diplomacy: 0.5,
+                resourceFocus: 0.5
+            });
         const defaults = {
-            factionId,
+            factionId: resolvedFactionId,
             personality,
-            behavior: {
-                ...(typeof getAIPersonalityBehaviorDefaults === 'function'
-                    ? getAIPersonalityBehaviorDefaults(personality)
-                    : {
-                        aggression: personality === 'aggressive' ? 0.9 : (personality === 'opportunistic' ? 0.65 : (personality === 'diplomatic' ? 0.35 : 0.42)),
-                        expansion: personality === 'opportunistic' ? 0.88 : (personality === 'aggressive' ? 0.75 : (personality === 'diplomatic' ? 0.5 : 0.38)),
-                        defense: personality === 'defensive' ? 0.92 : 0.55,
-                        diplomacy: personality === 'diplomatic' ? 0.95 : (personality === 'defensive' ? 0.45 : (personality === 'opportunistic' ? 0.35 : 0.2)),
-                        resourceFocus: personality === 'defensive' ? 0.7 : (personality === 'aggressive' ? 0.45 : (personality === 'opportunistic' ? 0.6 : 0.65))
-                    })
-            },
+            behavior: { ...behaviorDefaults },
             diplomacy: {
                 player: personality === 'diplomatic' ? -5 : (personality === 'aggressive' ? 18 : 6)
             },
@@ -520,22 +540,25 @@ class GameState {
             },
             stockpile: { gold: 120, manpower: 70 },
             lastPlans: [],
-            lastActionTurn: 0
+            lastActionTurn: 0,
+            inactiveSinceTurn: null
         };
-        this.aiFactions[factionId] = {
+        this.aiFactions[resolvedFactionId] = {
             ...defaults,
             ...existing,
             behavior: { ...defaults.behavior, ...(existing.behavior || {}) },
             diplomacy: { ...defaults.diplomacy, ...(existing.diplomacy || {}) },
             intel: { ...defaults.intel, ...(existing.intel || {}) },
             stockpile: { ...defaults.stockpile, ...(existing.stockpile || {}) },
-            lastPlans: Array.isArray(existing.lastPlans) ? existing.lastPlans.slice(-8) : []
+            lastPlans: Array.isArray(existing.lastPlans) ? existing.lastPlans.slice(-8) : [],
+            inactiveSinceTurn: existing.inactiveSinceTurn ?? null
         };
-        return this.aiFactions[factionId];
+        return this.aiFactions[resolvedFactionId];
     }
 
     refreshAIFactionState() {
         if (!gameMap) return;
+        this._aiCityTilesCache = null;
         const activeFactions = new Set();
         this.units.forEach((unit) => {
             if (unit?.owner !== 'enemy') return;
@@ -543,21 +566,36 @@ class GameState {
         });
         gameMap.getCityTiles().forEach((tile) => {
             if (tile?.owner !== 'enemy') return;
-            activeFactions.add(tile.faction || tile.cityData?.historicalCivilization || 'tribal');
+            activeFactions.add(this.resolveAIFactionForTile(tile));
         });
-        activeFactions.forEach((factionId) => this.ensureAIFactionState(factionId));
+        activeFactions.forEach((factionId) => {
+            const state = this.ensureAIFactionState(factionId);
+            if (state) state.inactiveSinceTurn = null;
+        });
         Object.keys(this.aiFactions || {}).forEach((factionId) => {
             if (!activeFactions.has(factionId)) {
+                const state = this.aiFactions[factionId];
+                if (state && state.inactiveSinceTurn == null) {
+                    state.inactiveSinceTurn = this.turn;
+                    return;
+                }
+                if (state && (this.turn - (state.inactiveSinceTurn || this.turn)) < 3) {
+                    return;
+                }
                 delete this.aiFactions[factionId];
             }
         });
     }
 
-    updateAIFactionIntelFromWorldState() {
-        this.refreshAIFactionState();
+    updateAIFactionIntelFromWorldState(options = {}) {
+        const { skipRefresh = false, factionIds = null } = options || {};
+        if (!skipRefresh) this.refreshAIFactionState();
         const playerCities = (gameMap?.getCityTiles('player') || []).length;
         const recentEvents = this.getRecentAIWorldEvents(12);
-        Object.keys(this.aiFactions || {}).forEach((factionId) => {
+        const targetFactions = Array.isArray(factionIds) && factionIds.length
+            ? [...new Set(factionIds.filter(Boolean).map((id) => id || 'tribal'))]
+            : Object.keys(this.aiFactions || {});
+        targetFactions.forEach((factionId) => {
             const state = this.ensureAIFactionState(factionId);
             if (!state) return;
             const factionCities = this.getAIFactionCityTiles(factionId).length;
@@ -589,11 +627,13 @@ class GameState {
             state.intel.lastUpdatedTurn = this.turn;
 
             // Diplomacy reacts to player expansion and attacks on faction holdings.
-            state.diplomacy.player = Math.max(-50, Math.min(100,
-                (state.diplomacy.player || 0)
-                + (hostileCaptures * 8)
+            const currentDiplomacy = Math.max(-50, Math.min(100, state.diplomacy.player || 0));
+            const diplomacyDelta =
+                (hostileCaptures * 8)
                 + (neutralExpansion * (state.personality === 'diplomatic' ? 4 : 2))
-                - (citiesCapturedFromPlayer * 3)
+                - (citiesCapturedFromPlayer * 3);
+            state.diplomacy.player = Math.max(-50, Math.min(100,
+                currentDiplomacy + diplomacyDelta
             ));
         });
     }
@@ -2052,16 +2092,22 @@ class GameState {
         this.recordAIWorldEvent('city_captured', {
             cityId,
             cityName: tile.cityData?.name || cityId,
-            cityFaction: tile.faction || tile.cityData?.historicalCivilization || null,
+            cityFaction: this.resolveAIFactionForTile(tile, null),
             oldFaction,
             // Use post-resolution ownership so neutral resistance outcomes log the actual capturer.
             capturer: tile.owner ?? unit.owner,
             capturerFaction: tile.owner === 'enemy'
-                ? (tile.faction || unit.faction || oldFaction || 'tribal')
-                : (unit.faction || (unit.owner === 'player' ? (this.player?.faction || this.selectedFaction || 'byzantine') : null)),
+                ? (this.resolveAIFactionForTile(tile) || unit.faction || oldFaction || 'tribal')
+                : tile.owner === 'player'
+                    ? (unit.faction || this.player?.faction || this.selectedFaction || 'byzantine')
+                    : (this.resolveAIFactionForTile(tile) || unit.faction || oldFaction || this.player?.faction || this.selectedFaction || 'byzantine'),
             oldOwner: oldOwner ?? null
         });
-        this.updateAIFactionIntelFromWorldState();
+        this._aiCityTilesCache = null;
+        this.updateAIFactionIntelFromWorldState({
+            skipRefresh: true,
+            factionIds: [oldFaction, this.resolveAIFactionForTile(tile), unit?.faction]
+        });
 
         gameMap.markTerritoryDirty();
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
