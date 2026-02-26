@@ -57,6 +57,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
   - Mountains: Alps, Pyrenees, Caucasus, Zagros, Atlas, Taurus, Apennines
   - Deserts: Sahara, Arabian, Syrian
 - **Heightmap-Based**: 256 elevation levels with natural color gradients
+- **Seeded World Generation Controls**: Default historical world remains intact, with an optional procedural mode and reproducible seed/config overrides for future modding
 - **Fog of War**: Discover the world as you explore with your units
 
 ### Gameplay
@@ -74,6 +75,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Resource Management**: Gold, manpower, prestige, and strategic stockpiles (food, wood, stone, iron, rare materials)
 - **Strategic Resource Distribution**: Terrain/biome-based deposits are placed across the map and contribute to nearby city output
 - **Terrain Effects**: Terrain now affects movement, combat effectiveness, and city build suitability (farms, irrigation, canals, forest management)
+- **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata for future event systems
 - **Save/Load System**: Multiple save slots with auto-save
 - **Exploration**: Fog of war reveals as units move and cities are founded
 
@@ -319,7 +321,25 @@ Modify CSS variables in `css/main.css` to change colors and styling.
 See `docs/geography.md` for:
 - map bounds and projection
 - land/sea generation approach
+- seeded biome/resource generation and modding parameters
 - how city lon/lat values map to 320x180 tile coordinates
+
+### World Generation Modding (Advanced)
+- The default map mode is `historical` (heightmap + historic towns/roads), but you can switch to a seeded procedural terrain mode for testing/modding.
+- Inspect current generation config in the browser console:
+```js
+window.getWorldGenerationConfig()
+```
+- Apply overrides and regenerate the map:
+```js
+window.setWorldGenerationConfig({
+  mode: 'procedural',
+  seed: 'issue-8-demo',
+  terrain: { seaLevel: 0.34, mountainThreshold: 0.79 },
+  climate: { desertHumidityThreshold: 0.34 }
+})
+```
+- Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` for future event systems.
 
 ## Historical Notes
 
@@ -342,7 +362,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.4.0** - Strategic resource distribution, terrain-effect integration (movement/combat/building), and expanded resource HUD (see changelog for full details)
+**Version 1.5.0** - Seeded world generation configuration, deterministic biome rules/effects, and procedural terrain/resource modding hooks (see changelog for full details)
 
 ## License
 

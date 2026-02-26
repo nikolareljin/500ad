@@ -26,6 +26,44 @@ Coordinates are converted using an equirectangular-style transform:
 
 This replaces the prior synthetic continent-blob model that could place key cities on water.
 
+## Generation Modes and Seeds
+
+`js/map.js` now supports a world-generation config with two modes:
+
+- `historical` (default): uses the historic Mediterranean/Old World geography + town/road placement.
+- `procedural`: uses seeded noise layers to generate terrain (`water`, `plains`, `forest`, `hills`, `mountains`) and then assigns deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`).
+
+Both modes use the same grid tile structure (`tiles[y][x]`). Strategic resource placement is deterministic and seed-aware.
+
+### Runtime Modding Hooks (Browser Console)
+
+- `window.getWorldGenerationConfig()` returns the active normalized generation config.
+- `window.setWorldGenerationConfig(overrides)` merges overrides, stores them in `window.WORLD_GENERATION_CONFIG`, and regenerates the map.
+
+Example:
+
+```js
+window.setWorldGenerationConfig({
+  mode: 'procedural',
+  seed: 'mod-test-1',
+  resources: { spacing: 3 },
+  climate: { tundraTemperatureThreshold: 0.24 }
+});
+```
+
+### Biome Metadata
+
+Each land tile can carry:
+
+- `tile.biome` (`plains`, `forest`, `desert`, `mountains`, `tundra`)
+- `tile.biomeEventWeights` (event-affinity hints for future event systems)
+
+Biome rules currently affect:
+
+- movement cost (via `GameState.getTerrainMoveCost()` + `gameMap.getBiomeEffects(...)`)
+- strategic resource placement weights/richness distribution
+- event propensity metadata for future systems
+
 ## Performance Notes
 
 - Map rendering is viewport-based and only draws visible tiles plus a small buffer.
