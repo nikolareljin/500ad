@@ -17,6 +17,10 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - Fixed AI state initialization/restoration gaps by rebuilding faction intel from current world state after new-game setup and save load.
+- Fixed AI personality behavior default wiring by exposing the shared profile-default helper to `state.js` at runtime.
+- Fixed AI expansion event fidelity so `city_captured.cityFaction` reflects the pre-capture faction owner (`oldFaction`) for correct intel attribution.
+- Fixed AI faction army-spawn signaling so `spawnFactionArmyAtTown(...)` returns success/failure and AI fallback fortification logic can react correctly.
+- Fixed AI faction expansion pacing/economy balance by applying explicit stockpile costs and turn-based expansion limits.
 
 ## [1.5.0] - 2026-02-26
 

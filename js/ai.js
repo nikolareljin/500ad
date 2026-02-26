@@ -230,14 +230,20 @@ class AIManager {
         })[0];
         if (!targetCity?.cityData) return;
 
-        const infra = targetCity.cityData.infrastructure || (targetCity.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
 
         if (stockpile.gold >= 40) {
-            if ((resourcePotential.food || 0) < 3) infra.agriculture = Math.min(5, (infra.agriculture || 1) + 1);
-            else if ((resourcePotential.iron || 0) + (resourcePotential.stone || 0) > 4) infra.industry = Math.min(5, (infra.industry || 1) + 1);
-            else infra.roads = Math.min(5, (infra.roads || 1) + 1);
-            stockpile.gold -= 40;
+            let upgradeType = 'roads';
+            if ((resourcePotential.food || 0) < 3) upgradeType = 'agriculture';
+            else if ((resourcePotential.iron || 0) + (resourcePotential.stone || 0) > 4) upgradeType = 'industry';
+            if (typeof gameState?.applyAIInfrastructureUpgrade === 'function') {
+                const upgraded = gameState.applyAIInfrastructureUpgrade(targetCity, upgradeType, state);
+                if (!upgraded) return;
+            } else {
+                const infra = targetCity.cityData.infrastructure || (targetCity.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
+                infra[upgradeType] = Math.min(5, (infra[upgradeType] || 1) + 1);
+                stockpile.gold -= 40;
+            }
         }
     }
 
@@ -253,6 +259,7 @@ class AIManager {
     processFactionExpansion(context, plan) {
         const { factionId, cities, neutralCities, state, profile } = context;
         if (!cities.length || !neutralCities.length || !state) return;
+        if (state.lastExpansionTurn === gameState.turn) return;
         const shouldExpand = plan.primaryFocus === 'expansion'
             || plan.secondaryFocus === 'expansion'
             || (profile.expansionBias > 0.7 && Math.random() < 0.35);
@@ -275,12 +282,17 @@ class AIManager {
         // Diplomatic personalities annex peacefully more often; others stage armed takeovers.
         const peacefulChance = state.personality === 'diplomatic' ? 0.55 : (state.personality === 'opportunistic' ? 0.35 : 0.15);
         const expansionMode = Math.random() < peacefulChance ? 'peaceful' : 'military';
+        const expansionCost = expansionMode === 'military' ? 45 : 30;
+        const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
+        if ((stockpile.gold || 0) < expansionCost) return;
         if (!this.applyAIFactionAnnexCity(target, factionId)) return;
+        stockpile.gold = Math.max(0, (stockpile.gold || 0) - expansionCost);
+        state.lastExpansionTurn = gameState.turn;
         if (expansionMode === 'military') {
             const town = HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId));
             if (town) {
                 const spawned = gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
-                if (!spawned) {
+                if (spawned !== true) {
                     this.ensureAIFortifiedCity(target);
                 }
             }
@@ -337,6 +349,7 @@ class AIManager {
             if (nextStep) {
                 const moved = gameState.moveUnit(unit.id, nextStep);
                 if (!moved) {
+                    // Failed move keeps the unit in place; check one stationary attack path and exit.
                     const stationaryTarget = this.findNearbyTarget(unit, context, plan);
                     if (stationaryTarget) this.executeAttack(unit, stationaryTarget);
                     return;
@@ -457,27 +470,10 @@ class AIManager {
     }
 
     ensureAIFortifiedCity(cityTile) {
-        if (!cityTile?.cityData) return false;
-        if (cityTile.terrain === 'water') return false;
-        cityTile.fort = cityTile.fort || {
-            id: `fort_${cityTile.x}_${cityTile.y}`,
-            owner: 'enemy',
-            health: 90,
-            maxHealth: 90,
-            defenseBonus: 0.18,
-            attack: 8,
-            garrisonBonus: 0.1,
-            builtTurn: gameState.turn
-        };
-        cityTile.fort.owner = 'enemy';
-        // Increment at most once per turn; repeated calls in a turn should not stack beyond the cap.
-        if (cityTile.fort.lastReinforcedTurn !== gameState.turn) {
-            cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
-            cityTile.fort.lastReinforcedTurn = gameState.turn;
+        if (typeof gameState?.ensureAICityFortification === 'function') {
+            return gameState.ensureAICityFortification(cityTile);
         }
-        cityTile.cityData = cityTile.cityData || {};
-        cityTile.cityData.fortLevel = Math.max(cityTile.cityData.fortLevel || 0, 1);
-        return true;
+        return false;
     }
 
     minDistanceToAny(targetLike, cityTiles) {

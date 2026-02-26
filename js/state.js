@@ -492,6 +492,16 @@ class GameState {
         return tile?.faction || tile?.cityData?.historicalCivilization || fallback;
     }
 
+    determineCapturerFaction(tile, unit, oldFaction) {
+        if (tile?.owner === 'enemy') {
+            return this.resolveAIFactionForTile(tile) || unit?.faction || oldFaction || 'tribal';
+        }
+        if (tile?.owner === 'player') {
+            return unit?.faction || this.player?.faction || this.selectedFaction || 'byzantine';
+        }
+        return this.resolveAIFactionForTile(tile) || unit?.faction || oldFaction || this.player?.faction || this.selectedFaction || 'byzantine';
+    }
+
     getAIFactionCityTiles(factionId) {
         if (!gameMap) return [];
         const resolvedFactionId = factionId || 'tribal';
@@ -541,6 +551,7 @@ class GameState {
             stockpile: { gold: 120, manpower: 70 },
             lastPlans: [],
             lastActionTurn: 0,
+            lastExpansionTurn: -1,
             inactiveSinceTurn: null
         };
         this.aiFactions[resolvedFactionId] = {
@@ -551,6 +562,7 @@ class GameState {
             intel: { ...defaults.intel, ...(existing.intel || {}) },
             stockpile: { ...defaults.stockpile, ...(existing.stockpile || {}) },
             lastPlans: Array.isArray(existing.lastPlans) ? existing.lastPlans.slice(-8) : [],
+            lastExpansionTurn: Number.isFinite(existing.lastExpansionTurn) ? existing.lastExpansionTurn : -1,
             inactiveSinceTurn: existing.inactiveSinceTurn ?? null
         };
         return this.aiFactions[resolvedFactionId];
@@ -579,7 +591,7 @@ class GameState {
                     state.inactiveSinceTurn = this.turn;
                     return;
                 }
-                if (state && (this.turn - (state.inactiveSinceTurn || this.turn)) < 3) {
+                if (state && state.inactiveSinceTurn != null && (this.turn - state.inactiveSinceTurn) < 3) {
                     return;
                 }
                 delete this.aiFactions[factionId];
@@ -626,16 +638,50 @@ class GameState {
             state.intel.lastKnownPlayerCities = playerCities;
             state.intel.lastUpdatedTurn = this.turn;
 
-            // Diplomacy reacts to player expansion and attacks on faction holdings.
-            const currentDiplomacy = Math.max(-50, Math.min(100, state.diplomacy.player || 0));
-            const diplomacyDelta =
+            // NOTE: state.diplomacy.player is a hostility score toward the player.
+            // Higher values mean worse relations; lower values mean less hostility.
+            const currentHostilityTowardPlayer = Math.max(-50, Math.min(100, state.diplomacy.player || 0));
+            const hostilityDeltaFromRecentEvents =
                 (hostileCaptures * 8)
                 + (neutralExpansion * (state.personality === 'diplomatic' ? 4 : 2))
                 - (citiesCapturedFromPlayer * 3);
             state.diplomacy.player = Math.max(-50, Math.min(100,
-                currentDiplomacy + diplomacyDelta
+                currentHostilityTowardPlayer + hostilityDeltaFromRecentEvents
             ));
         });
+    }
+
+    applyAIInfrastructureUpgrade(cityTile, upgradeType, factionState = null) {
+        if (!cityTile?.cityData || !upgradeType) return false;
+        const stockpile = factionState?.stockpile || null;
+        if (!stockpile || (stockpile.gold || 0) < 40) return false;
+        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
+        infra[upgradeType] = Math.min(5, (infra[upgradeType] || 1) + 1);
+        stockpile.gold = Math.max(0, (stockpile.gold || 0) - 40);
+        return true;
+    }
+
+    ensureAICityFortification(cityTile) {
+        if (!cityTile?.cityData) return false;
+        if (cityTile.terrain === 'water') return false;
+        cityTile.fort = cityTile.fort || {
+            id: `fort_${cityTile.x}_${cityTile.y}`,
+            owner: 'enemy',
+            health: 90,
+            maxHealth: 90,
+            defenseBonus: 0.18,
+            attack: 8,
+            garrisonBonus: 0.1,
+            builtTurn: this.turn
+        };
+        cityTile.fort.owner = 'enemy';
+        if (cityTile.fort.lastReinforcedTurn !== this.turn) {
+            cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
+            cityTile.fort.lastReinforcedTurn = this.turn;
+        }
+        cityTile.cityData = cityTile.cityData || {};
+        cityTile.cityData.fortLevel = Math.max(cityTile.cityData.fortLevel || 0, 1);
+        return true;
     }
 
     resolveCivilization(faction, leader = null) {
@@ -2096,14 +2142,11 @@ class GameState {
             cityId,
             cityName: tile.cityData?.name || cityId,
             cityFaction: oldFaction,
+            // `oldFaction` is kept as a legacy alias for compatibility with existing event consumers.
             oldFaction,
             // Use post-resolution ownership so neutral resistance outcomes log the actual capturer.
             capturer: tile.owner ?? unit.owner,
-            capturerFaction: tile.owner === 'enemy'
-                ? (this.resolveAIFactionForTile(tile) || unit.faction || oldFaction || 'tribal')
-                : tile.owner === 'player'
-                    ? (unit.faction || this.player?.faction || this.selectedFaction || 'byzantine')
-                    : (this.resolveAIFactionForTile(tile) || unit.faction || oldFaction || this.player?.faction || this.selectedFaction || 'byzantine'),
+            capturerFaction: this.determineCapturerFaction(tile, unit, oldFaction),
             oldOwner: oldOwner ?? null
         });
         this._aiCityTilesCache = null;
