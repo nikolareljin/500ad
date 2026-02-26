@@ -77,10 +77,31 @@ function isPlainObject(value) {
     return value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isUnsafeObjectKey(key) {
+    return key === '__proto__' || key === 'prototype' || key === 'constructor';
+}
+
 function deepMergeObjects(base, overrides) {
-    if (!isPlainObject(overrides)) return isPlainObject(base) ? { ...base } : overrides;
-    const result = isPlainObject(base) ? { ...base } : {};
+    if (!isPlainObject(overrides)) {
+        if (!isPlainObject(base)) return overrides;
+        const clonedBase = {};
+        Object.keys(base).forEach((key) => {
+            if (isUnsafeObjectKey(key)) return;
+            const value = base[key];
+            clonedBase[key] = isPlainObject(value) ? deepMergeObjects(value, {}) : value;
+        });
+        return clonedBase;
+    }
+    const result = {};
+    if (isPlainObject(base)) {
+        Object.keys(base).forEach((key) => {
+            if (isUnsafeObjectKey(key)) return;
+            const value = base[key];
+            result[key] = isPlainObject(value) ? deepMergeObjects(value, {}) : value;
+        });
+    }
     Object.keys(overrides).forEach((key) => {
+        if (isUnsafeObjectKey(key)) return;
         const incoming = overrides[key];
         result[key] = isPlainObject(incoming)
             ? deepMergeObjects(result[key], incoming)
@@ -589,7 +610,9 @@ class GameMap {
     updateTileBaseColor(tile) {
         if (!tile) return;
         let color = TERRAIN_TYPES[tile.terrain]?.color || '#777';
-        const h = MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
+            : undefined;
         if (h !== undefined) {
             const generatedTerrain = heightToTerrain(h);
             if (generatedTerrain === tile.terrain) {
