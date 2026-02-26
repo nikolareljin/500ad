@@ -2083,7 +2083,10 @@ class GameState {
         return {
             version: SAVE_VERSION,
             timestamp: Date.now(),
-            worldGenerationConfig: gameMap?.getGenerationConfigSnapshot?.() || (typeof getWorldGenerationConfig === 'function' ? getWorldGenerationConfig() : null),
+            worldGenerationConfig: gameMap?.getGenerationConfigSnapshot?.()
+                || (typeof window !== 'undefined' && typeof window.getWorldGenerationConfig === 'function'
+                    ? window.getWorldGenerationConfig()
+                    : null),
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -2286,8 +2289,8 @@ class GameState {
             return false;
         }
 
-        if (data.worldGenerationConfig && typeof setWorldGenerationConfig === 'function') {
-            setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
+        if (data.worldGenerationConfig && typeof window !== 'undefined' && typeof window.setWorldGenerationConfig === 'function') {
+            window.setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
         }
 
         this.selectedLeader = data.selectedLeader;

@@ -121,6 +121,14 @@ function normalizeWorldGenerationConfig(config) {
         merged.resources.richnessHighThreshold - 0.05,
         WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
     );
+    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + 0.05) {
+        merged.resources.richnessHighThreshold = clampNumber(
+            merged.resources.richnessMediumThreshold + 0.05,
+            0.5,
+            0.98,
+            WORLD_GENERATION_DEFAULTS.resources.richnessHighThreshold
+        );
+    }
     return merged;
 }
 
