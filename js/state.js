@@ -1273,11 +1273,16 @@ class GameState {
     ensureStrategicResourceStockpile() {
         if (!this.player) return;
         if (!this.player.resources) this.player.resources = {};
-        this.player.resources.gold = Number.isFinite(this.player.resources.gold) ? this.player.resources.gold : 0;
-        this.player.resources.manpower = Number.isFinite(this.player.resources.manpower) ? this.player.resources.manpower : 0;
-        this.player.resources.prestige = Number.isFinite(this.player.resources.prestige) ? this.player.resources.prestige : 0;
+        const normalizeResourceValue = (value) => {
+            const num = Number(value);
+            if (!Number.isFinite(num) || num <= 0) return 0;
+            return Math.floor(num);
+        };
+        this.player.resources.gold = normalizeResourceValue(this.player.resources.gold);
+        this.player.resources.manpower = normalizeResourceValue(this.player.resources.manpower);
+        this.player.resources.prestige = normalizeResourceValue(this.player.resources.prestige);
         STRATEGIC_RESOURCE_KEYS.forEach((key) => {
-            if (!Number.isFinite(this.player.resources[key])) this.player.resources[key] = 0;
+            this.player.resources[key] = normalizeResourceValue(this.player.resources[key]);
         });
     }
 

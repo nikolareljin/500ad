@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file.
 - Fixed nearby strategic resource yield scaling so distance/richness can reduce contributions to `0` instead of clamping every in-range node to at least `1`.
 - Fixed fortification defense bonuses so built forts apply their defense multiplier on non-city tiles as well (not only in cities).
 - Fixed combat fortification bonus stacking by avoiding duplicate fort defense application across shared terrain effects and battle-type fort modifiers.
+- Fixed player resource stockpile normalization so loaded core/strategic resources are coerced to non-negative integers (preventing negative/decimal/string values from persisting in the HUD).
 
 ## [1.3.0] - 2026-02-24
 
