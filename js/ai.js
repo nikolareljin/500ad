@@ -1,147 +1,449 @@
 /**
  * AI Manager
- * Simple decision making for enemy units
+ * Multi-faction enemy AI with personality-driven priorities.
  */
+
+const AI_PERSONALITY_PROFILES = {
+    aggressive: {
+        aggressionBias: 0.9,
+        defenseBias: 0.35,
+        expansionBias: 0.75,
+        resourceBias: 0.45,
+        diplomacyBias: 0.2
+    },
+    defensive: {
+        aggressionBias: 0.42,
+        defenseBias: 0.92,
+        expansionBias: 0.38,
+        resourceBias: 0.7,
+        diplomacyBias: 0.45
+    },
+    opportunistic: {
+        aggressionBias: 0.65,
+        defenseBias: 0.55,
+        expansionBias: 0.88,
+        resourceBias: 0.6,
+        diplomacyBias: 0.35
+    },
+    diplomatic: {
+        aggressionBias: 0.35,
+        defenseBias: 0.55,
+        expansionBias: 0.5,
+        resourceBias: 0.65,
+        diplomacyBias: 0.95
+    }
+};
 
 class AIManager {
     constructor() {
-        this.thinkingDelay = 500; // ms between actions
+        this.thinkingDelay = 350; // ms between actions
     }
 
-    /**
-     * Process enemy turn
-     */
+    getFactionIdForUnit(unit) {
+        return unit?.faction || 'tribal';
+    }
+
+    getPersonalityProfile(factionId) {
+        const state = gameState?.ensureAIFactionState?.(factionId);
+        const personality = state?.personality || 'defensive';
+        return AI_PERSONALITY_PROFILES[personality] || AI_PERSONALITY_PROFILES.defensive;
+    }
+
+    buildFactionContext(factionId, units) {
+        const state = gameState?.ensureAIFactionState?.(factionId);
+        const profile = this.getPersonalityProfile(factionId);
+        const cities = gameState?.getAIFactionCityTiles?.(factionId) || [];
+        const playerCities = gameMap?.getCityTiles?.('player') || [];
+        const neutralCities = (gameMap?.getCityTiles?.() || []).filter((tile) => tile.owner === 'neutral' || tile.owner === null);
+        const recentEvents = gameState?.getRecentAIWorldEvents?.(12) || [];
+
+        const threatenedCities = cities.filter((city) => this.minDistanceToPlayerUnit(city) <= 5);
+        const frontierCities = cities.filter((city) => this.findNearestNeutralCity(city, neutralCities, 9) || this.findNearestPlayerCity(city, playerCities, 10));
+        const factionResources = this.estimateFactionResourcePotential(cities);
+
+        return {
+            factionId,
+            state,
+            profile,
+            units,
+            cities,
+            playerCities,
+            neutralCities,
+            recentEvents,
+            threatenedCities,
+            frontierCities,
+            factionResources
+        };
+    }
+
+    planFactionTurn(context) {
+        const { state, profile, cities, threatenedCities, neutralCities, factionResources } = context;
+        const intel = state?.intel || {};
+        const diplomacyScore = state?.diplomacy?.player || 0;
+        const lowCitiesPressure = Math.max(0, 4 - cities.length) * 8;
+        const resourcePressure = Math.max(0, 16 - (factionResources.totalStrategic || 0));
+
+        const warfareScore = (profile.aggressionBias * 50) + (intel.playerThreat || 0) + ((diplomacyScore > 25 ? 14 : 0));
+        const defenseScore = (profile.defenseBias * 50) + (threatenedCities.length * 16) + (intel.playerPressure || 0);
+        const expansionScore = (profile.expansionBias * 50) + (neutralCities.length > 0 ? 10 : -10) + lowCitiesPressure;
+        const resourceScore = (profile.resourceBias * 50) + resourcePressure;
+        const diplomacyFocusScore = (profile.diplomacyBias * 50) + Math.max(0, 12 - Math.abs(diplomacyScore));
+
+        const ranked = [
+            { type: 'warfare', score: warfareScore },
+            { type: 'defense', score: defenseScore },
+            { type: 'expansion', score: expansionScore },
+            { type: 'resource', score: resourceScore },
+            { type: 'diplomacy', score: diplomacyFocusScore }
+        ].sort((a, b) => b.score - a.score);
+
+        const primaryFocus = ranked[0]?.type || 'warfare';
+        const secondaryFocus = ranked[1]?.type || 'defense';
+
+        if (state) {
+            state.lastPlans = [...(state.lastPlans || []), { turn: gameState.turn, primaryFocus, secondaryFocus, scores: ranked }]
+                .slice(-8);
+            state.lastActionTurn = gameState.turn;
+        }
+
+        return { primaryFocus, secondaryFocus, ranked };
+    }
+
     async processTurn() {
         console.log('Processing enemy turn...');
 
-        // Find all enemy units
-        const enemyUnits = gameState.units.filter(u => u.owner === 'enemy');
+        const enemyUnits = gameState.units.filter((u) => u.owner === 'enemy');
         if (enemyUnits.length === 0) {
             console.log('Enemy turn skipped: no enemy units available.');
             return;
         }
 
-        // Focus once at the start instead of every enemy action to avoid excessive camera jumps/renders.
+        gameState?.refreshAIFactionState?.();
+        gameState?.updateAIFactionIntelFromWorldState?.();
+
+        const unitsByFaction = new Map();
+        enemyUnits.forEach((unit) => {
+            const factionId = this.getFactionIdForUnit(unit);
+            if (!unitsByFaction.has(factionId)) unitsByFaction.set(factionId, []);
+            unitsByFaction.get(factionId).push(unit);
+        });
+
+        const factionContexts = [...unitsByFaction.entries()]
+            .map(([factionId, units]) => this.buildFactionContext(factionId, units))
+            .sort((a, b) => {
+                const aThreat = a.state?.intel?.playerThreat || 0;
+                const bThreat = b.state?.intel?.playerThreat || 0;
+                return bThreat - aThreat || b.units.length - a.units.length;
+            });
+
         if (gameMap && enemyUnits[0]) {
             gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
             gameMap.requestRender();
         }
 
-        for (const unit of enemyUnits) {
-
-            await this.processUnit(unit);
-            // Small delay between unit actions for visual clarity
-            await new Promise(resolve => setTimeout(resolve, this.thinkingDelay));
+        for (const context of factionContexts) {
+            const plan = this.planFactionTurn(context);
+            await this.processFactionTurn(context, plan);
         }
 
         console.log('Enemy turn completed');
     }
 
-    /**
-     * Process a single enemy unit
-     */
-    async processUnit(unit) {
-        if (!unit || unit.currentHealth <= 0) return;
-        // 1. Can we attack something nearby?
-        const adjacentEnemy = this.findNearbyTarget(unit);
-        if (adjacentEnemy) {
-            console.log(`AI: ${unit.name} attacking ${adjacentEnemy.name}`);
-            const defenderTile = gameMap.getTile(adjacentEnemy.position.x, adjacentEnemy.position.y);
-            const terrain = defenderTile?.terrain || 'plains';
-            const battleType = defenderTile?.cityData ? 'siege' : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
-            const result = executeBattle(unit.id, adjacentEnemy.id, terrain, battleType, {
-                attemptRetreat: true,
-                retreatSide: 'defender'
-            });
-            if (result.success && window.uiManager) {
-                window.uiManager.showCombatResult(result);
+    async processFactionTurn(context, plan) {
+        this.processFactionDiplomacy(context, plan);
+        this.processFactionEconomy(context, plan);
+        this.processFactionExpansion(context, plan);
+        this.processFactionDefense(context, plan);
+
+        const sortedUnits = [...context.units].sort((a, b) => {
+            const aFront = this.minDistanceToPlayerUnit(a) < 6 ? 1 : 0;
+            const bFront = this.minDistanceToPlayerUnit(b) < 6 ? 1 : 0;
+            return bFront - aFront;
+        });
+
+        for (const unit of sortedUnits) {
+            await this.processUnit(unit, context, plan);
+            await new Promise((resolve) => setTimeout(resolve, this.thinkingDelay));
+        }
+    }
+
+    processFactionDiplomacy(context, plan) {
+        const { state, factionId, recentEvents } = context;
+        if (!state) return;
+        if (!state.diplomacy) state.diplomacy = { player: 0 };
+
+        const playerCapturedNeutral = recentEvents.filter((e) =>
+            e.type === 'city_captured' && e.capturer === 'player' && (e.oldOwner === null || e.oldOwner === 'neutral')
+        ).length;
+        const playerCapturedFaction = recentEvents.filter((e) =>
+            e.type === 'city_captured' && e.capturer === 'player' && e.cityFaction === factionId
+        ).length;
+
+        let delta = 0;
+        if (plan.primaryFocus === 'diplomacy') delta -= 2;
+        delta += playerCapturedNeutral;
+        delta += playerCapturedFaction * 5;
+        state.diplomacy.player = Math.max(-50, Math.min(100, (state.diplomacy.player || 0) + delta));
+    }
+
+    processFactionEconomy(context, plan) {
+        const { state, cities, factionResources } = context;
+        if (!state || cities.length === 0) return;
+        const profile = context.profile;
+        const shouldInvest = plan.primaryFocus === 'resource'
+            || plan.secondaryFocus === 'resource'
+            || (profile.resourceBias > 0.6 && Math.random() < 0.45);
+        if (!shouldInvest) return;
+
+        const targetCity = [...cities].sort((a, b) => {
+            const aYield = gameMap.getNearbyResourceYields(a.x, a.y, 2);
+            const bYield = gameMap.getNearbyResourceYields(b.x, b.y, 2);
+            const aScore = (aYield.wood || 0) + (aYield.stone || 0) + (aYield.iron || 0) + (aYield.rare || 0);
+            const bScore = (bYield.wood || 0) + (bYield.stone || 0) + (bYield.iron || 0) + (bYield.rare || 0);
+            return bScore - aScore;
+        })[0];
+        if (!targetCity?.cityData) return;
+
+        const infra = targetCity.cityData.infrastructure || (targetCity.cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
+        const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
+        stockpile.gold = Math.max(0, Math.floor((stockpile.gold || 0) + 30 + Math.floor(factionResources.totalStrategic || 0)));
+        stockpile.manpower = Math.max(0, Math.floor((stockpile.manpower || 0) + 12));
+
+        if (stockpile.gold >= 40) {
+            if ((factionResources.food || 0) < 3) infra.agriculture = Math.min(5, (infra.agriculture || 1) + 1);
+            else if ((factionResources.iron || 0) + (factionResources.stone || 0) > 4) infra.industry = Math.min(5, (infra.industry || 1) + 1);
+            else infra.roads = Math.min(5, (infra.roads || 1) + 1);
+            stockpile.gold -= 40;
+        }
+    }
+
+    processFactionExpansion(context, plan) {
+        const { factionId, cities, neutralCities, state, profile } = context;
+        if (!cities.length || !neutralCities.length || !state) return;
+        const shouldExpand = plan.primaryFocus === 'expansion'
+            || plan.secondaryFocus === 'expansion'
+            || (profile.expansionBias > 0.7 && Math.random() < 0.35);
+        if (!shouldExpand) return;
+
+        let best = null;
+        for (const city of cities) {
+            const candidate = this.findNearestNeutralCity(city, neutralCities, 5);
+            if (!candidate) continue;
+            const dist = Math.abs(candidate.x - city.x) + Math.abs(candidate.y - city.y);
+            const playerNearby = this.minDistanceToPlayerUnit(candidate);
+            const score = (6 - dist) * 10 - Math.max(0, 6 - playerNearby) * 8 + (candidate.importance || 5);
+            if (!best || score > best.score) best = { city, candidate, score };
+        }
+        if (!best || best.score < 6) return;
+
+        const target = best.candidate;
+        if (target.owner === 'player' || target.owner === 'enemy') return;
+
+        // Diplomatic personalities annex peacefully more often; others stage armed takeovers.
+        const peacefulChance = state.personality === 'diplomatic' ? 0.55 : (state.personality === 'opportunistic' ? 0.35 : 0.15);
+        target.owner = 'enemy';
+        target.faction = factionId;
+        if (Math.random() > peacefulChance) {
+            const town = HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId));
+            if (town) {
+                gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
             }
+        }
+
+        gameState.recordAIWorldEvent?.('ai_expansion', {
+            factionId,
+            cityId: target.cityData?.id || target.cityId,
+            cityName: target.cityData?.name || target.name || 'Unknown city'
+        });
+        gameMap?.markTerritoryDirty?.();
+    }
+
+    processFactionDefense(context, plan) {
+        const { threatenedCities, factionId, state, profile } = context;
+        if (!threatenedCities.length || !state) return;
+        const shouldDefend = plan.primaryFocus === 'defense' || profile.defenseBias > 0.7;
+        if (!shouldDefend) return;
+
+        const city = threatenedCities[0];
+        if (!city) return;
+
+        city.fort = city.fort || {
+            id: `fort_${city.x}_${city.y}`,
+            owner: 'enemy',
+            health: 90,
+            maxHealth: 90,
+            defenseBonus: 0.18,
+            attack: 8,
+            garrisonBonus: 0.1,
+            builtTurn: gameState.turn
+        };
+        city.fort.owner = 'enemy';
+        city.fort.defenseBonus = Math.min(0.35, (city.fort.defenseBonus || 0.18) + 0.02);
+        city.cityData = city.cityData || {};
+        city.cityData.fortLevel = Math.max(city.cityData.fortLevel || 0, 1);
+
+        const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
+        if ((stockpile.gold || 0) >= 55) {
+            const town = HISTORIC_TOWNS.find((t) => t.id === (city.cityData?.id || city.cityId));
+            if (town) gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
+            stockpile.gold = Math.max(0, stockpile.gold - 55);
+        }
+    }
+
+    async processUnit(unit, context, plan) {
+        if (!unit || unit.currentHealth <= 0) return;
+
+        const adjacentEnemy = this.findNearbyTarget(unit, context, plan);
+        if (adjacentEnemy) {
+            this.executeAttack(unit, adjacentEnemy);
             return;
         }
 
-        // 2. If no attack possible, move towards nearest player unit or city
-        const target = this.findNearestPlayerTarget(unit);
+        const target = this.findNearestPlayerTarget(unit, context, plan);
         if (target) {
             const nextStep = this.calculateNextStep(unit.position, target.position);
             if (nextStep) {
-                console.log(`AI: ${unit.name} moving from ${unit.position.x},${unit.position.y} to ${nextStep.x},${nextStep.y}`);
-                const moved = gameState.moveUnit(unit.id, nextStep);
-                if (!moved) {
-                    const fallback = this.findAnyPassableNeighbor(unit);
-                    if (fallback) {
-                        gameState.moveUnit(unit.id, fallback);
-                    }
-                }
-
-                // After moving, check if we can attack now
-                const newAdjacentEnemy = this.findNearbyTarget(unit);
-                if (newAdjacentEnemy) {
-                    const defenderTile = gameMap.getTile(newAdjacentEnemy.position.x, newAdjacentEnemy.position.y);
-                    const terrain = defenderTile?.terrain || 'plains';
-                    const battleType = defenderTile?.cityData ? 'siege' : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
-                    const result = executeBattle(unit.id, newAdjacentEnemy.id, terrain, battleType, {
-                        attemptRetreat: true,
-                        retreatSide: 'defender'
-                    });
-                    if (result.success && window.uiManager) {
-                        window.uiManager.showCombatResult(result);
-                    }
-                }
+                gameState.moveUnit(unit.id, nextStep);
+                const postMoveTarget = this.findNearbyTarget(unit, context, plan);
+                if (postMoveTarget) this.executeAttack(unit, postMoveTarget);
+                return;
             }
+        }
+
+        if (plan.primaryFocus === 'defense' && context.threatenedCities.length > 0) {
+            const city = context.threatenedCities[0];
+            const nextStep = this.calculateNextStep(unit.position, { x: city.x, y: city.y });
+            if (nextStep) gameState.moveUnit(unit.id, nextStep);
         }
     }
 
-    /**
-     * Find a player unit within attack range
-     */
-    findNearbyTarget(unit) {
-        const unitType = getUnitById(unit.typeId);
-        const range = unitType.stats.range;
-
-        return gameState.units.find(u => {
-            if (u.owner === 'player') {
-                const dist = Math.abs(u.position.x - unit.position.x) +
-                    Math.abs(u.position.y - unit.position.y);
-                return dist <= range;
-            }
-            return false;
+    executeAttack(unit, target) {
+        console.log(`AI(${unit.faction || 'enemy'}): ${unit.name} attacking ${target.name}`);
+        const defenderTile = gameMap.getTile(target.position.x, target.position.y);
+        const terrain = defenderTile?.terrain || 'plains';
+        const battleType = defenderTile?.cityData
+            ? 'siege'
+            : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
+        const result = executeBattle(unit.id, target.id, terrain, battleType, {
+            attemptRetreat: true,
+            retreatSide: 'defender'
         });
+        if (result.success && window.uiManager) {
+            window.uiManager.showCombatResult(result);
+        }
     }
 
-    /**
-     * Find nearest player unit or capital
-     */
-    findNearestPlayerTarget(unit) {
-        // Find all player units
-        const playerUnits = gameState.units.filter(u => u.owner === 'player');
+    findNearbyTarget(unit, context, plan) {
+        const unitType = getUnitById(unit.typeId);
+        const range = unitType?.stats?.range || 1;
+        const profile = context?.profile || this.getPersonalityProfile(this.getFactionIdForUnit(unit));
+        const cities = context?.cities || [];
 
-        // Find player cities/buildings (simplified for now - just find city at center if player owned)
-        const playerBuildings = [];
-        for (let y = 0; y < gameMap.height; y++) {
-            for (let x = 0; x < gameMap.width; x++) {
-                const tile = gameMap.tiles[y][x];
-                if (tile.owner === 'player' && tile.building) {
-                    playerBuildings.push({ position: { x, y }, name: 'City' });
-                }
-            }
-        }
+        const candidates = gameState.units.filter((u) => {
+            if (!u || u.owner !== 'player') return false;
+            const dist = Math.abs(u.position.x - unit.position.x) + Math.abs(u.position.y - unit.position.y);
+            return dist <= range;
+        });
+        if (candidates.length === 0) return null;
 
-        const allTargets = [...playerUnits, ...playerBuildings];
+        candidates.sort((a, b) => {
+            const aScore = this.scorePlayerTargetForFaction(a, cities, profile, plan);
+            const bScore = this.scorePlayerTargetForFaction(b, cities, profile, plan);
+            return bScore - aScore;
+        });
+        return candidates[0];
+    }
+
+    findNearestPlayerTarget(unit, context, plan) {
+        const playerUnits = gameState.units.filter((u) => u.owner === 'player');
+        const playerCities = context?.playerCities || [];
+        const allTargets = [
+            ...playerUnits,
+            ...playerCities.map((tile) => ({ position: { x: tile.x, y: tile.y }, name: tile.cityData?.name || 'City', cityData: tile.cityData }))
+        ];
         if (allTargets.length === 0) return null;
 
-        // Sort by distance
-        allTargets.sort((a, b) => {
-            const distA = Math.abs(a.position.x - unit.position.x) + Math.abs(a.position.y - unit.position.y);
-            const distB = Math.abs(b.position.x - unit.position.x) + Math.abs(b.position.y - unit.position.y);
-            return distA - distB;
-        });
-
-        return allTargets[0];
+        const profile = context?.profile || this.getPersonalityProfile(this.getFactionIdForUnit(unit));
+        const factionCities = context?.cities || [];
+        let best = null;
+        for (const target of allTargets) {
+            const dist = Math.abs(target.position.x - unit.position.x) + Math.abs(target.position.y - unit.position.y);
+            const targetScore = this.scorePlayerTargetForFaction(target, factionCities, profile, plan);
+            const score = targetScore - dist * (plan?.primaryFocus === 'warfare' ? 1.4 : 1.0);
+            if (!best || score > best.score) best = { target, score };
+        }
+        return best?.target || null;
     }
 
-    /**
-     * Simple pathfinding (move one step closer)
-     */
+    scorePlayerTargetForFaction(target, factionCities, profile, plan) {
+        const nearestOwnCity = this.minDistanceToAny(target, factionCities);
+        const cityWeight = target.cityData ? 16 : 8;
+        const threatWeight = Math.max(0, 8 - nearestOwnCity) * profile.defenseBias * 4;
+        const warfareBonus = plan?.primaryFocus === 'warfare' ? 8 : 0;
+        const opportunisticBonus = (profile.expansionBias > 0.7 && target.cityData) ? 4 : 0;
+        return cityWeight + threatWeight + warfareBonus + opportunisticBonus;
+    }
+
+    estimateFactionResourcePotential(cities) {
+        const totals = { food: 0, wood: 0, stone: 0, iron: 0, rare: 0, totalStrategic: 0 };
+        cities.forEach((city) => {
+            const nearby = gameMap.getNearbyResourceYields(city.x, city.y, 2);
+            Object.keys(totals).forEach((key) => {
+                if (key === 'totalStrategic') return;
+                totals[key] += nearby[key] || 0;
+            });
+        });
+        totals.totalStrategic = totals.food + totals.wood + totals.stone + totals.iron + totals.rare;
+        return totals;
+    }
+
+    minDistanceToAny(targetLike, cityTiles) {
+        if (!targetLike?.position || !Array.isArray(cityTiles) || cityTiles.length === 0) return 99;
+        let best = 99;
+        for (const city of cityTiles) {
+            const dist = Math.abs(city.x - targetLike.position.x) + Math.abs(city.y - targetLike.position.y);
+            if (dist < best) best = dist;
+        }
+        return best;
+    }
+
+    minDistanceToPlayerUnit(tileOrUnit) {
+        if (!tileOrUnit) return 99;
+        const pos = tileOrUnit.position ? tileOrUnit.position : { x: tileOrUnit.x, y: tileOrUnit.y };
+        const playerUnits = gameState.units.filter((u) => u.owner === 'player');
+        if (playerUnits.length === 0) return 99;
+        let best = 99;
+        playerUnits.forEach((unit) => {
+            const dist = Math.abs(unit.position.x - pos.x) + Math.abs(unit.position.y - pos.y);
+            if (dist < best) best = dist;
+        });
+        return best;
+    }
+
+    findNearestNeutralCity(fromCity, neutralCities, maxDistance = 99) {
+        if (!fromCity || !neutralCities?.length) return null;
+        let best = null;
+        neutralCities.forEach((city) => {
+            const dist = Math.abs(city.x - fromCity.x) + Math.abs(city.y - fromCity.y);
+            if (dist > maxDistance) return;
+            if (!best || dist < best.dist || (dist === best.dist && (city.importance || 0) > (best.city.importance || 0))) {
+                best = { city, dist };
+            }
+        });
+        return best?.city || null;
+    }
+
+    findNearestPlayerCity(fromCity, playerCities, maxDistance = 99) {
+        if (!fromCity || !playerCities?.length) return null;
+        let best = null;
+        playerCities.forEach((city) => {
+            const dist = Math.abs(city.x - fromCity.x) + Math.abs(city.y - fromCity.y);
+            if (dist > maxDistance) return;
+            if (!best || dist < best.dist) best = { city, dist };
+        });
+        return best?.city || null;
+    }
+
     calculateNextStep(current, target) {
         const dx = target.x - current.x;
         const dy = target.y - current.y;
@@ -155,10 +457,8 @@ class AIManager {
             nextY += Math.sign(dy);
         }
 
-        // Check if tile is occupied by another unit
-        const occupied = gameState.units.some(u => u.position.x === nextX && u.position.y === nextY);
+        const occupied = gameState.units.some((u) => u.position.x === nextX && u.position.y === nextY);
         if (occupied) {
-            // Try the other direction if blocked
             if (nextX !== current.x) {
                 nextX = current.x;
                 nextY += Math.sign(dy) || (Math.random() > 0.5 ? 1 : -1);
@@ -168,34 +468,13 @@ class AIManager {
             }
         }
 
-        // Ensure within bounds
         nextX = Math.max(0, Math.min(gameMap.width - 1, nextX));
         nextY = Math.max(0, Math.min(gameMap.height - 1, nextY));
 
         const tile = gameMap.getTile(nextX, nextY);
         if (!tile) return null;
-        const isWater = tile.terrain === 'water';
-        if (isWater) return null;
-
+        if (tile.terrain === 'water') return null;
         return { x: nextX, y: nextY };
-    }
-
-    findAnyPassableNeighbor(unit) {
-        const offsets = [
-            { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-        ];
-        for (const offset of offsets) {
-            const nx = unit.position.x + offset.x;
-            const ny = unit.position.y + offset.y;
-            if (nx < 0 || nx >= gameMap.width || ny < 0 || ny >= gameMap.height) continue;
-            const tile = gameMap.getTile(nx, ny);
-            if (!tile || tile.terrain === 'water') continue;
-            const occupied = gameState.units.some(u => u.id !== unit.id && u.position.x === nx && u.position.y === ny);
-            if (occupied) continue;
-            return { x: nx, y: ny };
-        }
-        return null;
     }
 }
 
