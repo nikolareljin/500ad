@@ -18,6 +18,17 @@ const CIVILIZATION_ALIASES = {
     contestants: 'byzantine'
 };
 
+function stableSerializeForComparison(value) {
+    if (Array.isArray(value)) {
+        return `[${value.map(stableSerializeForComparison).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        const keys = Object.keys(value).sort();
+        return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerializeForComparison(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
 const HISTORICAL_TOWN_CONTROL = {
     constantinople: { tribe: 'Byzantine Romans', civilization: 'byzantine', stance: 'core' },
     thessalonica: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'core' },
@@ -822,6 +833,8 @@ class GameState {
         let cost = base;
         const terrainEffects = gameMap?.getTerrainEffects?.(toTile.terrain, { unit, fromTile, toTile }) || {};
         cost *= terrainEffects.moveCostMultiplier || 1;
+        const biomeEffects = gameMap?.getBiomeEffects?.(toTile, unit) || {};
+        cost *= biomeEffects.moveCostMultiplier || 1;
 
         if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
             cost *= 0.45;
@@ -2081,6 +2094,10 @@ class GameState {
         return {
             version: SAVE_VERSION,
             timestamp: Date.now(),
+            worldGenerationConfig: gameMap?.getGenerationConfigSnapshot?.()
+                || (typeof window !== 'undefined' && typeof window.getWorldGenerationConfig === 'function'
+                    ? window.getWorldGenerationConfig()
+                    : null),
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -2281,6 +2298,18 @@ class GameState {
         if (!gameMap) {
             console.error('Map must be initialized before loading save data');
             return false;
+        }
+
+        if (data.worldGenerationConfig && typeof window !== 'undefined' && typeof window.setWorldGenerationConfig === 'function') {
+            const currentGenerationConfig = (gameMap?.getGenerationConfigSnapshot?.()
+                || (typeof window.getWorldGenerationConfig === 'function' ? window.getWorldGenerationConfig() : null));
+            const savedGenerationConfigKey = stableSerializeForComparison(data.worldGenerationConfig);
+            const currentGenerationConfigKey = currentGenerationConfig ? stableSerializeForComparison(currentGenerationConfig) : null;
+            if (savedGenerationConfigKey !== currentGenerationConfigKey) {
+                // Controlled load flow: regenerate map to the saved generation config before restoring ownership/forts.
+                // Save compatibility still depends on stable generation rules across versions.
+                window.setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
+            }
         }
 
         this.selectedLeader = data.selectedLeader;

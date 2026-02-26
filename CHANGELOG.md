@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.5.0] - 2026-02-26
+
+### Added
+- Added a seeded world-generation configuration system (`historical` and optional `procedural` modes) with reproducible noise-based terrain/resource generation controls exposed for future modding.
+- Added deterministic biome assignment (`plains`, `forest`, `desert`, `mountains`, `tundra`) for land tiles, including per-biome movement/resource/event-weight metadata stored on map tiles.
+- Added runtime modding hooks `window.getWorldGenerationConfig()` and `window.setWorldGenerationConfig(...)` to inspect/override generation parameters and regenerate the map.
+
+### Changed
+- Updated strategic resource placement to use the world-generation seed/config (spacing, richness thresholds, target ratios) and biome-weighted resource multipliers.
+- Updated movement cost calculation to include biome movement modifiers in addition to terrain and road effects.
+
+### Fixed
+- Fixed save/load consistency for seeded world-generation overrides by persisting the active generation config in save data and restoring it before map-state reconstruction.
+- Prevented runtime world-generation config changes from silently regenerating the map during active sessions (unless explicitly forced by a controlled load/reset flow).
+- Hardened procedural world-generation utilities (safe heightmap fallbacks, config merge/parsing guards, stable config comparison, and threshold validation edge cases).
+
 ## [1.4.0] - 2026-02-25
 
 ### Added

@@ -12,6 +12,190 @@ const MAP_CONFIG = {
     viewportHeight: 20 // Number of tiles visible vertically
 };
 
+const WORLD_GENERATION_DEFAULTS = {
+    mode: 'historical', // historical | procedural
+    seed: '500ad-001',
+    terrain: {
+        seaLevel: 0.36,
+        hillThreshold: 0.61,
+        mountainThreshold: 0.76,
+        elevationScale: 46,
+        ruggednessScale: 21,
+        forestMoistureThreshold: 0.6
+    },
+    climate: {
+        temperatureScale: 32,
+        humidityScale: 27,
+        desertWarmthThreshold: 0.58,
+        desertHumidityThreshold: 0.38,
+        tundraTemperatureThreshold: 0.27
+    },
+    resources: {
+        spacing: 2,
+        richnessHighThreshold: 0.83,
+        richnessMediumThreshold: 0.52,
+        targetRatios: {
+            food: 0.055,
+            wood: 0.05,
+            stone: 0.04,
+            iron: 0.03,
+            rare: 0.018
+        },
+        minCounts: { food: 10, wood: 10, stone: 8, iron: 6, rare: 4 }
+    }
+};
+
+// Biome moveCostMultiplier semantics:
+// values > 1 increase move cost (slower movement / penalty), values < 1 reduce it (faster movement / bonus).
+const BIOME_RULES = {
+    plains: {
+        moveCostMultiplier: 1,
+        resourceMultipliers: { food: 1.15, wood: 0.95, stone: 0.95, iron: 0.95, rare: 1 },
+        eventWeights: { harvest: 1.25, drought: 0.9, migration: 1, blizzard: 0.2 }
+    },
+    forest: {
+        moveCostMultiplier: 1.06,
+        resourceMultipliers: { food: 0.95, wood: 1.35, stone: 0.9, iron: 0.95, rare: 1.05 },
+        eventWeights: { harvest: 0.95, drought: 0.7, migration: 0.95, blizzard: 0.35 }
+    },
+    desert: {
+        moveCostMultiplier: 1.12,
+        resourceMultipliers: { food: 0.5, wood: 0.35, stone: 1.15, iron: 0.95, rare: 1.25 },
+        eventWeights: { harvest: 0.45, drought: 1.35, migration: 1.2, blizzard: 0 }
+    },
+    mountains: {
+        moveCostMultiplier: 1.05,
+        resourceMultipliers: { food: 0.45, wood: 0.85, stone: 1.35, iron: 1.25, rare: 1.15 },
+        eventWeights: { harvest: 0.4, drought: 0.9, migration: 0.85, blizzard: 0.75 }
+    },
+    tundra: {
+        moveCostMultiplier: 1.12,
+        resourceMultipliers: { food: 0.55, wood: 0.65, stone: 1.05, iron: 1.1, rare: 1.1 },
+        eventWeights: { harvest: 0.55, drought: 0.3, migration: 1.15, blizzard: 1.4 }
+    }
+};
+
+function isPlainObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isUnsafeObjectKey(key) {
+    return key === '__proto__' || key === 'prototype' || key === 'constructor';
+}
+
+function cloneConfigValue(value) {
+    if (Array.isArray(value)) return value.map(cloneConfigValue);
+    if (isPlainObject(value)) return deepMergeObjects(value, {});
+    return value;
+}
+
+function deepMergeObjects(base, overrides) {
+    if (!isPlainObject(overrides)) {
+        if (!isPlainObject(base)) return overrides;
+        const clonedBase = {};
+        Object.keys(base).forEach((key) => {
+            if (isUnsafeObjectKey(key)) return;
+            clonedBase[key] = cloneConfigValue(base[key]);
+        });
+        return clonedBase;
+    }
+    const result = {};
+    if (isPlainObject(base)) {
+        Object.keys(base).forEach((key) => {
+            if (isUnsafeObjectKey(key)) return;
+            result[key] = cloneConfigValue(base[key]);
+        });
+    }
+    Object.keys(overrides).forEach((key) => {
+        if (isUnsafeObjectKey(key)) return;
+        const incoming = overrides[key];
+        result[key] = isPlainObject(incoming)
+            ? deepMergeObjects(result[key], incoming)
+            : incoming;
+    });
+    return result;
+}
+
+function clampNumber(value, min, max, fallback) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(min, Math.min(max, num));
+}
+
+function normalizeWorldGenerationConfig(config) {
+    const merged = deepMergeObjects(WORLD_GENERATION_DEFAULTS, config || {});
+    merged.mode = merged.mode === 'procedural' ? 'procedural' : 'historical';
+    merged.seed = String(merged.seed || WORLD_GENERATION_DEFAULTS.seed);
+    merged.terrain = isPlainObject(merged.terrain) ? merged.terrain : { ...WORLD_GENERATION_DEFAULTS.terrain };
+    merged.climate = isPlainObject(merged.climate) ? merged.climate : { ...WORLD_GENERATION_DEFAULTS.climate };
+    merged.resources = isPlainObject(merged.resources) ? merged.resources : { ...WORLD_GENERATION_DEFAULTS.resources };
+    merged.resources.targetRatios = isPlainObject(merged.resources.targetRatios)
+        ? merged.resources.targetRatios
+        : { ...WORLD_GENERATION_DEFAULTS.resources.targetRatios };
+    merged.resources.minCounts = isPlainObject(merged.resources.minCounts)
+        ? merged.resources.minCounts
+        : { ...WORLD_GENERATION_DEFAULTS.resources.minCounts };
+
+    merged.terrain.seaLevel = clampNumber(merged.terrain.seaLevel, 0.2, 0.6, WORLD_GENERATION_DEFAULTS.terrain.seaLevel);
+    merged.terrain.hillThreshold = clampNumber(merged.terrain.hillThreshold, 0.45, 0.85, WORLD_GENERATION_DEFAULTS.terrain.hillThreshold);
+    merged.terrain.mountainThreshold = clampNumber(merged.terrain.mountainThreshold, 0.55, 0.95, WORLD_GENERATION_DEFAULTS.terrain.mountainThreshold);
+    merged.terrain.elevationScale = clampNumber(merged.terrain.elevationScale, 8, 240, WORLD_GENERATION_DEFAULTS.terrain.elevationScale);
+    merged.terrain.ruggednessScale = clampNumber(merged.terrain.ruggednessScale, 6, 180, WORLD_GENERATION_DEFAULTS.terrain.ruggednessScale);
+    merged.terrain.forestMoistureThreshold = clampNumber(merged.terrain.forestMoistureThreshold, 0.35, 0.85, WORLD_GENERATION_DEFAULTS.terrain.forestMoistureThreshold);
+
+    merged.climate.temperatureScale = clampNumber(merged.climate.temperatureScale, 8, 200, WORLD_GENERATION_DEFAULTS.climate.temperatureScale);
+    merged.climate.humidityScale = clampNumber(merged.climate.humidityScale, 8, 200, WORLD_GENERATION_DEFAULTS.climate.humidityScale);
+    merged.climate.desertWarmthThreshold = clampNumber(merged.climate.desertWarmthThreshold, 0.35, 0.9, WORLD_GENERATION_DEFAULTS.climate.desertWarmthThreshold);
+    merged.climate.desertHumidityThreshold = clampNumber(merged.climate.desertHumidityThreshold, 0.1, 0.7, WORLD_GENERATION_DEFAULTS.climate.desertHumidityThreshold);
+    merged.climate.tundraTemperatureThreshold = clampNumber(merged.climate.tundraTemperatureThreshold, 0.05, 0.5, WORLD_GENERATION_DEFAULTS.climate.tundraTemperatureThreshold);
+
+    merged.resources.spacing = Math.round(clampNumber(merged.resources.spacing, 1, 6, WORLD_GENERATION_DEFAULTS.resources.spacing));
+    merged.resources.richnessHighThreshold = clampNumber(merged.resources.richnessHighThreshold, 0.5, 0.98, WORLD_GENERATION_DEFAULTS.resources.richnessHighThreshold);
+    merged.resources.richnessMediumThreshold = clampNumber(
+        merged.resources.richnessMediumThreshold,
+        0.1,
+        merged.resources.richnessHighThreshold - 0.05,
+        WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
+    );
+    const minimumRichnessGap = 0.05;
+    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + minimumRichnessGap) {
+        merged.resources.richnessHighThreshold = clampNumber(
+            merged.resources.richnessMediumThreshold + minimumRichnessGap,
+            0.5,
+            0.98,
+            WORLD_GENERATION_DEFAULTS.resources.richnessHighThreshold
+        );
+        if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + minimumRichnessGap) {
+            merged.resources.richnessMediumThreshold = clampNumber(
+                merged.resources.richnessHighThreshold - minimumRichnessGap,
+                0.1,
+                Math.max(0.1, merged.resources.richnessHighThreshold - minimumRichnessGap),
+                WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
+            );
+        }
+    }
+    return merged;
+}
+
+function getGlobalWorldGenerationOverrides() {
+    if (typeof window === 'undefined') return null;
+    return window.WORLD_GENERATION_CONFIG || null;
+}
+
+function resolveWorldGenerationConfig() {
+    return normalizeWorldGenerationConfig(getGlobalWorldGenerationOverrides());
+}
+
+function hashSeedValue(seedValue) {
+    const seedString = String(seedValue ?? '');
+    let hash = 2166136261;
+    for (let i = 0; i < seedString.length; i++) {
+        hash ^= seedString.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
 const HISTORIC_MAP_BOUNDS = typeof GEOGRAPHY_BOUNDS !== 'undefined'
     ? GEOGRAPHY_BOUNDS
     : { west: -15, east: 92, north: 60, south: 5 };
@@ -239,11 +423,76 @@ const TERRAIN_EFFECTS = {
     }
 };
 
-function deterministicTileNoise(x, y, salt = 0) {
-    let h = ((x + 1) * 374761393) ^ ((y + 1) * 668265263) ^ ((salt + 1) * 700001);
-    h = (h ^ (h >>> 13)) * 1274126177;
+function deterministicTileNoise(x, y, salt = 0, seed = 0) {
+    let h = ((x + 1) * 374761393) ^ ((y + 1) * 668265263) ^ ((salt + 1) * 700001) ^ Math.imul(seed + 1, 2654435761);
+    h = Math.imul((h ^ (h >>> 13)), 1274126177);
     h ^= h >>> 16;
     return ((h >>> 0) % 100000) / 100000;
+}
+
+function smoothstep(t) {
+    return t * t * (3 - 2 * t);
+}
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function valueNoise2D(x, y, salt = 0, seed = 0) {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const x1 = x0 + 1;
+    const y1 = y0 + 1;
+    const sx = smoothstep(x - x0);
+    const sy = smoothstep(y - y0);
+
+    const n00 = deterministicTileNoise(x0, y0, salt, seed);
+    const n10 = deterministicTileNoise(x1, y0, salt, seed);
+    const n01 = deterministicTileNoise(x0, y1, salt, seed);
+    const n11 = deterministicTileNoise(x1, y1, salt, seed);
+
+    const ix0 = lerp(n00, n10, sx);
+    const ix1 = lerp(n01, n11, sx);
+    return lerp(ix0, ix1, sy);
+}
+
+function fractalNoise2D(x, y, options = {}) {
+    const scale = Math.max(1, Number(options.scale) || 32);
+    const octaves = Math.max(1, Math.floor(options.octaves || 3));
+    const persistence = Number.isFinite(options.persistence) ? options.persistence : 0.5;
+    const lacunarity = Number.isFinite(options.lacunarity) ? options.lacunarity : 2;
+    const salt = Number.isFinite(options.salt) ? options.salt : 0;
+    const seed = Number.isFinite(options.seed) ? options.seed : 0;
+
+    let amplitude = 1;
+    let frequency = 1;
+    let total = 0;
+    let maxAmplitude = 0;
+
+    for (let i = 0; i < octaves; i++) {
+        const sampleX = (x / scale) * frequency;
+        const sampleY = (y / scale) * frequency;
+        total += valueNoise2D(sampleX, sampleY, salt + i * 1031, seed) * amplitude;
+        maxAmplitude += amplitude;
+        amplitude *= persistence;
+        frequency *= lacunarity;
+    }
+
+    return maxAmplitude > 0 ? total / maxAmplitude : 0;
+}
+
+function fallbackHeightToTerrain(height) {
+    if (!Number.isFinite(height)) return 'plains';
+    if (height <= 39) return 'water';
+    if (height <= 52) return 'plains';
+    if (height <= 150) return 'plains';
+    if (height <= 205) return 'hills';
+    return 'mountains';
+}
+
+function safeHeightToTerrain(height) {
+    if (typeof heightToTerrain === 'function') return heightToTerrain(height);
+    return fallbackHeightToTerrain(height);
 }
 
 const CITY_WONDERS = {
@@ -290,9 +539,20 @@ class GameMap {
         this.fogAlphaCache = [];
         this.renderQueued = false;
         this.battleHealthHighlights = new Map();
+        this.generationConfig = resolveWorldGenerationConfig();
+        this.worldSeed = hashSeedValue(this.generationConfig.seed);
 
         this.initializeMap();
         this.initializeReferenceMap();
+    }
+
+    refreshGenerationConfig() {
+        this.generationConfig = resolveWorldGenerationConfig();
+        this.worldSeed = hashSeedValue(this.generationConfig.seed);
+    }
+
+    getGenerationConfigSnapshot() {
+        return JSON.parse(JSON.stringify(this.generationConfig));
     }
 
     initializeReferenceMap() {
@@ -336,6 +596,7 @@ class GameMap {
      * Initialize map with terrain
      */
     initializeMap() {
+        this.refreshGenerationConfig();
         for (let y = 0; y < this.height; y++) {
             this.tiles[y] = [];
             for (let x = 0; x < this.width; x++) {
@@ -343,6 +604,7 @@ class GameMap {
                     x,
                     y,
                     terrain: this.generateTerrain(x, y),
+                    naturalTerrain: null,
                     unit: null,
                     building: null,
                     fort: null,
@@ -351,8 +613,11 @@ class GameMap {
                     visible: true,
                     explored: false,
                     baseColor: null,
-                    resourceNode: null
+                    resourceNode: null,
+                    biome: null,
+                    biomeEventWeights: null
                 };
+                this.tiles[y][x].naturalTerrain = this.tiles[y][x].terrain;
                 this.updateTileBaseColor(this.tiles[y][x]);
             }
         }
@@ -361,6 +626,8 @@ class GameMap {
         this.placeHistoricalTowns();
         // Place historical main roads
         this.placeHistoricalRoads();
+        // Assign deterministic climate biomes after terrain/towns are finalized.
+        this.assignBiomes();
         // Place strategic resources after cities/roads so placements avoid city tiles.
         this.placeStrategicResources();
         this.markTerritoryDirty();
@@ -372,10 +639,12 @@ class GameMap {
     updateTileBaseColor(tile) {
         if (!tile) return;
         let color = TERRAIN_TYPES[tile.terrain]?.color || '#777';
-        const h = MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
+            : undefined;
         if (h !== undefined) {
-            const generatedTerrain = heightToTerrain(h);
-            if (generatedTerrain === tile.terrain) {
+            const generatedTerrain = safeHeightToTerrain(h);
+            if (generatedTerrain === tile.terrain && typeof heightToColor === 'function') {
                 color = heightToColor(h);
             }
         }
@@ -386,15 +655,146 @@ class GameMap {
      * Generate terrain from detailed geographic heightmap
      */
     generateTerrain(x, y) {
+        if (this.generationConfig?.mode === 'procedural') {
+            return this.generateProceduralTerrain(x, y);
+        }
+
         // Use the detailed Mediterranean heightmap
         if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
             MEDITERRANEAN_HEIGHTMAP[y] &&
             MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
-            return heightToTerrain(MEDITERRANEAN_HEIGHTMAP[y][x]);
+            return safeHeightToTerrain(MEDITERRANEAN_HEIGHTMAP[y][x]);
         }
 
-        // Fallback
+        // Fallback to procedural generation when no historic heightmap is available.
+        return this.generateProceduralTerrain(x, y);
+    }
+
+    generateProceduralTerrain(x, y) {
+        const terrainCfg = this.generationConfig?.terrain || WORLD_GENERATION_DEFAULTS.terrain;
+        const elevation = fractalNoise2D(x, y, {
+            scale: terrainCfg.elevationScale,
+            octaves: 4,
+            persistence: 0.55,
+            salt: 31,
+            seed: this.worldSeed
+        });
+        const ruggedness = fractalNoise2D(x, y, {
+            scale: terrainCfg.ruggednessScale,
+            octaves: 3,
+            persistence: 0.6,
+            salt: 97,
+            seed: this.worldSeed
+        });
+        const continental = (elevation * 0.74) + (ruggedness * 0.26);
+
+        if (continental < terrainCfg.seaLevel) return 'water';
+        if (continental > terrainCfg.mountainThreshold + ruggedness * 0.06) return 'mountains';
+        if (continental > terrainCfg.hillThreshold + ruggedness * 0.03) return 'hills';
+
+        const climate = this.getClimateSample(x, y);
+        if (climate.humidity >= terrainCfg.forestMoistureThreshold && climate.temperature > 0.2) {
+            return 'forest';
+        }
         return 'plains';
+    }
+
+    getClimateSample(x, y) {
+        const climateCfg = this.generationConfig?.climate || WORLD_GENERATION_DEFAULTS.climate;
+        const latNorm = this.height <= 1 ? 0.5 : (y / (this.height - 1)); // south = warmer
+        const latTemp = 0.16 + (latNorm * 0.78);
+        const tempNoise = fractalNoise2D(x, y, {
+            scale: climateCfg.temperatureScale,
+            octaves: 3,
+            persistence: 0.55,
+            salt: 211,
+            seed: this.worldSeed
+        });
+        const humidityNoise = fractalNoise2D(x, y, {
+            scale: climateCfg.humidityScale,
+            octaves: 3,
+            persistence: 0.55,
+            salt: 353,
+            seed: this.worldSeed
+        });
+        const temperature = Math.max(0, Math.min(1, (latTemp * 0.72) + (tempNoise * 0.28)));
+        const humidity = Math.max(0, Math.min(1, humidityNoise));
+        return { temperature, humidity, latNorm };
+    }
+
+    getBiomeBaseTerrain(tile) {
+        if (!tile) return 'plains';
+        if (tile.terrain !== 'city') return tile.terrain;
+        if (tile.naturalTerrain && tile.naturalTerrain !== 'city' && tile.naturalTerrain !== 'water') {
+            return tile.naturalTerrain;
+        }
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
+            : undefined;
+        if (typeof h === 'number') {
+            const naturalTerrain = safeHeightToTerrain(h);
+            return naturalTerrain === 'water' ? 'plains' : naturalTerrain;
+        }
+        return 'plains';
+    }
+
+    determineBiomeForTile(tile) {
+        if (!tile || tile.terrain === 'water') return null;
+        const baseTerrain = this.getBiomeBaseTerrain(tile);
+        // Mountains always use the mountains biome; hills can still shift by climate.
+        if (baseTerrain === 'mountains') {
+            return 'mountains';
+        }
+
+        const climateCfg = this.generationConfig?.climate || WORLD_GENERATION_DEFAULTS.climate;
+        const climate = this.getClimateSample(tile.x, tile.y);
+        let humidity = climate.humidity;
+        if (this.isRiverTile(tile.x, tile.y)) humidity = Math.min(1, humidity + 0.15);
+        if (this.isCoastalTile(tile.x, tile.y)) humidity = Math.min(1, humidity + 0.08);
+
+        if (climate.temperature <= climateCfg.tundraTemperatureThreshold) return 'tundra';
+        if (climate.temperature >= climateCfg.desertWarmthThreshold && humidity <= climateCfg.desertHumidityThreshold) return 'desert';
+        if (baseTerrain === 'forest' || humidity >= (this.generationConfig?.terrain?.forestMoistureThreshold || 0.6)) return 'forest';
+        return 'plains';
+    }
+
+    assignBiomes() {
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const tile = this.tiles[y]?.[x];
+                if (!tile) continue;
+                const biome = this.determineBiomeForTile(tile);
+                tile.biome = biome;
+                tile.biomeEventWeights = biome ? { ...(BIOME_RULES[biome]?.eventWeights || {}) } : null;
+            }
+        }
+    }
+
+    getBiomeEffects(tile, unit = null) {
+        const biome = tile?.biome;
+        if (!biome || !BIOME_RULES[biome]) {
+            return {
+                biome: biome || null,
+                moveCostMultiplier: 1,
+                resourceMultipliers: null,
+                eventWeights: null
+            };
+        }
+
+        const base = BIOME_RULES[biome];
+        let moveCostMultiplier = base.moveCostMultiplier || 1;
+        if (biome === 'desert' && unit?.category === 'desert') moveCostMultiplier *= 0.82;
+        if (biome === 'tundra' && unit?.category === 'mountain') moveCostMultiplier *= 0.9;
+        if (biome === 'mountains' && unit?.category === 'mountain') moveCostMultiplier *= 0.92;
+        // Cavalry is intentionally penalized in forests (higher move cost = slower movement).
+        if (biome === 'forest' && unit?.type === 'cavalry') moveCostMultiplier *= 1.06;
+
+        return {
+            biome,
+            moveCostMultiplier,
+            resourceMultipliers: base.resourceMultipliers ? { ...base.resourceMultipliers } : null,
+            eventWeights: base.eventWeights ? { ...base.eventWeights } : null
+        };
     }
 
     /**
@@ -442,12 +842,14 @@ class GameMap {
                         if (!neighbor) continue;
                         if (neighbor.terrain === 'water') {
                             neighbor.terrain = Math.abs(dx) + Math.abs(dy) === 2 ? 'hills' : 'plains';
+                            neighbor.naturalTerrain = neighbor.terrain;
                             this.updateTileBaseColor(neighbor);
                         }
                     }
                 }
 
                 const tile = this.tiles[town.y][town.x];
+                tile.naturalTerrain = tile.naturalTerrain || tile.terrain;
                 tile.terrain = 'city';
                 this.updateTileBaseColor(tile);
                 tile.building = town.type === 'capital' ? 'capital' : 'town';
@@ -1562,7 +1964,9 @@ class GameMap {
     }
 
     isRiverTile(x, y) {
-        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[y]?.[x]
+            : undefined;
         if (typeof h === 'number' && h >= 40 && h <= 52) return true;
         if (typeof isNearRiver === 'function') {
             const geo = this.tileToGeo(x, y);
@@ -1574,7 +1978,9 @@ class GameMap {
     isFertileTile(x, y) {
         const tile = this.getTile(x, y);
         if (!tile || tile.terrain === 'water' || tile.terrain === 'mountains') return false;
-        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[y]?.[x]
+            : undefined;
         const richAlluvial = typeof h === 'number' && h >= 54 && h <= 98;
         return richAlluvial || this.isRiverTile(x, y) || this.isCoastalTile(x, y);
     }
@@ -1658,6 +2064,7 @@ class GameMap {
         const coastal = this.isCoastalTile(tile.x, tile.y);
         const river = this.isRiverTile(tile.x, tile.y);
         const fertile = this.isFertileTile(tile.x, tile.y);
+        const biomeEffects = this.getBiomeEffects(tile);
         const weights = {
             food: 0,
             wood: 0,
@@ -1699,6 +2106,12 @@ class GameMap {
             weights.rare += 0.7;
         }
 
+        if (biomeEffects.resourceMultipliers) {
+            Object.keys(weights).forEach((key) => {
+                weights[key] *= biomeEffects.resourceMultipliers[key] || 1;
+            });
+        }
+
         return weights;
     }
 
@@ -1715,14 +2128,9 @@ class GameMap {
         }
         if (landTiles.length === 0) return;
 
-        const targetRatios = {
-            food: 0.055,
-            wood: 0.05,
-            stone: 0.04,
-            iron: 0.03,
-            rare: 0.018
-        };
-        const minCounts = { food: 10, wood: 10, stone: 8, iron: 6, rare: 4 };
+        const resourceCfg = this.generationConfig?.resources || WORLD_GENERATION_DEFAULTS.resources;
+        const targetRatios = resourceCfg.targetRatios || WORLD_GENERATION_DEFAULTS.resources.targetRatios;
+        const minCounts = resourceCfg.minCounts || WORLD_GENERATION_DEFAULTS.resources.minCounts;
         const selected = new Set();
         const selectedByType = new Map(Object.keys(targetRatios).map((k) => [k, []]));
 
@@ -1732,7 +2140,7 @@ class GameMap {
                 const weights = this.getResourcePlacementWeights(tile);
                 const weight = weights?.[type] || 0;
                 if (weight <= 0) continue;
-                const noise = deterministicTileNoise(tile.x, tile.y, 17 + typeIdx * 97);
+                const noise = deterministicTileNoise(tile.x, tile.y, 17 + typeIdx * 97, this.worldSeed);
                 candidates.push({
                     tile,
                     score: weight * (0.85 + noise * 0.45),
@@ -1749,11 +2157,13 @@ class GameMap {
                 if (selected.has(key)) continue;
 
                 const sameTypeTooClose = selectedByType.get(type).some((other) =>
-                    Math.abs(other.x - tile.x) + Math.abs(other.y - tile.y) <= 2
+                    Math.abs(other.x - tile.x) + Math.abs(other.y - tile.y) <= resourceCfg.spacing
                 );
                 if (sameTypeTooClose) continue;
 
-                const richness = candidate.noise > 0.83 ? 3 : (candidate.noise > 0.52 ? 2 : 1);
+                const richness = candidate.noise > resourceCfg.richnessHighThreshold
+                    ? 3
+                    : (candidate.noise > resourceCfg.richnessMediumThreshold ? 2 : 1);
                 tile.resourceNode = { type, richness };
                 selected.add(key);
                 selectedByType.get(type).push(tile);
@@ -1803,6 +2213,37 @@ class GameMap {
 // Global map instance
 let gameMap = null;
 
+function getWorldGenerationConfigSnapshot() {
+    if (gameMap?.getGenerationConfigSnapshot) {
+        return gameMap.getGenerationConfigSnapshot();
+    }
+    return resolveWorldGenerationConfig();
+}
+
+function setWorldGenerationConfig(overrides = {}, options = {}) {
+    if (typeof window === 'undefined') return getWorldGenerationConfigSnapshot();
+    window.WORLD_GENERATION_CONFIG = deepMergeObjects(getWorldGenerationConfigSnapshot(), overrides || {});
+    const shouldRegenerate = options.regenerate !== false;
+    const hasActiveGameState = !!(typeof gameState !== 'undefined'
+        && gameState
+        && gameState.initialized
+        && (Array.isArray(gameState.units) ? gameState.units.length > 0 : false));
+    const allowActiveGameReset = options.allowActiveGameReset === true;
+    if (gameMap && shouldRegenerate) {
+        if (hasActiveGameState && !allowActiveGameReset) {
+            console.warn('setWorldGenerationConfig skipped map regeneration because an active game is loaded. Use { allowActiveGameReset: true } only during a controlled reinitialization/load flow.');
+            return getWorldGenerationConfigSnapshot();
+        }
+        gameMap.initializeMap();
+        gameMap.markTerritoryDirty();
+        if (typeof gameMap.initializeFogOfWar === 'function') {
+            gameMap.initializeFogOfWar();
+        }
+        gameMap.requestRender?.();
+    }
+    return getWorldGenerationConfigSnapshot();
+}
+
 /**
  * Initialize game map
  */
@@ -1834,4 +2275,9 @@ function initializeGameMap() {
     gameMap = new GameMap(MAP_CONFIG.width, MAP_CONFIG.height);
     gameMap.initializeCanvas(canvas);
     gameMap.requestRender();
+}
+
+if (typeof window !== 'undefined') {
+    window.getWorldGenerationConfig = getWorldGenerationConfigSnapshot;
+    window.setWorldGenerationConfig = setWorldGenerationConfig;
 }

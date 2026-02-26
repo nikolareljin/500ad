@@ -26,6 +26,55 @@ Coordinates are converted using an equirectangular-style transform:
 
 This replaces the prior synthetic continent-blob model that could place key cities on water.
 
+## Generation Modes and Seeds
+
+`js/map.js` now supports a world-generation config with two modes:
+
+- `historical` (default): uses the historic Mediterranean/Old World geography + town/road placement.
+- `procedural`: uses seeded noise layers to generate terrain (`water`, `plains`, `forest`, `hills`, `mountains`) and then assigns deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`).
+
+Both modes use the same grid tile structure (`tiles[y][x]`). Strategic resource placement is deterministic and seed-aware.
+
+Current limitation:
+
+- Procedural mode does not yet generate procedural rivers. River/fertility checks still depend on `MEDITERRANEAN_HEIGHTMAP`, so river-driven humidity/resource/foundation bonuses are effectively historical-map-only behavior for now.
+
+### Runtime Modding Hooks (Browser Console)
+
+- `window.getWorldGenerationConfig()` returns the active normalized generation config.
+- `window.setWorldGenerationConfig(overrides)` merges overrides, stores them in `window.WORLD_GENERATION_CONFIG`, and regenerates the map.
+- `window.setWorldGenerationConfig(overrides)` is intended for pre-game/testing use. Regenerating during an active session is blocked by default to avoid wiping tile ownership/buildings/forts while leaving turn/unit state intact.
+- Procedural regeneration recomputes terrain + biome noise across the full map and may pause briefly on slower devices.
+- These runtime hooks are for trusted local scripts/modding only; untrusted console code can still disrupt the running session even with config normalization.
+
+Example:
+
+```js
+window.setWorldGenerationConfig({
+  mode: 'procedural',
+  seed: 'mod-test-1',
+  resources: { spacing: 3 },
+  climate: { tundraTemperatureThreshold: 0.24 }
+});
+```
+
+### Biome Metadata
+
+Each land tile can carry:
+
+- `tile.biome` (`plains`, `forest`, `desert`, `mountains`, `tundra`)
+- `tile.biomeEventWeights` (event-affinity hints for future event systems)
+
+Biome rules currently affect:
+
+- movement cost (via `GameState.getTerrainMoveCost()` + `gameMap.getBiomeEffects(...)`)
+- strategic resource placement weights/richness distribution
+- event propensity metadata for future systems
+
+### Save/Load Compatibility Note
+
+Procedural-world saves persist `worldGenerationConfig` and restore it before ownership/fort reconstruction. This keeps saves consistent for a given seed/config, but compatibility still depends on the generation algorithm remaining stable across versions.
+
 ## Performance Notes
 
 - Map rendering is viewport-based and only draws visible tiles plus a small buffer.
