@@ -34,6 +34,17 @@ const AI_PERSONALITY_PROFILES = {
     }
 };
 
+function getAIPersonalityBehaviorDefaults(personality) {
+    const profile = AI_PERSONALITY_PROFILES[personality] || AI_PERSONALITY_PROFILES.defensive;
+    return {
+        aggression: profile.aggressionBias,
+        expansion: profile.expansionBias,
+        defense: profile.defenseBias,
+        diplomacy: profile.diplomacyBias,
+        resourceFocus: profile.resourceBias
+    };
+}
+
 class AIManager {
     constructor() {
         this.thinkingDelay = 350; // ms between actions
@@ -52,12 +63,13 @@ class AIManager {
     buildFactionContext(factionId, units) {
         const state = gameState?.ensureAIFactionState?.(factionId);
         const profile = this.getPersonalityProfile(factionId);
+        const playerThreatUnits = this.getActivePlayerThreatUnits();
         const cities = gameState?.getAIFactionCityTiles?.(factionId) || [];
         const playerCities = gameMap?.getCityTiles?.('player') || [];
         const neutralCities = (gameMap?.getCityTiles?.() || []).filter((tile) => tile.owner === 'neutral' || tile.owner === null);
         const recentEvents = gameState?.getRecentAIWorldEvents?.(12) || [];
 
-        const threatenedCities = cities.filter((city) => this.minDistanceToPlayerUnit(city) <= 5);
+        const threatenedCities = cities.filter((city) => this.minDistanceToPlayerUnit(city, playerThreatUnits) <= 5);
         const frontierCities = cities.filter((city) => this.findNearestNeutralCity(city, neutralCities, 9) || this.findNearestPlayerCity(city, playerCities, 10));
         const factionResources = this.estimateFactionResourcePotential(cities);
 
@@ -68,6 +80,7 @@ class AIManager {
             units,
             cities,
             playerCities,
+            playerThreatUnits,
             neutralCities,
             recentEvents,
             threatenedCities,
@@ -156,8 +169,8 @@ class AIManager {
         this.processFactionDefense(context, plan);
 
         const sortedUnits = [...context.units].sort((a, b) => {
-            const aFront = this.minDistanceToPlayerUnit(a) < 6 ? 1 : 0;
-            const bFront = this.minDistanceToPlayerUnit(b) < 6 ? 1 : 0;
+            const aFront = this.minDistanceToPlayerUnit(a, context.playerThreatUnits) < 6 ? 1 : 0;
+            const bFront = this.minDistanceToPlayerUnit(b, context.playerThreatUnits) < 6 ? 1 : 0;
             return bFront - aFront;
         });
 
@@ -230,7 +243,7 @@ class AIManager {
             const candidate = this.findNearestNeutralCity(city, neutralCities, 5);
             if (!candidate) continue;
             const dist = Math.abs(candidate.x - city.x) + Math.abs(candidate.y - city.y);
-            const playerNearby = this.minDistanceToPlayerUnit(candidate);
+            const playerNearby = this.minDistanceToPlayerUnit(candidate, context.playerThreatUnits);
             const score = (6 - dist) * 10 - Math.max(0, 6 - playerNearby) * 8 + (candidate.importance || 5);
             if (!best || score > best.score) best = { city, candidate, score };
         }
@@ -241,9 +254,9 @@ class AIManager {
 
         // Diplomatic personalities annex peacefully more often; others stage armed takeovers.
         const peacefulChance = state.personality === 'diplomatic' ? 0.55 : (state.personality === 'opportunistic' ? 0.35 : 0.15);
-        target.owner = 'enemy';
-        target.faction = factionId;
-        if (Math.random() > peacefulChance) {
+        const expansionMode = Math.random() > peacefulChance ? 'military' : 'peaceful';
+        if (!this.applyAIFactionAnnexCity(target, factionId)) return;
+        if (expansionMode === 'military') {
             const town = HISTORIC_TOWNS.find((t) => t.id === (target.cityData?.id || target.cityId));
             if (town) {
                 gameState.spawnFactionArmyAtTown(town, 'enemy', factionId, 1);
@@ -253,9 +266,12 @@ class AIManager {
         gameState.recordAIWorldEvent?.('ai_expansion', {
             factionId,
             cityId: target.cityData?.id || target.cityId,
-            cityName: target.cityData?.name || target.name || 'Unknown city'
+            cityName: target.cityData?.name || target.name || 'Unknown city',
+            mode: expansionMode
         });
+        context.neutralCities = context.neutralCities.filter((city) => city !== target);
         gameMap?.markTerritoryDirty?.();
+        gameState?.refreshAIFactionState?.();
     }
 
     processFactionDefense(context, plan) {
@@ -267,20 +283,7 @@ class AIManager {
         const city = threatenedCities[0];
         if (!city) return;
 
-        city.fort = city.fort || {
-            id: `fort_${city.x}_${city.y}`,
-            owner: 'enemy',
-            health: 90,
-            maxHealth: 90,
-            defenseBonus: 0.18,
-            attack: 8,
-            garrisonBonus: 0.1,
-            builtTurn: gameState.turn
-        };
-        city.fort.owner = 'enemy';
-        city.fort.defenseBonus = Math.min(0.35, (city.fort.defenseBonus || 0.18) + 0.02);
-        city.cityData = city.cityData || {};
-        city.cityData.fortLevel = Math.max(city.cityData.fortLevel || 0, 1);
+        this.ensureAIFortifiedCity(city);
 
         const stockpile = state.stockpile || (state.stockpile = { gold: 0, manpower: 0 });
         if ((stockpile.gold || 0) >= 55) {
@@ -397,6 +400,48 @@ class AIManager {
         return totals;
     }
 
+    getActivePlayerThreatUnits() {
+        return gameState.units.filter((u) =>
+            u.owner === 'player'
+            && !u.isCarried
+            && Number.isFinite(u.position?.x)
+            && Number.isFinite(u.position?.y)
+            && u.position.x >= 0
+            && u.position.y >= 0
+        );
+    }
+
+    applyAIFactionAnnexCity(tile, factionId) {
+        if (!tile?.cityData) return false;
+        if (tile.owner === 'player' || tile.owner === 'enemy') return false;
+        tile.owner = 'enemy';
+        tile.faction = factionId || tile.faction || 'tribal';
+        if (tile.cityData) {
+            tile.cityData.historicalCivilization = tile.cityData.historicalCivilization || tile.faction;
+        }
+        return true;
+    }
+
+    ensureAIFortifiedCity(cityTile) {
+        if (!cityTile?.cityData) return false;
+        if (cityTile.terrain === 'water') return false;
+        cityTile.fort = cityTile.fort || {
+            id: `fort_${cityTile.x}_${cityTile.y}`,
+            owner: 'enemy',
+            health: 90,
+            maxHealth: 90,
+            defenseBonus: 0.18,
+            attack: 8,
+            garrisonBonus: 0.1,
+            builtTurn: gameState.turn
+        };
+        cityTile.fort.owner = 'enemy';
+        cityTile.fort.defenseBonus = Math.min(0.35, (cityTile.fort.defenseBonus || 0.18) + 0.02);
+        cityTile.cityData = cityTile.cityData || {};
+        cityTile.cityData.fortLevel = Math.max(cityTile.cityData.fortLevel || 0, 1);
+        return true;
+    }
+
     minDistanceToAny(targetLike, cityTiles) {
         if (!targetLike?.position || !Array.isArray(cityTiles) || cityTiles.length === 0) return 99;
         let best = 99;
@@ -407,20 +452,13 @@ class AIManager {
         return best;
     }
 
-    minDistanceToPlayerUnit(tileOrUnit) {
+    minDistanceToPlayerUnit(tileOrUnit, playerUnits = null) {
         if (!tileOrUnit) return 99;
         const pos = tileOrUnit.position ? tileOrUnit.position : { x: tileOrUnit.x, y: tileOrUnit.y };
-        const playerUnits = gameState.units.filter((u) =>
-            u.owner === 'player'
-            && !u.isCarried
-            && Number.isFinite(u.position?.x)
-            && Number.isFinite(u.position?.y)
-            && u.position.x >= 0
-            && u.position.y >= 0
-        );
-        if (playerUnits.length === 0) return 99;
+        const activePlayerUnits = Array.isArray(playerUnits) ? playerUnits : this.getActivePlayerThreatUnits();
+        if (activePlayerUnits.length === 0) return 99;
         let best = 99;
-        playerUnits.forEach((unit) => {
+        activePlayerUnits.forEach((unit) => {
             const dist = Math.abs(unit.position.x - pos.x) + Math.abs(unit.position.y - pos.y);
             if (dist < best) best = dist;
         });

@@ -499,11 +499,15 @@ class GameState {
             factionId,
             personality,
             behavior: {
-                aggression: personality === 'aggressive' ? 0.82 : (personality === 'opportunistic' ? 0.62 : (personality === 'diplomatic' ? 0.45 : 0.35)),
-                expansion: personality === 'opportunistic' ? 0.85 : (personality === 'aggressive' ? 0.7 : 0.45),
-                defense: personality === 'defensive' ? 0.86 : 0.55,
-                diplomacy: personality === 'diplomatic' ? 0.88 : 0.4,
-                resourceFocus: personality === 'defensive' ? 0.75 : 0.58
+                ...(typeof getAIPersonalityBehaviorDefaults === 'function'
+                    ? getAIPersonalityBehaviorDefaults(personality)
+                    : {
+                        aggression: personality === 'aggressive' ? 0.9 : (personality === 'opportunistic' ? 0.65 : (personality === 'diplomatic' ? 0.35 : 0.42)),
+                        expansion: personality === 'opportunistic' ? 0.88 : (personality === 'aggressive' ? 0.75 : (personality === 'diplomatic' ? 0.5 : 0.38)),
+                        defense: personality === 'defensive' ? 0.92 : 0.55,
+                        diplomacy: personality === 'diplomatic' ? 0.95 : (personality === 'defensive' ? 0.45 : (personality === 'opportunistic' ? 0.35 : 0.2)),
+                        resourceFocus: personality === 'defensive' ? 0.7 : (personality === 'aggressive' ? 0.45 : (personality === 'opportunistic' ? 0.6 : 0.65))
+                    })
             },
             diplomacy: {
                 player: personality === 'diplomatic' ? -5 : (personality === 'aggressive' ? 18 : 6)
@@ -567,7 +571,7 @@ class GameState {
                 && event.capturer === 'player'
                 && (event.oldOwner === null || event.oldOwner === 'neutral')
             ).length;
-            const lossesToPlayer = recentEvents.filter((event) =>
+            const citiesCapturedFromPlayer = recentEvents.filter((event) =>
                 event.type === 'city_captured'
                 && event.capturer === 'enemy'
                 && event.capturerFaction === factionId
@@ -578,7 +582,7 @@ class GameState {
                 (playerCities * 4)
                 + (hostileCaptures * 16)
                 + (neutralExpansion * 5)
-                - (lossesToPlayer * 8)
+                - (citiesCapturedFromPlayer * 8)
             ));
             state.intel.playerPressure = Math.max(0, Math.min(100, (hostileCaptures * 20) + (neutralExpansion * 8) + Math.max(0, 6 - factionCities) * 6));
             state.intel.lastKnownPlayerCities = playerCities;
@@ -589,7 +593,7 @@ class GameState {
                 (state.diplomacy.player || 0)
                 + (hostileCaptures * 8)
                 + (neutralExpansion * (state.personality === 'diplomatic' ? 4 : 2))
-                - (lossesToPlayer * 3)
+                - (citiesCapturedFromPlayer * 3)
             ));
         });
     }
