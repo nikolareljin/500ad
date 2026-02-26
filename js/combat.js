@@ -18,8 +18,7 @@ function calculateCombatDamage(attacker, defender, terrain = 'plains') {
     const terrainEffects = gameMap?.getTerrainEffects?.(terrain, {
         unit: attacker,
         attacker,
-        defender,
-        fortDefenseBonus: gameMap?.getTile(defender.position.x, defender.position.y)?.fort?.defenseBonus || 0
+        defender
     }) || { attackMultiplier: 1, defenseMultiplier: 1 };
 
     // Apply type bonuses
