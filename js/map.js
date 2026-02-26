@@ -425,7 +425,7 @@ const TERRAIN_EFFECTS = {
 
 function deterministicTileNoise(x, y, salt = 0, seed = 0) {
     let h = ((x + 1) * 374761393) ^ ((y + 1) * 668265263) ^ ((salt + 1) * 700001) ^ Math.imul(seed + 1, 2654435761);
-    h = (h ^ (h >>> 13)) * 1274126177;
+    h = Math.imul((h ^ (h >>> 13)), 1274126177);
     h ^= h >>> 16;
     return ((h >>> 0) % 100000) / 100000;
 }
