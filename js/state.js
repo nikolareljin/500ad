@@ -822,6 +822,8 @@ class GameState {
         let cost = base;
         const terrainEffects = gameMap?.getTerrainEffects?.(toTile.terrain, { unit, fromTile, toTile }) || {};
         cost *= terrainEffects.moveCostMultiplier || 1;
+        const biomeEffects = gameMap?.getBiomeEffects?.(toTile, unit) || {};
+        cost *= biomeEffects.moveCostMultiplier || 1;
 
         if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
             cost *= 0.45;
