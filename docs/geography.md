@@ -44,6 +44,8 @@ Current limitation:
 - `window.getWorldGenerationConfig()` returns the active normalized generation config.
 - `window.setWorldGenerationConfig(overrides)` merges overrides, stores them in `window.WORLD_GENERATION_CONFIG`, and regenerates the map.
 - `window.setWorldGenerationConfig(overrides)` is intended for pre-game/testing use. Regenerating during an active session is blocked by default to avoid wiping tile ownership/buildings/forts while leaving turn/unit state intact.
+- Procedural regeneration recomputes terrain + biome noise across the full map and may pause briefly on slower devices.
+- These runtime hooks are for trusted local scripts/modding only; untrusted console code can still disrupt the running session even with config normalization.
 
 Example:
 
@@ -68,6 +70,10 @@ Biome rules currently affect:
 - movement cost (via `GameState.getTerrainMoveCost()` + `gameMap.getBiomeEffects(...)`)
 - strategic resource placement weights/richness distribution
 - event propensity metadata for future systems
+
+### Save/Load Compatibility Note
+
+Procedural-world saves persist `worldGenerationConfig` and restore it before ownership/fort reconstruction. This keeps saves consistent for a given seed/config, but compatibility still depends on the generation algorithm remaining stable across versions.
 
 ## Performance Notes
 

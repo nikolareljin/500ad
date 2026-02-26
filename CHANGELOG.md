@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed save/load consistency for seeded world-generation overrides by persisting the active generation config in save data and restoring it before map-state reconstruction.
 - Prevented runtime world-generation config changes from silently regenerating the map during active sessions (unless explicitly forced by a controlled load/reset flow).
+- Hardened procedural world-generation utilities (safe heightmap fallbacks, config merge/parsing guards, stable config comparison, and threshold validation edge cases).
 
 ## [1.4.0] - 2026-02-25
 

@@ -341,6 +341,9 @@ window.setWorldGenerationConfig({
 ```
 - `setWorldGenerationConfig(...)` regenerates the entire map (terrain, cities, roads, resources). It is intended for pre-game/testing use; active-session regeneration is blocked by default to avoid partial state resets.
 - Procedural mode currently does not generate procedural rivers yet, so river/fertility bonuses still follow the historical heightmap river data path.
+- Procedural regeneration can take noticeable time on slower devices because terrain/biome noise is recomputed across the full map.
+- Save/load compatibility for procedural worlds assumes compatible generation rules; changing generation code between versions can alter regenerated terrain/resource layouts for the same seed.
+- These APIs are intended for trusted local modding/testing scripts only. Do not run untrusted browser-console snippets.
 - Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` for future event systems.
 
 ## Historical Notes

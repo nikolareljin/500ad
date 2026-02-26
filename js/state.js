@@ -18,6 +18,17 @@ const CIVILIZATION_ALIASES = {
     contestants: 'byzantine'
 };
 
+function stableSerializeForComparison(value) {
+    if (Array.isArray(value)) {
+        return `[${value.map(stableSerializeForComparison).join(',')}]`;
+    }
+    if (value && typeof value === 'object') {
+        const keys = Object.keys(value).sort();
+        return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerializeForComparison(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
 const HISTORICAL_TOWN_CONTROL = {
     constantinople: { tribe: 'Byzantine Romans', civilization: 'byzantine', stance: 'core' },
     thessalonica: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'core' },
@@ -2292,10 +2303,11 @@ class GameState {
         if (data.worldGenerationConfig && typeof window !== 'undefined' && typeof window.setWorldGenerationConfig === 'function') {
             const currentGenerationConfig = (gameMap?.getGenerationConfigSnapshot?.()
                 || (typeof window.getWorldGenerationConfig === 'function' ? window.getWorldGenerationConfig() : null));
-            const savedGenerationConfigKey = JSON.stringify(data.worldGenerationConfig);
-            const currentGenerationConfigKey = currentGenerationConfig ? JSON.stringify(currentGenerationConfig) : null;
+            const savedGenerationConfigKey = stableSerializeForComparison(data.worldGenerationConfig);
+            const currentGenerationConfigKey = currentGenerationConfig ? stableSerializeForComparison(currentGenerationConfig) : null;
             if (savedGenerationConfigKey !== currentGenerationConfigKey) {
                 // Controlled load flow: regenerate map to the saved generation config before restoring ownership/forts.
+                // Save compatibility still depends on stable generation rules across versions.
                 window.setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
             }
         }

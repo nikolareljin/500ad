@@ -45,6 +45,8 @@ const WORLD_GENERATION_DEFAULTS = {
     }
 };
 
+// Biome moveCostMultiplier semantics:
+// values > 1 increase move cost (slower movement / penalty), values < 1 reduce it (faster movement / bonus).
 const BIOME_RULES = {
     plains: {
         moveCostMultiplier: 1,
@@ -81,14 +83,19 @@ function isUnsafeObjectKey(key) {
     return key === '__proto__' || key === 'prototype' || key === 'constructor';
 }
 
+function cloneConfigValue(value) {
+    if (Array.isArray(value)) return value.map(cloneConfigValue);
+    if (isPlainObject(value)) return deepMergeObjects(value, {});
+    return value;
+}
+
 function deepMergeObjects(base, overrides) {
     if (!isPlainObject(overrides)) {
         if (!isPlainObject(base)) return overrides;
         const clonedBase = {};
         Object.keys(base).forEach((key) => {
             if (isUnsafeObjectKey(key)) return;
-            const value = base[key];
-            clonedBase[key] = isPlainObject(value) ? deepMergeObjects(value, {}) : value;
+            clonedBase[key] = cloneConfigValue(base[key]);
         });
         return clonedBase;
     }
@@ -96,8 +103,7 @@ function deepMergeObjects(base, overrides) {
     if (isPlainObject(base)) {
         Object.keys(base).forEach((key) => {
             if (isUnsafeObjectKey(key)) return;
-            const value = base[key];
-            result[key] = isPlainObject(value) ? deepMergeObjects(value, {}) : value;
+            result[key] = cloneConfigValue(base[key]);
         });
     }
     Object.keys(overrides).forEach((key) => {
@@ -151,21 +157,22 @@ function normalizeWorldGenerationConfig(config) {
         merged.resources.richnessHighThreshold - 0.05,
         WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
     );
-    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + 0.05) {
+    const minimumRichnessGap = 0.05;
+    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + minimumRichnessGap) {
         merged.resources.richnessHighThreshold = clampNumber(
-            merged.resources.richnessMediumThreshold + 0.05,
+            merged.resources.richnessMediumThreshold + minimumRichnessGap,
             0.5,
             0.98,
             WORLD_GENERATION_DEFAULTS.resources.richnessHighThreshold
         );
-    }
-    if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + 0.05) {
-        merged.resources.richnessMediumThreshold = clampNumber(
-            merged.resources.richnessMediumThreshold,
-            0.1,
-            merged.resources.richnessHighThreshold - 0.05,
-            WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
-        );
+        if (merged.resources.richnessHighThreshold <= merged.resources.richnessMediumThreshold + minimumRichnessGap) {
+            merged.resources.richnessMediumThreshold = clampNumber(
+                merged.resources.richnessHighThreshold - minimumRichnessGap,
+                0.1,
+                Math.max(0.1, merged.resources.richnessHighThreshold - minimumRichnessGap),
+                WORLD_GENERATION_DEFAULTS.resources.richnessMediumThreshold
+            );
+        }
     }
     return merged;
 }
@@ -474,6 +481,20 @@ function fractalNoise2D(x, y, options = {}) {
     return maxAmplitude > 0 ? total / maxAmplitude : 0;
 }
 
+function fallbackHeightToTerrain(height) {
+    if (!Number.isFinite(height)) return 'plains';
+    if (height <= 39) return 'water';
+    if (height <= 52) return 'plains';
+    if (height <= 150) return 'plains';
+    if (height <= 205) return 'hills';
+    return 'mountains';
+}
+
+function safeHeightToTerrain(height) {
+    if (typeof heightToTerrain === 'function') return heightToTerrain(height);
+    return fallbackHeightToTerrain(height);
+}
+
 const CITY_WONDERS = {
     constantinople: 'Hagia Sophia',
     rome: 'Aurelian Walls',
@@ -622,8 +643,8 @@ class GameMap {
             ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
             : undefined;
         if (h !== undefined) {
-            const generatedTerrain = heightToTerrain(h);
-            if (generatedTerrain === tile.terrain) {
+            const generatedTerrain = safeHeightToTerrain(h);
+            if (generatedTerrain === tile.terrain && typeof heightToColor === 'function') {
                 color = heightToColor(h);
             }
         }
@@ -642,7 +663,7 @@ class GameMap {
         if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
             MEDITERRANEAN_HEIGHTMAP[y] &&
             MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
-            return heightToTerrain(MEDITERRANEAN_HEIGHTMAP[y][x]);
+            return safeHeightToTerrain(MEDITERRANEAN_HEIGHTMAP[y][x]);
         }
 
         // Fallback to procedural generation when no historic heightmap is available.
@@ -711,7 +732,7 @@ class GameMap {
             ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
             : undefined;
         if (typeof h === 'number') {
-            const naturalTerrain = heightToTerrain(h);
+            const naturalTerrain = safeHeightToTerrain(h);
             return naturalTerrain === 'water' ? 'plains' : naturalTerrain;
         }
         return 'plains';
