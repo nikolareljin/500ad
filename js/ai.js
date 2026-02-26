@@ -181,21 +181,12 @@ class AIManager {
     }
 
     processFactionDiplomacy(context, plan) {
-        const { state, factionId, recentEvents } = context;
+        const { state } = context;
         if (!state) return;
         if (!state.diplomacy) state.diplomacy = { player: 0 };
 
-        const playerCapturedNeutral = recentEvents.filter((e) =>
-            e.type === 'city_captured' && e.capturer === 'player' && (e.oldOwner === null || e.oldOwner === 'neutral')
-        ).length;
-        const playerCapturedFaction = recentEvents.filter((e) =>
-            e.type === 'city_captured' && e.capturer === 'player' && e.cityFaction === factionId
-        ).length;
-
         let delta = 0;
         if (plan.primaryFocus === 'diplomacy') delta -= 2;
-        delta += playerCapturedNeutral;
-        delta += playerCapturedFaction * 5;
         state.diplomacy.player = Math.max(-50, Math.min(100, (state.diplomacy.player || 0) + delta));
     }
 

@@ -2054,6 +2054,7 @@ class GameState {
             cityName: tile.cityData?.name || cityId,
             cityFaction: tile.faction || tile.cityData?.historicalCivilization || null,
             oldFaction,
+            // Use post-resolution ownership so neutral resistance outcomes log the actual capturer.
             capturer: tile.owner ?? unit.owner,
             capturerFaction: tile.owner === 'enemy'
                 ? (tile.faction || unit.faction || oldFaction || 'tribal')
