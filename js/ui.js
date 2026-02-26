@@ -551,7 +551,7 @@ class UIManager {
             }
 
             this.showNotification(
-                `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
+                `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower, ${result.income.food || 0} food (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
                 'success'
             );
         } finally {
@@ -781,9 +781,19 @@ class UIManager {
      * Update HUD
      */
     updateHUD() {
-        document.getElementById('resource-gold').textContent = gameState.player.resources.gold;
-        document.getElementById('resource-manpower').textContent = gameState.player.resources.manpower;
-        document.getElementById('resource-prestige').textContent = gameState.player.resources.prestige;
+        const resources = gameState.player.resources || {};
+        document.getElementById('resource-gold').textContent = resources.gold || 0;
+        document.getElementById('resource-manpower').textContent = resources.manpower || 0;
+        document.getElementById('resource-prestige').textContent = resources.prestige || 0;
+        const setOptionalResource = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value || 0;
+        };
+        setOptionalResource('resource-food', resources.food);
+        setOptionalResource('resource-wood', resources.wood);
+        setOptionalResource('resource-stone', resources.stone);
+        setOptionalResource('resource-iron', resources.iron);
+        setOptionalResource('resource-rare', resources.rare);
         document.getElementById('turn-number').textContent = gameState.turn;
     }
 

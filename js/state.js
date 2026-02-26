@@ -314,6 +314,8 @@ const RECRUITMENT_UNIT_CATALOG = [
     'healer'
 ];
 
+const STRATEGIC_RESOURCE_KEYS = ['food', 'wood', 'stone', 'iron', 'rare'];
+
 function parseSemver(version) {
     const raw = String(version || '').trim();
     const parts = raw.split('.');
@@ -407,6 +409,7 @@ class GameState {
                 navalMovement: 0
             }
         };
+        this.ensureStrategicResourceStockpile();
 
         this.turn = 1;
         this.units = [];
@@ -817,13 +820,8 @@ class GameState {
         }
         const base = TERRAIN_TYPES[toTile.terrain]?.moveCost || 1;
         let cost = base;
-
-        if (unit.category === 'mountain' && (toTile.terrain === 'hills' || toTile.terrain === 'mountains')) {
-            cost *= 0.65;
-        }
-        if (unit.type === 'cavalry' && (toTile.terrain === 'forest' || toTile.terrain === 'mountains')) {
-            cost *= 1.3;
-        }
+        const terrainEffects = gameMap?.getTerrainEffects?.(toTile.terrain, { unit, fromTile, toTile }) || {};
+        cost *= terrainEffects.moveCostMultiplier || 1;
 
         if (toTile.road && fromTile?.road && toTile.terrain !== 'water') {
             cost *= 0.45;
@@ -1261,6 +1259,7 @@ class GameState {
      * Add resources to player
      */
     addResources(gold = 0, manpower = 0, prestige = 0) {
+        this.ensureStrategicResourceStockpile();
         this.player.resources.gold += gold;
         this.player.resources.manpower += manpower;
         this.player.resources.prestige += prestige;
@@ -1269,6 +1268,50 @@ class GameState {
         this.player.resources.gold = Math.max(0, this.player.resources.gold);
         this.player.resources.manpower = Math.max(0, this.player.resources.manpower);
         this.player.resources.prestige = Math.max(0, this.player.resources.prestige);
+    }
+
+    ensureStrategicResourceStockpile() {
+        if (!this.player) return;
+        if (!this.player.resources) this.player.resources = {};
+        const normalizeResourceValue = (value) => {
+            const num = Number(value);
+            if (!Number.isFinite(num) || num <= 0) return 0;
+            return Math.floor(num);
+        };
+        this.player.resources.gold = normalizeResourceValue(this.player.resources.gold);
+        this.player.resources.manpower = normalizeResourceValue(this.player.resources.manpower);
+        this.player.resources.prestige = normalizeResourceValue(this.player.resources.prestige);
+        STRATEGIC_RESOURCE_KEYS.forEach((key) => {
+            this.player.resources[key] = normalizeResourceValue(this.player.resources[key]);
+        });
+    }
+
+    addStrategicResources(resourceDeltas = {}) {
+        if (!this.player) return;
+        this.ensureStrategicResourceStockpile();
+        STRATEGIC_RESOURCE_KEYS.forEach((key) => {
+            const delta = Number(resourceDeltas[key] || 0);
+            if (!Number.isFinite(delta) || delta === 0) return;
+            this.player.resources[key] = Math.max(0, Math.floor(this.player.resources[key] + delta));
+        });
+    }
+
+    getCityTerrainAccess(cityTile) {
+        if (!gameMap || !cityTile) {
+            return {
+                fertile: false,
+                river: false,
+                coast: false,
+                nearbyResources: { food: 0, wood: 0, stone: 0, iron: 0, rare: 0 }
+            };
+        }
+        const neighborhood = gameMap.getTileNeighborhood(cityTile.x, cityTile.y, 1);
+        return {
+            fertile: gameMap.isFertileTile(cityTile.x, cityTile.y) || neighborhood.some((t) => gameMap.isFertileTile(t.x, t.y)),
+            river: gameMap.isRiverTile(cityTile.x, cityTile.y) || neighborhood.some((t) => gameMap.isRiverTile(t.x, t.y)),
+            coast: gameMap.isCoastalTile(cityTile.x, cityTile.y) || neighborhood.some((t) => gameMap.isCoastalTile(t.x, t.y)),
+            nearbyResources: gameMap.getNearbyResourceYields(cityTile.x, cityTile.y, 2)
+        };
     }
 
     /**
@@ -1558,6 +1601,11 @@ class GameState {
             if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
         }
 
+        const terrainConstraint = gameMap?.terrainAllowsBuildAction?.(cityTile.x, cityTile.y, actionId);
+        if (terrainConstraint && !terrainConstraint.allowed) {
+            return { success: false, message: terrainConstraint.reason || 'Terrain does not support that build action' };
+        }
+
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
             return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
         }
@@ -1590,6 +1638,8 @@ class GameState {
             cityTile.cityData.fortLevel = (cityTile.cityData.fortLevel || 0) + 1;
             cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.15;
             cityTile.cityData.garrison = (cityTile.cityData.garrison || 0) + 1;
+            const nearby = gameMap?.getNearbyResourceYields?.(cityTile.x, cityTile.y, 2) || {};
+            if ((nearby.stone || 0) > 0) cityTile.cityData.defenseBonus += 0.03;
         } else if (actionId === 'build_road') {
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
             production.gold += 1;
@@ -1608,14 +1658,21 @@ class GameState {
         } else if (actionId === 'build_farm') {
             infra.agriculture = Math.min((infra.agriculture || 0) + 1, 8);
             production.food += 2;
+            const nearby = gameMap?.getNearbyResourceYields?.(cityTile.x, cityTile.y, 2) || {};
+            if ((nearby.food || 0) >= 3) production.food += 1;
         } else if (actionId === 'irrigate') {
             cityTile.cityData.irrigated = true;
             production.food += 2;
             production.gold += 1;
+            if (gameMap?.isRiverTile?.(cityTile.x, cityTile.y) || gameMap?.isCoastalTile?.(cityTile.x, cityTile.y)) {
+                production.food += 1;
+            }
         } else if (actionId === 'plant_forest') {
             cityTile.cityData.forestManaged = true;
             production.industry += 1;
             cityTile.cityData.defenseBonus = (cityTile.cityData.defenseBonus || 0) + 0.05;
+            const nearby = gameMap?.getNearbyResourceYields?.(cityTile.x, cityTile.y, 2) || {};
+            if ((nearby.wood || 0) >= 2) production.industry += 1;
         } else if (actionId === 'build_canal') {
             cityTile.cityData.canal = true;
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
@@ -1883,6 +1940,13 @@ class GameState {
 
         // City gold output
         this.addResources(cityProduction.gold, 0, 0);
+        this.addStrategicResources({
+            food: cityProduction.food + (cityProduction.strategic?.food || 0),
+            wood: cityProduction.strategic?.wood || 0,
+            stone: cityProduction.strategic?.stone || 0,
+            iron: cityProduction.strategic?.iron || 0,
+            rare: cityProduction.strategic?.rare || 0
+        });
 
         // Reset unit movement before any automated destination processing.
         this.units.forEach(unit => {
@@ -1921,7 +1985,9 @@ class GameState {
             income: {
                 gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold,
                 manpower: Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0)
+                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0),
+                food: cityProduction.food + (cityProduction.strategic?.food || 0),
+                strategic: { ...(cityProduction.strategic || {}) }
             },
             upkeep: totalUpkeep,
             cityProduction
@@ -1929,10 +1995,17 @@ class GameState {
     }
 
     calculateCityProduction(owner = 'player') {
-        if (!gameMap) return { gold: 0, manpower: 0, food: 0 };
+        if (!gameMap) {
+            return { gold: 0, manpower: 0, food: 0, strategic: { food: 0, wood: 0, stone: 0, iron: 0, rare: 0 } };
+        }
 
         const cityTiles = gameMap.getCityTiles(owner);
-        const totals = { gold: 0, manpower: 0, food: 0 };
+        const totals = {
+            gold: 0,
+            manpower: 0,
+            food: 0,
+            strategic: { food: 0, wood: 0, stone: 0, iron: 0, rare: 0 }
+        };
 
         cityTiles.forEach(tile => {
             const p = tile.cityData?.production;
@@ -1944,9 +2017,22 @@ class GameState {
             const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
             const tradeBonus = tile.cityData?.caravanCamp ? 2 + (this.player.techEffects.tradePostBonus || 0) : 0;
             const portBonus = tile.cityData?.port ? 2 : 0;
-            totals.food += Math.floor(p.food * foodMultiplier);
-            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
-            totals.manpower += Math.floor(((p.food * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6) * manpowerMultiplier);
+            const terrainAccess = this.getCityTerrainAccess(tile);
+            const terrainFoodBonus = terrainAccess.fertile ? 1 : 0;
+            const terrainGoldBonus = terrainAccess.coast ? 1 : 0;
+            const terrainManpowerBonus = terrainAccess.river ? 1 : 0;
+
+            totals.food += Math.floor((p.food + terrainFoodBonus) * foodMultiplier);
+            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + terrainGoldBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
+            totals.manpower += Math.floor((((p.food + terrainManpowerBonus) * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6) * manpowerMultiplier);
+
+            const resourceReach = 2 + Math.min(1, Math.floor((infra?.roads || 0) / 4));
+            const nearby = gameMap.getNearbyResourceYields(tile.x, tile.y, resourceReach);
+            totals.strategic.food += Math.floor((nearby.food || 0) * 0.6);
+            totals.strategic.wood += Math.floor((nearby.wood || 0) * (1 + ((infra?.industry || 0) >= 3 ? 0.25 : 0)));
+            totals.strategic.stone += Math.floor((nearby.stone || 0) * (1 + ((tile.cityData?.fortLevel || 0) > 0 ? 0.1 : 0)));
+            totals.strategic.iron += Math.floor((nearby.iron || 0) * (1 + ((infra?.industry || 0) >= 4 ? 0.25 : 0)));
+            totals.strategic.rare += Math.floor((nearby.rare || 0) * (1 + (tile.cityData?.caravanCamp ? 0.3 : 0)));
         });
 
         return totals;
@@ -2200,6 +2286,7 @@ class GameState {
         this.selectedLeader = data.selectedLeader;
         this.selectedCentury = data.selectedCentury ?? this.selectedCentury ?? '6';
         this.player = data.player;
+        this.ensureStrategicResourceStockpile();
         if (!this.player.techResearched) this.player.techResearched = [];
         if (!this.player.techEffects) {
             this.player.techEffects = {
