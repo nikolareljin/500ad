@@ -99,6 +99,15 @@ function normalizeWorldGenerationConfig(config) {
     const merged = deepMergeObjects(WORLD_GENERATION_DEFAULTS, config || {});
     merged.mode = merged.mode === 'procedural' ? 'procedural' : 'historical';
     merged.seed = String(merged.seed || WORLD_GENERATION_DEFAULTS.seed);
+    merged.terrain = isPlainObject(merged.terrain) ? merged.terrain : { ...WORLD_GENERATION_DEFAULTS.terrain };
+    merged.climate = isPlainObject(merged.climate) ? merged.climate : { ...WORLD_GENERATION_DEFAULTS.climate };
+    merged.resources = isPlainObject(merged.resources) ? merged.resources : { ...WORLD_GENERATION_DEFAULTS.resources };
+    merged.resources.targetRatios = isPlainObject(merged.resources.targetRatios)
+        ? merged.resources.targetRatios
+        : { ...WORLD_GENERATION_DEFAULTS.resources.targetRatios };
+    merged.resources.minCounts = isPlainObject(merged.resources.minCounts)
+        ? merged.resources.minCounts
+        : { ...WORLD_GENERATION_DEFAULTS.resources.minCounts };
 
     merged.terrain.seaLevel = clampNumber(merged.terrain.seaLevel, 0.2, 0.6, WORLD_GENERATION_DEFAULTS.terrain.seaLevel);
     merged.terrain.hillThreshold = clampNumber(merged.terrain.hillThreshold, 0.45, 0.85, WORLD_GENERATION_DEFAULTS.terrain.hillThreshold);
@@ -667,7 +676,9 @@ class GameMap {
         if (tile.naturalTerrain && tile.naturalTerrain !== 'city' && tile.naturalTerrain !== 'water') {
             return tile.naturalTerrain;
         }
-        const h = MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[tile.y]?.[tile.x]
+            : undefined;
         if (typeof h === 'number') {
             const naturalTerrain = heightToTerrain(h);
             return naturalTerrain === 'water' ? 'plains' : naturalTerrain;
@@ -1899,7 +1910,9 @@ class GameMap {
     }
 
     isRiverTile(x, y) {
-        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[y]?.[x]
+            : undefined;
         if (typeof h === 'number' && h >= 40 && h <= 52) return true;
         if (typeof isNearRiver === 'function') {
             const geo = this.tileToGeo(x, y);
@@ -1911,7 +1924,9 @@ class GameMap {
     isFertileTile(x, y) {
         const tile = this.getTile(x, y);
         if (!tile || tile.terrain === 'water' || tile.terrain === 'mountains') return false;
-        const h = MEDITERRANEAN_HEIGHTMAP?.[y]?.[x];
+        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
+            ? MEDITERRANEAN_HEIGHTMAP?.[y]?.[x]
+            : undefined;
         const richAlluvial = typeof h === 'number' && h >= 54 && h <= 98;
         return richAlluvial || this.isRiverTile(x, y) || this.isCoastalTile(x, y);
     }
