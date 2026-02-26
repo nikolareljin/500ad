@@ -339,6 +339,8 @@ window.setWorldGenerationConfig({
   climate: { desertHumidityThreshold: 0.34 }
 })
 ```
+- `setWorldGenerationConfig(...)` regenerates the entire map (terrain, cities, roads, resources). It is intended for pre-game/testing use; active-session regeneration is blocked by default to avoid partial state resets.
+- Procedural mode currently does not generate procedural rivers yet, so river/fertility bonuses still follow the historical heightmap river data path.
 - Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` for future event systems.
 
 ## Historical Notes

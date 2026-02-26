@@ -35,10 +35,15 @@ This replaces the prior synthetic continent-blob model that could place key citi
 
 Both modes use the same grid tile structure (`tiles[y][x]`). Strategic resource placement is deterministic and seed-aware.
 
+Current limitation:
+
+- Procedural mode does not yet generate procedural rivers. River/fertility checks still depend on `MEDITERRANEAN_HEIGHTMAP`, so river-driven humidity/resource/foundation bonuses are effectively historical-map-only behavior for now.
+
 ### Runtime Modding Hooks (Browser Console)
 
 - `window.getWorldGenerationConfig()` returns the active normalized generation config.
 - `window.setWorldGenerationConfig(overrides)` merges overrides, stores them in `window.WORLD_GENERATION_CONFIG`, and regenerates the map.
+- `window.setWorldGenerationConfig(overrides)` is intended for pre-game/testing use. Regenerating during an active session is blocked by default to avoid wiping tile ownership/buildings/forts while leaving turn/unit state intact.
 
 Example:
 

@@ -2083,6 +2083,7 @@ class GameState {
         return {
             version: SAVE_VERSION,
             timestamp: Date.now(),
+            worldGenerationConfig: gameMap?.getGenerationConfigSnapshot?.() || (typeof getWorldGenerationConfig === 'function' ? getWorldGenerationConfig() : null),
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -2283,6 +2284,10 @@ class GameState {
         if (!gameMap) {
             console.error('Map must be initialized before loading save data');
             return false;
+        }
+
+        if (data.worldGenerationConfig && typeof setWorldGenerationConfig === 'function') {
+            setWorldGenerationConfig(data.worldGenerationConfig, { allowActiveGameReset: true });
         }
 
         this.selectedLeader = data.selectedLeader;

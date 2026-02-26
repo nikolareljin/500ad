@@ -2147,7 +2147,16 @@ function setWorldGenerationConfig(overrides = {}, options = {}) {
     if (typeof window === 'undefined') return getWorldGenerationConfigSnapshot();
     window.WORLD_GENERATION_CONFIG = deepMergeObjects(getWorldGenerationConfigSnapshot(), overrides || {});
     const shouldRegenerate = options.regenerate !== false;
+    const hasActiveGameState = !!(typeof gameState !== 'undefined'
+        && gameState
+        && gameState.initialized
+        && (Array.isArray(gameState.units) ? gameState.units.length > 0 : false));
+    const allowActiveGameReset = options.allowActiveGameReset === true;
     if (gameMap && shouldRegenerate) {
+        if (hasActiveGameState && !allowActiveGameReset) {
+            console.warn('setWorldGenerationConfig skipped map regeneration because an active game is loaded. Use { allowActiveGameReset: true } only during a controlled reinitialization/load flow.');
+            return getWorldGenerationConfigSnapshot();
+        }
         gameMap.initializeMap();
         gameMap.markTerritoryDirty();
         if (typeof gameMap.initializeFogOfWar === 'function') {

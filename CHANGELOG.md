@@ -15,6 +15,10 @@ All notable changes to this project are documented in this file.
 - Updated strategic resource placement to use the world-generation seed/config (spacing, richness thresholds, target ratios) and biome-weighted resource multipliers.
 - Updated movement cost calculation to include biome movement modifiers in addition to terrain and road effects.
 
+### Fixed
+- Fixed save/load consistency for seeded world-generation overrides by persisting the active generation config in save data and restoring it before map-state reconstruction.
+- Prevented runtime world-generation config changes from silently regenerating the map during active sessions (unless explicitly forced by a controlled load/reset flow).
+
 ## [1.4.0] - 2026-02-25
 
 ### Added
