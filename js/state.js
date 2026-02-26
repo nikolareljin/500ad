@@ -457,10 +457,10 @@ class GameState {
 
     recordAIWorldEvent(type, payload = {}) {
         const entry = {
+            ...payload,
             type,
             turn: this.turn,
-            timestamp: Date.now(),
-            ...payload
+            timestamp: Date.now()
         };
         this.aiEvents.push(entry);
         if (this.aiEvents.length > 40) {
@@ -560,7 +560,7 @@ class GameState {
             const hostileCaptures = recentEvents.filter((event) =>
                 event.type === 'city_captured'
                 && event.capturer === 'player'
-                && (event.oldFaction === factionId || event.cityFaction === factionId)
+                && event.cityFaction === factionId
             ).length;
             const neutralExpansion = recentEvents.filter((event) =>
                 event.type === 'city_captured'
@@ -1994,6 +1994,7 @@ class GameState {
         if (tile.owner === unit.owner) return;
 
         const oldOwner = tile.owner;
+        const oldFaction = tile.faction || tile.cityData?.historicalCivilization || null;
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
 
         // Neutral towns can join peacefully or resist based on diplomacy.
@@ -2048,8 +2049,11 @@ class GameState {
             cityId,
             cityName: tile.cityData?.name || cityId,
             cityFaction: tile.faction || tile.cityData?.historicalCivilization || null,
-            capturer: unit.owner,
-            capturerFaction: unit.faction || (unit.owner === 'player' ? (this.player?.faction || this.selectedFaction || 'byzantine') : null),
+            oldFaction,
+            capturer: tile.owner ?? unit.owner,
+            capturerFaction: tile.owner === 'enemy'
+                ? (tile.faction || unit.faction || oldFaction || 'tribal')
+                : (unit.faction || (unit.owner === 'player' ? (this.player?.faction || this.selectedFaction || 'byzantine') : null)),
             oldOwner: oldOwner ?? null
         });
         this.updateAIFactionIntelFromWorldState();

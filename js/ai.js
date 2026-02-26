@@ -410,7 +410,14 @@ class AIManager {
     minDistanceToPlayerUnit(tileOrUnit) {
         if (!tileOrUnit) return 99;
         const pos = tileOrUnit.position ? tileOrUnit.position : { x: tileOrUnit.x, y: tileOrUnit.y };
-        const playerUnits = gameState.units.filter((u) => u.owner === 'player');
+        const playerUnits = gameState.units.filter((u) =>
+            u.owner === 'player'
+            && !u.isCarried
+            && Number.isFinite(u.position?.x)
+            && Number.isFinite(u.position?.y)
+            && u.position.x >= 0
+            && u.position.y >= 0
+        );
         if (playerUnits.length === 0) return 99;
         let best = 99;
         playerUnits.forEach((unit) => {
