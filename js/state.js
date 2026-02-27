@@ -1968,11 +1968,12 @@ class GameState {
     }
 
     processAutomatedUnits() {
+        const hostileEnemyUnitsNearCities = this.getHostileEnemyUnitsNearPlayerCities(8);
         this.units.forEach(unit => {
             if (unit.owner === 'player' && !unit.isCarried && (unit.destination || unit.automated)) {
                 this.processUnitDestination(unit);
                 if (unit.automated) {
-                    this.processUnitAutomation(unit);
+                    this.processUnitAutomation(unit, hostileEnemyUnitsNearCities);
                 }
             }
         });
@@ -2038,13 +2039,15 @@ class GameState {
         }
     }
 
-    processUnitAutomation(unit) {
+    processUnitAutomation(unit, hostileEnemyUnits = null) {
         if (!gameMap) return;
         if (unit.typeId === 'civil_engineers') {
             const tile = gameMap.getTile(unit.position.x, unit.position.y);
-            const hostileEnemyUnits = this.getHostileEnemyUnitsNearPlayerCities(8);
+            const nearbyHostileEnemies = Array.isArray(hostileEnemyUnits)
+                ? hostileEnemyUnits
+                : this.getHostileEnemyUnitsNearPlayerCities(8);
             if (tile?.cityData && tile.owner === 'player' && unit.currentMovement >= 0.5) {
-                const improvedCity = this.processEngineerCityInfrastructure(unit, tile, hostileEnemyUnits);
+                const improvedCity = this.processEngineerCityInfrastructure(unit, tile, nearbyHostileEnemies);
                 if (improvedCity) return;
             }
             // If on a tile without road, build one

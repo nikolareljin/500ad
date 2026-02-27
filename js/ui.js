@@ -644,8 +644,9 @@ class UIManager {
         }
         const cityData = gameState.ensureCityBuildingState(tile);
         const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
+        const hasCity = Boolean(tile?.cityData);
 
-        const cityBuildingChoices = gameState.getCityBuildingOptions(tile).map((entry) => ({
+        const cityBuildingChoices = hasCity ? gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
             title: `${entry.name} (L${entry.currentLevel}/${entry.maxLevel})`,
             subtitle: entry.nextLevel && entry.cost
@@ -653,7 +654,7 @@ class UIManager {
                 : 'Max level reached',
             detail: entry.available ? 'Available' : entry.reasons.join(' • '),
             disabled: !entry.available
-        }));
+        })) : [];
         const automationChoice = {
             id: 'city_auto_toggle',
             title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
@@ -665,7 +666,9 @@ class UIManager {
             title: `${action.name} [Infrastructure]`,
             subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
         }));
-        const choices = [automationChoice, ...cityBuildingChoices, ...infrastructureChoices];
+        const choices = hasCity
+            ? [automationChoice, ...cityBuildingChoices, ...infrastructureChoices]
+            : infrastructureChoices;
 
         this.showChoiceModal(
             `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
@@ -673,6 +676,10 @@ class UIManager {
             (choiceId) => {
                 if (choiceId === 'city_auto_toggle') {
                     const current = gameState.ensureCityBuildingState(tile);
+                    if (!current) {
+                        this.showNotification('Auto Build is only available in city tiles', 'error');
+                        return;
+                    }
                     current.autoBuildEnabled = !current.autoBuildEnabled;
                     this.showNotification(
                         `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: Auto Build ${current.autoBuildEnabled ? 'ON' : 'OFF'}`,
