@@ -110,7 +110,8 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, s
     let attack = (unit.stats.attack || 1);
     let defense = (unit.stats.defense || 1);
     const speed = getUnitSpeedStat(unit) * formation.speedMultiplier * terrainMod.speedMultiplier * battleTypeMod.speedMultiplier;
-    const effectiveMorale = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier * battleTypeMod.moraleMultiplier;
+    const effectiveMoraleRaw = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier * battleTypeMod.moraleMultiplier;
+    const effectiveMorale = Math.max(0, Math.min(100, effectiveMoraleRaw));
     const moraleFactor = Math.max(0.25, Math.min(1.2, effectiveMorale / 100));
 
     // Existing counter-type modifiers are preserved as tactical layer inputs.
@@ -120,6 +121,10 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, s
             attack *= unitType.bonuses.vsInfantry;
         } else if (enemyType?.type === 'cavalry' && unitType.bonuses.vsCavalry) {
             attack *= unitType.bonuses.vsCavalry;
+        }
+        if (terrain !== 'plains' && unitType.bonuses.terrain) {
+            attack *= unitType.bonuses.terrain;
+            defense *= unitType.bonuses.terrain;
         }
     }
 
@@ -140,7 +145,7 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, s
         attack: Math.max(1, attack),
         defense: Math.max(1, defense),
         speed: Math.max(0.5, speed),
-        morale: Math.max(0, Math.min(100, effectiveMorale)),
+        morale: effectiveMorale,
         formationId: formation.id,
         formationName: formation.name
     };
