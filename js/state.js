@@ -303,6 +303,51 @@ const BUILD_ACTIONS = {
     build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6 }
 };
 
+const CITY_BUILDING_TREE = {
+    farm: {
+        name: 'Farms',
+        maxLevel: 3,
+        baseCost: { gold: 95, manpower: 50, prestige: 0 },
+        buildTurns: 2,
+        requires: {}
+    },
+    barracks: {
+        name: 'Barracks',
+        maxLevel: 3,
+        baseCost: { gold: 130, manpower: 80, prestige: 1 },
+        buildTurns: 2,
+        requires: { tech: 'military_logistics' }
+    },
+    mine: {
+        name: 'Mines',
+        maxLevel: 3,
+        baseCost: { gold: 120, manpower: 85, prestige: 1 },
+        buildTurns: 2,
+        requires: { buildings: { farm: 1 } }
+    },
+    workshop: {
+        name: 'Workshops',
+        maxLevel: 3,
+        baseCost: { gold: 150, manpower: 95, prestige: 2 },
+        buildTurns: 3,
+        requires: { tech: 'caravan_routes', buildings: { mine: 1, barracks: 1 } }
+    },
+    temple: {
+        name: 'Temple',
+        maxLevel: 2,
+        baseCost: { gold: 165, manpower: 90, prestige: 4 },
+        buildTurns: 3,
+        requires: { tech: 'monastic_scholarship', buildings: { farm: 1 } }
+    },
+    walls: {
+        name: 'Walls',
+        maxLevel: 3,
+        baseCost: { gold: 185, manpower: 120, prestige: 3 },
+        buildTurns: 3,
+        requires: { tech: 'siegecraft', buildings: { barracks: 1 } }
+    }
+};
+
 const RECRUITMENT_UNIT_CATALOG = [
     'skutatoi',
     'archers',
@@ -587,6 +632,218 @@ class GameState {
             };
         }
         return { allowed: true };
+    }
+
+    ensureCityBuildingState(cityTile) {
+        if (!cityTile?.cityData) return null;
+        const cityData = cityTile.cityData;
+        if (!cityData.buildings || typeof cityData.buildings !== 'object') {
+            cityData.buildings = {};
+        }
+        Object.keys(CITY_BUILDING_TREE).forEach((buildingId) => {
+            const rawLevel = Number(cityData.buildings[buildingId] || 0);
+            cityData.buildings[buildingId] = Math.max(0, Math.floor(rawLevel));
+        });
+        if (!cityData.construction || typeof cityData.construction !== 'object') {
+            cityData.construction = null;
+        }
+        return cityData;
+    }
+
+    getCityBuildingLevel(cityTile, buildingId) {
+        const cityData = this.ensureCityBuildingState(cityTile);
+        if (!cityData || !buildingId) return 0;
+        return Math.max(0, Number(cityData.buildings?.[buildingId] || 0));
+    }
+
+    getTotalCityBuildingLevel(buildingId, owner = 'player') {
+        const cities = gameMap?.getCityTiles(owner) || [];
+        return cities.reduce((sum, tile) => sum + this.getCityBuildingLevel(tile, buildingId), 0);
+    }
+
+    getCityBuildingUpgradeCost(buildingId, targetLevel) {
+        const def = CITY_BUILDING_TREE[buildingId];
+        if (!def) return null;
+        const levelScale = 1 + ((Math.max(1, targetLevel) - 1) * 0.5);
+        return {
+            gold: Math.max(1, Math.floor((def.baseCost.gold || 0) * levelScale)),
+            manpower: Math.max(1, Math.floor((def.baseCost.manpower || 0) * levelScale)),
+            prestige: Math.max(0, Math.floor((def.baseCost.prestige || 0) * levelScale))
+        };
+    }
+
+    getCityBuildingTurns(buildingId, targetLevel) {
+        const def = CITY_BUILDING_TREE[buildingId];
+        if (!def) return 0;
+        const extra = Math.max(0, Math.floor(targetLevel) - 1);
+        return Math.max(1, Math.floor((def.buildTurns || 1) + extra));
+    }
+
+    getCityBuildingOptions(cityTile) {
+        if (!cityTile?.cityData) return [];
+        const cityData = this.ensureCityBuildingState(cityTile);
+        const researched = new Set(this.player?.techResearched || []);
+        const activeConstruction = cityData?.construction || null;
+        return Object.entries(CITY_BUILDING_TREE).map(([buildingId, def]) => {
+            const currentLevel = this.getCityBuildingLevel(cityTile, buildingId);
+            const nextLevel = currentLevel + 1;
+            const reasons = [];
+            let available = true;
+
+            if (currentLevel >= def.maxLevel) {
+                available = false;
+                reasons.push('Max level reached');
+            }
+            if (def.requires?.tech && !researched.has(def.requires.tech)) {
+                available = false;
+                const techName = TECHNOLOGY_TREE[def.requires.tech]?.name || def.requires.tech;
+                reasons.push(`Requires ${techName}`);
+            }
+            if (def.requires?.buildings) {
+                Object.entries(def.requires.buildings).forEach(([requiredId, minLevel]) => {
+                    if (this.getCityBuildingLevel(cityTile, requiredId) < minLevel) {
+                        available = false;
+                        const requiredName = CITY_BUILDING_TREE[requiredId]?.name || requiredId;
+                        reasons.push(`Requires ${requiredName} L${minLevel}`);
+                    }
+                });
+            }
+            if (activeConstruction) {
+                available = false;
+                reasons.push(`Construction active: ${activeConstruction.name} (${activeConstruction.turnsRemaining} turns)`);
+            }
+
+            const cost = this.getCityBuildingUpgradeCost(buildingId, nextLevel);
+            const turns = this.getCityBuildingTurns(buildingId, nextLevel);
+            const resources = this.player?.resources || {};
+            const missing = [];
+            if ((resources.gold || 0) < cost.gold) missing.push(`${cost.gold - (resources.gold || 0)} gold`);
+            if ((resources.manpower || 0) < cost.manpower) missing.push(`${cost.manpower - (resources.manpower || 0)} manpower`);
+            if ((resources.prestige || 0) < cost.prestige) missing.push(`${cost.prestige - (resources.prestige || 0)} prestige`);
+            if (missing.length > 0) {
+                available = false;
+                reasons.push(`Missing ${missing.join(', ')}`);
+            }
+
+            return {
+                id: buildingId,
+                name: def.name,
+                currentLevel,
+                nextLevel,
+                maxLevel: def.maxLevel,
+                cost,
+                turns,
+                available,
+                reasons
+            };
+        });
+    }
+
+    applyCityBuildingCompletion(cityTile, buildingId, level) {
+        if (!cityTile?.cityData) return;
+        const cityData = cityTile.cityData;
+        const production = cityData.production || (cityData.production = { food: 0, industry: 0, gold: 0 });
+        const infra = cityData.infrastructure || (cityData.infrastructure = { roads: 1, agriculture: 1, industry: 1 });
+
+        if (buildingId === 'farm') {
+            infra.agriculture = Math.min(10, (infra.agriculture || 0) + 1);
+            production.food += 1;
+        } else if (buildingId === 'barracks') {
+            cityData.garrison = (cityData.garrison || 0) + 1;
+            cityData.trainingGround = true;
+            production.industry += 1;
+        } else if (buildingId === 'mine') {
+            infra.industry = Math.min(10, (infra.industry || 0) + 1);
+            production.industry += 1;
+        } else if (buildingId === 'workshop') {
+            infra.industry = Math.min(10, (infra.industry || 0) + 1);
+            production.gold += 1;
+        } else if (buildingId === 'temple') {
+            cityData.monastery = true;
+            this.player.resources.prestige += 2 + level;
+            production.gold += 1;
+        } else if (buildingId === 'walls') {
+            cityData.fortLevel = (cityData.fortLevel || 0) + 1;
+            cityData.defenseBonus = (cityData.defenseBonus || 0) + 0.12;
+            cityData.garrison = (cityData.garrison || 0) + 1;
+        }
+    }
+
+    startCityBuildingProject(cityTile, buildingId) {
+        const isPlayerControlled = cityTile && (
+            cityTile.owner === 'player' ||
+            gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player'
+        );
+        if (!cityTile?.cityData || !isPlayerControlled) {
+            return { success: false, message: 'City construction requires a player-owned city.' };
+        }
+        const option = this.getCityBuildingOptions(cityTile).find((entry) => entry.id === buildingId);
+        if (!option) return { success: false, message: 'Unknown city building.' };
+        if (!option.available) return { success: false, message: option.reasons.join('; ') || 'Construction unavailable.' };
+
+        if (!this.spendResources(option.cost.gold, option.cost.manpower, option.cost.prestige || 0)) {
+            return { success: false, message: `Need ${option.cost.gold}g/${option.cost.manpower}m/${option.cost.prestige || 0}p` };
+        }
+
+        const cityData = this.ensureCityBuildingState(cityTile);
+        cityData.construction = {
+            id: buildingId,
+            name: option.name,
+            targetLevel: option.nextLevel,
+            turnsRemaining: option.turns,
+            totalTurns: option.turns,
+            startedTurn: this.turn
+        };
+        return {
+            success: true,
+            buildingId,
+            buildingName: option.name,
+            targetLevel: option.nextLevel,
+            turns: option.turns
+        };
+    }
+
+    processCityConstructionTurn() {
+        const cities = gameMap?.getCityTiles('player') || [];
+        const completed = [];
+        cities.forEach((cityTile) => {
+            const cityData = this.ensureCityBuildingState(cityTile);
+            if (!cityData?.construction) return;
+            cityData.construction.turnsRemaining = Math.max(0, (cityData.construction.turnsRemaining || 0) - 1);
+            if (cityData.construction.turnsRemaining > 0) return;
+
+            const project = cityData.construction;
+            cityData.buildings[project.id] = Math.max(cityData.buildings[project.id] || 0, project.targetLevel || 1);
+            this.applyCityBuildingCompletion(cityTile, project.id, project.targetLevel || 1);
+            cityData.construction = null;
+            completed.push({
+                cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
+                buildingName: project.name,
+                level: project.targetLevel || cityData.buildings[project.id]
+            });
+        });
+        if (completed.length > 0 && window.uiManager) {
+            completed.forEach((entry) => {
+                uiManager.showNotification(
+                    `${entry.cityName}: ${entry.buildingName} upgraded to L${entry.level}`,
+                    'success'
+                );
+            });
+        }
+        return completed;
+    }
+
+    getRecruitmentCost(unitTypeId, cityTile = null) {
+        const unitType = getUnitById(unitTypeId);
+        if (!unitType) return null;
+        const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
+        const workshopLevel = this.getCityBuildingLevel(cityTile, 'workshop');
+        const goldDiscount = Math.min(0.24, workshopLevel * 0.06);
+        const manpowerDiscount = Math.min(0.2, barracksLevel * 0.05);
+        return {
+            gold: Math.max(1, Math.floor((unitType.cost.gold || 0) * (1 - goldDiscount))),
+            manpower: Math.max(1, Math.floor((unitType.cost.manpower || 0) * (1 - manpowerDiscount)))
+        };
     }
 
     getDiplomacyOverview() {
@@ -1986,7 +2243,7 @@ class GameState {
     /**
      * Recruit a new unit
      */
-    recruitUnit(unitTypeId, position) {
+    recruitUnit(unitTypeId, position, options = {}) {
         const unitType = getUnitById(unitTypeId);
         if (!unitType) return null;
         const tile = gameMap?.getTile(position?.x, position?.y);
@@ -1999,18 +2256,26 @@ class GameState {
         if (tile.terrain === 'water' && !waterCapable) return null;
         if (tile.terrain !== 'water' && waterOnly) return null;
 
+        const sourceCity = options.cityTile || null;
+        const recruitCost = this.getRecruitmentCost(unitTypeId, sourceCity);
+        if (!recruitCost) return null;
+
         // Check if player can afford
-        if (!this.canAfford(unitType.cost.gold, unitType.cost.manpower)) {
+        if (!this.canAfford(recruitCost.gold, recruitCost.manpower)) {
             return null;
         }
 
         // Spend resources
-        this.spendResources(unitType.cost.gold, unitType.cost.manpower);
+        this.spendResources(recruitCost.gold, recruitCost.manpower);
 
         // Create unit
         const unit = createUnit(unitTypeId, position, 'player');
         if (unit) {
             this.applyFactionUnitNaming(unit, this.player?.faction || this.selectedFaction || 'byzantine');
+            const barracksLevel = this.getCityBuildingLevel(sourceCity, 'barracks');
+            if (barracksLevel > 0) {
+                unit.experience = (unit.experience || 0) + (barracksLevel * 8);
+            }
             this.units.push(unit);
             this.player.unitsOwned.push(unit.id);
         }
@@ -2072,6 +2337,7 @@ class GameState {
                 break;
             case 'mangonel':
                 if ((infra.industry || 0) < 3 && !researched.has('siegecraft')) reasons.push('Requires Industry 3 or Siegecraft');
+                if (this.getCityBuildingLevel(cityTile, 'barracks') < 2) reasons.push('Requires Barracks L2');
                 break;
             case 'camel_riders':
                 requireInfra('agriculture', 2, 'Agriculture');
@@ -2089,6 +2355,7 @@ class GameState {
                 requireInfra('industry', 3, 'Industry');
                 requireInfra('agriculture', 3, 'Agriculture');
                 requireTech('cavalry_tactics', 'Cavalry Tactics');
+                if (this.getCityBuildingLevel(cityTile, 'barracks') < 3) reasons.push('Requires Barracks L3');
                 break;
             case 'transport':
             case 'merchant_ship':
@@ -2119,8 +2386,9 @@ class GameState {
         }
 
         const resources = this.player?.resources || {};
-        const missingGold = Math.max(0, (unit.cost?.gold || 0) - (resources.gold || 0));
-        const missingManpower = Math.max(0, (unit.cost?.manpower || 0) - (resources.manpower || 0));
+        const finalCost = this.getRecruitmentCost(unitId, cityTile) || { gold: unit.cost?.gold || 0, manpower: unit.cost?.manpower || 0 };
+        const missingGold = Math.max(0, (finalCost.gold || 0) - (resources.gold || 0));
+        const missingManpower = Math.max(0, (finalCost.manpower || 0) - (resources.manpower || 0));
         if (missingGold > 0 || missingManpower > 0) {
             const missing = [];
             if (missingGold > 0) missing.push(`${missingGold} gold`);
@@ -2134,7 +2402,7 @@ class GameState {
             reasons.push(isNaval ? 'No open adjacent water tile' : 'No open adjacent land tile');
         }
 
-        return { unitId, unit, available: reasons.length === 0, reasons, spawnTile };
+        return { unitId, unit, available: reasons.length === 0, reasons, spawnTile, finalCost };
     }
 
     getRecruitmentOptions(cityTile) {
@@ -2189,7 +2457,8 @@ class GameState {
             return { success: false, message: 'Prerequisites not met' };
         }
 
-        const discount = this.player.techEffects.researchDiscount || 0;
+        const templeDiscount = Math.min(0.18, this.getTotalCityBuildingLevel('temple') * 0.02);
+        const discount = Math.min(0.55, (this.player.techEffects.researchDiscount || 0) + templeDiscount);
         const goldCost = Math.max(1, Math.floor(tech.cost.gold * (1 - discount)));
         const prestigeCost = Math.max(1, Math.floor(tech.cost.prestige * (1 - discount)));
         if (!this.spendResources(goldCost, 0, prestigeCost)) {
@@ -2595,6 +2864,7 @@ class GameState {
 
         // 2. Start New Turn for Player
         this.turn++;
+        const completedConstruction = this.processCityConstructionTurn();
 
         // Generate resources
         const baseGold = 100;
@@ -2670,7 +2940,8 @@ class GameState {
                 diplomacyTrade: diplomacyTradeIncome
             },
             upkeep: totalUpkeep,
-            cityProduction
+            cityProduction,
+            completedConstruction
         };
     }
 
@@ -2692,6 +2963,12 @@ class GameState {
             const infra = tile.cityData?.infrastructure;
             const pop = tile.cityData?.population || 4;
             if (!p) return;
+            const farmLevel = this.getCityBuildingLevel(tile, 'farm');
+            const barracksLevel = this.getCityBuildingLevel(tile, 'barracks');
+            const mineLevel = this.getCityBuildingLevel(tile, 'mine');
+            const workshopLevel = this.getCityBuildingLevel(tile, 'workshop');
+            const templeLevel = this.getCityBuildingLevel(tile, 'temple');
+            const wallsLevel = this.getCityBuildingLevel(tile, 'walls');
             const foodMultiplier = this.player.techEffects.foodMultiplier || 1;
             const goldMultiplier = this.player.techEffects.goldMultiplier || 1;
             const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
@@ -2702,16 +2979,19 @@ class GameState {
             const terrainGoldBonus = terrainAccess.coast ? 1 : 0;
             const terrainManpowerBonus = terrainAccess.river ? 1 : 0;
 
-            totals.food += Math.floor((p.food + terrainFoodBonus) * foodMultiplier);
-            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + terrainGoldBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
-            totals.manpower += Math.floor((((p.food + terrainManpowerBonus) * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6) * manpowerMultiplier);
+            const buildingFoodBonus = farmLevel * 2;
+            const buildingGoldBonus = (workshopLevel * 2) + templeLevel;
+            const buildingManpowerBonus = (barracksLevel * 2) + workshopLevel;
+            totals.food += Math.floor((p.food + terrainFoodBonus + buildingFoodBonus) * foodMultiplier);
+            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + terrainGoldBonus + buildingGoldBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
+            totals.manpower += Math.floor((((p.food + terrainManpowerBonus) * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6 + buildingManpowerBonus) * manpowerMultiplier);
 
             const resourceReach = 2 + Math.min(1, Math.floor((infra?.roads || 0) / 4));
             const nearby = gameMap.getNearbyResourceYields(tile.x, tile.y, resourceReach);
             totals.strategic.food += Math.floor((nearby.food || 0) * 0.6);
             totals.strategic.wood += Math.floor((nearby.wood || 0) * (1 + ((infra?.industry || 0) >= 3 ? 0.25 : 0)));
-            totals.strategic.stone += Math.floor((nearby.stone || 0) * (1 + ((tile.cityData?.fortLevel || 0) > 0 ? 0.1 : 0)));
-            totals.strategic.iron += Math.floor((nearby.iron || 0) * (1 + ((infra?.industry || 0) >= 4 ? 0.25 : 0)));
+            totals.strategic.stone += Math.floor((nearby.stone || 0) * (1 + ((tile.cityData?.fortLevel || 0) > 0 ? 0.1 : 0) + (mineLevel * 0.12) + (wallsLevel * 0.05)));
+            totals.strategic.iron += Math.floor((nearby.iron || 0) * (1 + ((infra?.industry || 0) >= 4 ? 0.25 : 0) + (mineLevel * 0.12)));
             totals.strategic.rare += Math.floor((nearby.rare || 0) * (1 + (tile.cityData?.caravanCamp ? 0.3 : 0)));
         });
 

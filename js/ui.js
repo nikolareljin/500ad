@@ -590,7 +590,7 @@ class UIManager {
             .map((entry) => ({
                 id: entry.unitId,
                 title: `${entry.unit?.name || entry.unitId}`,
-                subtitle: entry.unit ? `${entry.unit.cost.gold}g / ${entry.unit.cost.manpower}m` : '',
+                subtitle: entry.finalCost ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m` : '',
                 detail: entry.available ? 'Available' : entry.reasons.join(' • '),
                 disabled: !entry.available
             }));
@@ -614,7 +614,7 @@ class UIManager {
                     );
                     return;
                 }
-                const unit = gameState.recruitUnit(unitId, spawnTile);
+                const unit = gameState.recruitUnit(unitId, spawnTile, { cityTile: tile });
                 if (!unit) {
                     this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
                     return;
@@ -643,24 +643,39 @@ class UIManager {
             return;
         }
 
-        const choices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
-            id: actionId,
-            title: action.name,
+        const cityBuildingChoices = gameState.getCityBuildingOptions(tile).map((entry) => ({
+            id: `city_building:${entry.id}`,
+            title: `${entry.name} (L${entry.currentLevel}/${entry.maxLevel})`,
+            subtitle: `Upgrade to L${entry.nextLevel} • ${entry.cost.gold}g / ${entry.cost.manpower}m / ${entry.cost.prestige || 0}p • ${entry.turns} turns`,
+            detail: entry.available ? 'Available' : entry.reasons.join(' • '),
+            disabled: !entry.available
+        }));
+        const infrastructureChoices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
+            id: `infra:${actionId}`,
+            title: `${action.name} [Infrastructure]`,
             subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
         }));
+        const choices = [...cityBuildingChoices, ...infrastructureChoices];
 
         this.showChoiceModal(
             `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
             choices,
-            (actionId) => {
-                const result = gameState.applyCityBuildAction(tile, actionId);
+            (choiceId) => {
+                const isCityBuilding = choiceId.startsWith('city_building:');
+                const id = choiceId.includes(':') ? choiceId.split(':')[1] : choiceId;
+                const result = isCityBuilding
+                    ? gameState.startCityBuildingProject(tile, id)
+                    : gameState.applyCityBuildAction(tile, id);
                 if (!result.success) {
                     this.showNotification(result.message || 'Build failed', 'error');
                     return;
                 }
                 this.updateHUD();
                 gameMap.requestRender();
-                this.showNotification(`${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`, 'success');
+                const message = isCityBuilding
+                    ? `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.buildingName} upgrade to L${result.targetLevel} started (${result.turns} turns)`
+                    : `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`;
+                this.showNotification(message, 'success');
             }
         );
     }
