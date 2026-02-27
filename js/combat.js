@@ -107,8 +107,10 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, s
     }) || { attackMultiplier: 1, defenseMultiplier: 1 };
     const levelBonus = 1 + ((unit.level || 1) - 1) * 0.1;
 
-    let attack = (unit.stats.attack || 1);
-    let defense = (unit.stats.defense || 1);
+    const baseAttack = Number(unit?.stats?.attack);
+    const baseDefense = Number(unit?.stats?.defense);
+    let attack = Number.isFinite(baseAttack) ? baseAttack : 1;
+    let defense = Number.isFinite(baseDefense) ? baseDefense : 1;
     const speed = getUnitSpeedStat(unit) * formation.speedMultiplier * terrainMod.speedMultiplier * battleTypeMod.speedMultiplier;
     const effectiveMoraleRaw = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier * battleTypeMod.moraleMultiplier;
     const effectiveMorale = Math.max(0, Math.min(100, effectiveMoraleRaw));
