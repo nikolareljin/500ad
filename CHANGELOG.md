@@ -20,7 +20,7 @@ All notable changes to this project are documented in this file.
 - Fixed missing diplomacy combat enforcement so non-war factions can no longer be attacked before declaring war.
 - Fixed battle-result notifications to clearly show outcome and post-battle HP for both sides.
 
-## [1.7.0] - 2026-02-27
+## [1.7.0] - 2026-02-26
 
 ### Added
 - Added a player-facing `Diplomacy & Trade` panel with faction actions for `Propose Truce`, `Propose Alliance`, `Trade Agreement`, and `Declare War`.
