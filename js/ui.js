@@ -590,7 +590,7 @@ class UIManager {
             .map((entry) => ({
                 id: entry.unitId,
                 title: `${entry.unit?.name || entry.unitId}`,
-                subtitle: entry.unit ? `${entry.unit.cost.gold}g / ${entry.unit.cost.manpower}m` : '',
+                subtitle: entry.finalCost ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m` : '',
                 detail: entry.available ? 'Available' : entry.reasons.join(' • '),
                 disabled: !entry.available
             }));
@@ -614,7 +614,7 @@ class UIManager {
                     );
                     return;
                 }
-                const unit = gameState.recruitUnit(unitId, spawnTile);
+                const unit = gameState.recruitUnit(unitId, spawnTile, { cityTile: tile });
                 if (!unit) {
                     this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
                     return;
@@ -642,25 +642,68 @@ class UIManager {
             this.showNotification('Build actions require a player-owned tile', 'error');
             return;
         }
+        const cityData = gameState.ensureCityBuildingState(tile);
+        const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
+        const hasCity = Boolean(tile?.cityData);
 
-        const choices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
-            id: actionId,
-            title: action.name,
+        const cityBuildingChoices = hasCity ? gameState.getCityBuildingOptions(tile).map((entry) => ({
+            id: `city_building:${entry.id}`,
+            title: `${entry.name} (L${entry.currentLevel}/${entry.maxLevel})`,
+            subtitle: entry.nextLevel && entry.cost
+                ? `Upgrade to L${entry.nextLevel} • ${entry.cost.gold}g / ${entry.cost.manpower}m / ${entry.cost.prestige || 0}p • ${entry.turns} turns`
+                : 'Max level reached',
+            detail: entry.available ? 'Available' : entry.reasons.join(' • '),
+            disabled: !entry.available
+        })) : [];
+        const automationChoice = {
+            id: 'city_auto_toggle',
+            title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
+            subtitle: 'Defense if hostile-at-war enemies are near; otherwise growth',
+            detail: 'Applies per city each turn'
+        };
+        const infrastructureChoices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
+            id: `infra:${actionId}`,
+            title: `${action.name} [Infrastructure]`,
             subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
         }));
+        const choices = hasCity
+            ? [automationChoice, ...cityBuildingChoices, ...infrastructureChoices]
+            : infrastructureChoices;
 
         this.showChoiceModal(
             `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
             choices,
-            (actionId) => {
-                const result = gameState.applyCityBuildAction(tile, actionId);
+            (choiceId) => {
+                if (choiceId === 'city_auto_toggle') {
+                    const current = gameState.ensureCityBuildingState(tile);
+                    if (!current) {
+                        this.showNotification('Auto Build is only available in city tiles', 'error');
+                        return;
+                    }
+                    current.autoBuildEnabled = !current.autoBuildEnabled;
+                    this.showNotification(
+                        `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: Auto Build ${current.autoBuildEnabled ? 'ON' : 'OFF'}`,
+                        'info'
+                    );
+                    this.updateHUD();
+                    gameMap.requestRender();
+                    return;
+                }
+                const isCityBuilding = choiceId.startsWith('city_building:');
+                const id = isCityBuilding ? choiceId.substring('city_building:'.length) : choiceId;
+                const result = isCityBuilding
+                    ? gameState.startCityBuildingProject(tile, id)
+                    : gameState.applyCityBuildAction(tile, id);
                 if (!result.success) {
                     this.showNotification(result.message || 'Build failed', 'error');
                     return;
                 }
                 this.updateHUD();
                 gameMap.requestRender();
-                this.showNotification(`${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`, 'success');
+                const message = isCityBuilding
+                    ? `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.buildingName} upgrade to L${result.targetLevel} started (${result.turns} turns)`
+                    : `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`;
+                this.showNotification(message, 'success');
             }
         );
     }
