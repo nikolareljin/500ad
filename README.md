@@ -2,7 +2,7 @@
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
 
-Watch the complete gameplay walkthrough showing map navigation, unit movement, and the new technology/recruitment systems:
+Watch the complete gameplay walkthrough showing map navigation, unit movement, city development, and tactical combat systems:
 
 ![Gameplay Walkthrough](docs/screenshots/demo.webp)
 
@@ -288,7 +288,7 @@ This starts a local server, opens the browser automatically, and runs `scripts/u
 - `VERSION` is the canonical release version used for checks and tagging.
 - Set/sync a new version:
 ```bash
-./scripts/version_set.sh 1.1.0
+./scripts/version_set.sh 1.9.0
 ```
 - Verify version consistency:
 ```bash
@@ -378,7 +378,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.8.0** - Adds the city-building progression system (upgradeable buildings, construction times, and tech-gated building tree), plus latest combat/diplomacy fixes (see changelog for full details)
+**Version 1.9.0** - Introduces tactical combat formations and terrain-aware battle modifiers, plus latest city-building/diplomacy stability fixes (see changelog for full details)
 
 ## License
 
