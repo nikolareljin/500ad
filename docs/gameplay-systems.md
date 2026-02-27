@@ -26,6 +26,8 @@
 - Effective morale now feeds combat calculations directly (not just displayed summary values), so morale modifiers from formation/terrain/battle type impact attack and defense outcomes.
 - Tactical morale is clamped to the displayed `0-100` range before combat-factor scaling so logged morale values match applied calculations.
 - Existing unit terrain bonuses (`bonuses.terrain`) are preserved in the tactical layer for non-plains battles.
+- Terrain attack/defense scaling now uses a single combat source (`gameMap` terrain effects) to avoid stacking duplicate terrain multipliers in tactical math.
+- Generic battle-type scaling is applied in the tactical stat layer, while post-damage battle-type handling is limited to unit-context special cases (for example siege-class assault units and ambush-capable forces).
 - Combat results include a concise tactical summary and combat log lines for formation matchup, stat context, damage exchange, and outcome.
 - Enemy forces use basic tactical AI to select formations based on unit role, health/morale state, battle type, and terrain context.
 - Player-side defaults now adapt tactically when no explicit formation is requested (for example, defender defaults to `shield_wall` in city/siege contexts).

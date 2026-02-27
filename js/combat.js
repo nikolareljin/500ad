@@ -129,13 +129,11 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, s
     }
 
     attack *= formation.attackMultiplier
-        * terrainMod.attackMultiplier
         * battleTypeMod.attackMultiplier
         * (mapTerrainEffects.attackMultiplier || 1)
         * levelBonus
         * moraleFactor;
     defense *= formation.defenseMultiplier
-        * terrainMod.defenseMultiplier
         * battleTypeMod.defenseMultiplier
         * (mapTerrainEffects.defenseMultiplier || 1)
         * levelBonus
@@ -208,16 +206,15 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
     const defenderEffects = defender.owner === 'player' ? (gameState.player?.techEffects || {}) : {};
 
     if (battleType === 'siege') {
-        attackerDamage = Math.floor(attackerDamage * (attacker.category === 'siege' ? 1.35 : 0.9));
-        defenderDamage = Math.floor(defenderDamage * 1.1);
+        if (attacker.category === 'siege') {
+            attackerDamage = Math.floor(attackerDamage * 1.2);
+        }
     } else if (battleType === 'ambush') {
         const ambushSide = defender.bonuses?.ambush ? 'defender' : (attacker.bonuses?.ambush ? 'attacker' : 'defender');
         if (ambushSide === 'attacker') {
-            attackerDamage = Math.floor(attackerDamage * 1.25);
-            defenderDamage = Math.floor(defenderDamage * 0.75);
+            attackerDamage = Math.floor(attackerDamage * 1.12);
         } else {
-            attackerDamage = Math.floor(attackerDamage * 0.8);
-            defenderDamage = Math.floor(defenderDamage * 1.2);
+            defenderDamage = Math.floor(defenderDamage * 1.12);
         }
     } else if (battleType === 'naval') {
         const attackerNaval = attacker.type === 'naval' || attacker.bonuses?.waterTraversal;
