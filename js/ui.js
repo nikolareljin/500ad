@@ -690,7 +690,7 @@ class UIManager {
                     return;
                 }
                 const isCityBuilding = choiceId.startsWith('city_building:');
-                const id = choiceId.includes(':') ? choiceId.split(':')[1] : choiceId;
+                const id = isCityBuilding ? choiceId.substring('city_building:'.length) : choiceId;
                 const result = isCityBuilding
                     ? gameState.startCityBuildingProject(tile, id)
                     : gameState.applyCityBuildAction(tile, id);

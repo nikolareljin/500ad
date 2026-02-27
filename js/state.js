@@ -410,6 +410,7 @@ function extractStrategicYield(base, multiplier) {
     const safeMultiplier = Number(multiplier) || 0;
     const scaled = Math.floor(safeBase * safeMultiplier);
     if (safeMultiplier > 1) {
+        // Intentional: any positive multiplier bonus should yield at least +1 net output.
         return Math.max(safeBase + 1, scaled);
     }
     return Math.max(0, scaled);
@@ -703,6 +704,17 @@ class GameState {
         return Math.max(0, Number(cityData.buildings?.[buildingId] || 0));
     }
 
+    getAllCityBuildingLevels(cityTile) {
+        return {
+            farm: this.getCityBuildingLevel(cityTile, 'farm'),
+            barracks: this.getCityBuildingLevel(cityTile, 'barracks'),
+            mine: this.getCityBuildingLevel(cityTile, 'mine'),
+            workshop: this.getCityBuildingLevel(cityTile, 'workshop'),
+            temple: this.getCityBuildingLevel(cityTile, 'temple'),
+            walls: this.getCityBuildingLevel(cityTile, 'walls')
+        };
+    }
+
     getTotalCityBuildingLevel(buildingId, owner = 'player') {
         const cities = gameMap?.getCityTiles(owner) || [];
         return cities.reduce((sum, tile) => sum + this.getCityBuildingLevel(tile, buildingId), 0);
@@ -807,7 +819,10 @@ class GameState {
             production.gold += 1;
         } else if (buildingId === 'temple') {
             if (!cityData.monastery) {
-                this.player.resources.prestige += 2 + level;
+                const prestigeGain = 2 + level;
+                if (this.player && this.player.resources) {
+                    this.player.resources.prestige = (this.player.resources.prestige || 0) + prestigeGain;
+                }
             }
             cityData.monastery = true;
             production.gold += 1;
@@ -868,10 +883,15 @@ class GameState {
             const cityData = this.ensureCityBuildingState(cityTile);
             if (!cityData?.construction) return;
             const project = cityData.construction;
-            const startedTurn = Number.isFinite(project.startedTurn) ? project.startedTurn : (this.turn - 1);
-            if (startedTurn >= this.turn) {
+            const hasValidStartedTurn = Number.isFinite(project.startedTurn);
+            // By design, construction does not tick down on the same turn it starts.
+            if (hasValidStartedTurn && project.startedTurn >= this.turn) {
                 project.turnsRemaining = Math.max(1, project.turnsRemaining || project.totalTurns || 1);
                 return;
+            }
+            // For legacy/corrupted states, normalize invalid countdown values before ticking.
+            if (!Number.isFinite(project.turnsRemaining) || project.turnsRemaining <= 0) {
+                project.turnsRemaining = Math.max(1, project.totalTurns || 1);
             }
             cityData.construction.turnsRemaining = Math.max(0, (cityData.construction.turnsRemaining || 0) - 1);
             if (cityData.construction.turnsRemaining > 0) return;
@@ -3151,12 +3171,13 @@ class GameState {
             const infra = tile.cityData?.infrastructure;
             const pop = tile.cityData?.population || 4;
             if (!p) return;
-            const farmLevel = this.getCityBuildingLevel(tile, 'farm');
-            const barracksLevel = this.getCityBuildingLevel(tile, 'barracks');
-            const mineLevel = this.getCityBuildingLevel(tile, 'mine');
-            const workshopLevel = this.getCityBuildingLevel(tile, 'workshop');
-            const templeLevel = this.getCityBuildingLevel(tile, 'temple');
-            const wallsLevel = this.getCityBuildingLevel(tile, 'walls');
+            const levels = this.getAllCityBuildingLevels(tile);
+            const farmLevel = levels.farm;
+            const barracksLevel = levels.barracks;
+            const mineLevel = levels.mine;
+            const workshopLevel = levels.workshop;
+            const templeLevel = levels.temple;
+            const wallsLevel = levels.walls;
             const foodMultiplier = this.player.techEffects.foodMultiplier || 1;
             const goldMultiplier = this.player.techEffects.goldMultiplier || 1;
             const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
