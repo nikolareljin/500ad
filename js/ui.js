@@ -721,7 +721,7 @@ class UIManager {
                 `).join('');
                 return `
                     <div class="dipl-row">
-                        <h3>${escapeHtml(this.formatFactionName(entry.factionId))}</h3>
+                        <h3>${escapeHtml(entry.displayName || this.formatFactionName(entry.factionId))}</h3>
                         <p>Status: <strong>${escapeHtml(entry.status)}</strong> | Hostility: ${escapeHtml(entry.hostility)} | Trust: ${escapeHtml(entry.trust)}</p>
                         <p>Trade: ${entry.tradeAgreement ? 'Agreement active' : 'No agreement'}${entry.route ? ` | Route value: ${escapeHtml(entry.route.value)}g` : ''}</p>
                         <div class="dipl-actions">${actionButtons}</div>

@@ -482,11 +482,32 @@ class GameState {
             const factionId = this.resolveAIFactionForTile(tile, 'tribal');
             if (typeof factionId === 'string' && factionId) ids.add(factionId);
         });
-        ids.delete(this.getPlayerFactionId());
         ids.delete('player');
         ids.delete('neutral');
         ids.delete('');
         return [...ids].filter((id) => typeof id === 'string' && id);
+    }
+
+    hasEnemyPresenceForFaction(factionId) {
+        const id = factionId || 'tribal';
+        const enemyUnits = Array.isArray(this.units)
+            ? this.units.some((unit) => unit?.owner === 'enemy' && (unit.faction || 'tribal') === id)
+            : false;
+        if (enemyUnits) return true;
+        return (gameMap?.getCityTiles('enemy') || []).some((tile) => this.resolveAIFactionForTile(tile, 'tribal') === id);
+    }
+
+    getDiplomacyFactionLabel(factionId, options = {}) {
+        const id = factionId || 'tribal';
+        const labels = {
+            byzantine: 'Byzantine faction',
+            arab: 'Arab faction',
+            bulgar: 'Bulgar faction',
+            frank: 'Frankish faction',
+            sassanid: 'Sassanid faction'
+        };
+        if (options.sameCivilizationRival && labels[id]) return labels[id];
+        return this.getFactionDisplayName(id);
     }
 
     ensureDiplomacyFactionState(factionId) {
@@ -516,13 +537,15 @@ class GameState {
         const playerFactionId = this.getPlayerFactionId();
         const knownFactions = this.getKnownAIFactions();
         return knownFactions
-            .filter((factionId) => factionId !== playerFactionId)
+            .filter((factionId) => factionId !== playerFactionId || this.hasEnemyPresenceForFaction(factionId))
             .map((factionId) => {
                 const state = this.ensureDiplomacyFactionState(factionId);
                 const aiState = this.ensureAIFactionState(factionId);
                 const route = (this.diplomacyState.tradeRoutes || []).find((r) => r.factionId === factionId && r.active);
+                const sameCivilizationRival = factionId === playerFactionId;
                 return {
                     factionId,
+                    displayName: this.getDiplomacyFactionLabel(factionId, { sameCivilizationRival }),
                     status: state.status,
                     tradeAgreement: Boolean(state.tradeAgreement),
                     trust: Math.max(0, Math.min(100, Math.floor(state.trust || 0))),
@@ -645,9 +668,6 @@ class GameState {
 
     applyDiplomacyAction(actionId, factionId) {
         const id = factionId || 'tribal';
-        if (id === this.getPlayerFactionId()) {
-            return { success: false, message: 'Cannot negotiate diplomacy actions with your own faction.' };
-        }
         const factionName = this.getFactionDisplayName(id);
         const factionState = this.ensureDiplomacyFactionState(id);
         const aiState = this.ensureAIFactionState(id);
