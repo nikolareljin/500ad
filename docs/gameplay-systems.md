@@ -86,3 +86,23 @@ Units recover health at end of turn from these sources:
 - Trade agreements create faction-linked trade routes that generate turn income (`gold`, optional `prestige` from alliance routes).
 - Routes can be raided/disrupted based on hostility and war state; outcomes are recorded as world events and affect reputation.
 - AI hostility and tactical target selection now honor treaty outcomes (for example, allied/truce factions avoid direct attacks).
+
+## City Building and Construction
+
+- Cities now support long-form building progression with upgrade levels:
+  - `Farms`
+  - `Barracks`
+  - `Mines`
+  - `Workshops`
+  - `Temple`
+  - `Walls`
+- Construction is no longer instant for these projects:
+  - each upgrade has explicit multi-turn build time
+  - each city can run one active building project at a time
+- Building access is tech/prerequisite gated:
+  - examples include `Military Logistics`, `Caravan Routes`, `Monastic Scholarship`, and `Siegecraft`
+- Building effects are integrated into core systems:
+  - resource output (food/gold/manpower/strategic extraction)
+  - unit training throughput and city recruitment discounts
+  - research progression via temple-linked discount effects
+  - city defense growth via walls and garrison reinforcement

@@ -65,6 +65,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Infrastructure System**: Recruit **Engineers** to build a permanent road network, improving travel speed between your cities.
 - **Naval Transport**: Embark land units onto **Transports** and **Merchant Ships** to cross the Mediterranean.
 - **Technology Tree**: Unlock powerful civic and military upgrades like *Siegecraft*, *Naval Architecture*, and *Military Logistics*.
+- **City Building Tree**: Develop each city through upgradeable `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`, each with tech requirements and build times.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
@@ -377,7 +378,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.7.0** - Adds player diplomacy/trade routes with reputation-driven AI interactions, treaty-aware hostility behavior, and persistent diplomacy/trade state (see changelog for full details)
+**Version 1.8.0** - Adds the city-building progression system (upgradeable buildings, construction times, and tech-gated building tree), plus latest combat/diplomacy fixes (see changelog for full details)
 
 ## License
 

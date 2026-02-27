@@ -13,7 +13,23 @@ All notable changes to this project are documented in this file.
 - Added concise combat-log/summary output that reports formation matchup, tactical stat context, damage exchange, and outcome.
 - Added basic enemy tactical AI for formation selection based on terrain, unit condition, and battle type.
 
-## [1.7.0] - 2026-02-27
+## [1.8.0] - 2026-02-27
+
+### Added
+- Added a city-building progression system with upgradeable building chains: `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`.
+- Added city construction projects with build-time progression (multi-turn completion) and per-city construction state persistence.
+- Added a tech-dependent building tree with prerequisites and level-gated upgrades.
+
+### Changed
+- Updated city build UI to include dedicated city-building upgrades (with level, cost, and turns) alongside existing infrastructure actions.
+- Updated recruitment in cities to account for city-development effects (training progression and city-based recruitment cost reductions).
+- Updated city production to include building-level bonuses for food, manpower, gold, and strategic extraction (stone/iron).
+
+### Fixed
+- Fixed missing diplomacy combat enforcement so non-war factions can no longer be attacked before declaring war.
+- Fixed battle-result notifications to clearly show outcome and post-battle HP for both sides.
+
+## [1.7.0] - 2026-02-26
 
 ### Added
 - Added a player-facing `Diplomacy & Trade` panel with faction actions for `Propose Truce`, `Propose Alliance`, `Trade Agreement`, and `Declare War`.
