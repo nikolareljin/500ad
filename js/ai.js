@@ -201,13 +201,19 @@ class AIManager {
     }
 
     processFactionDiplomacy(context, plan) {
-        const { state } = context;
+        const { state, factionId } = context;
         if (!state) return;
         if (!state.diplomacy) state.diplomacy = { player: 0 };
+        const status = typeof gameState?.getFactionDiplomacyStatus === 'function'
+            ? gameState.getFactionDiplomacyStatus(factionId)
+            : 'war';
 
         let delta = 0;
         if (plan.primaryFocus === 'diplomacy') delta -= 2;
         else if (plan.primaryFocus === 'warfare') delta += 2;
+        if (status === 'alliance') delta -= 3;
+        if (status === 'truce') delta -= 1;
+        if (status === 'war') delta += 1;
         state.diplomacy.player = Math.max(-50, Math.min(100, (state.diplomacy.player || 0) + delta));
     }
 
@@ -390,6 +396,10 @@ class AIManager {
     }
 
     findNearbyTarget(unit, context, plan) {
+        const factionId = context?.factionId || this.getFactionIdForUnit(unit);
+        if (typeof gameState?.isFactionHostileToPlayer === 'function' && !gameState.isFactionHostileToPlayer(factionId)) {
+            return null;
+        }
         const unitType = getUnitById(unit.typeId);
         const range = unitType?.stats?.range || 1;
         const profile = context?.profile || this.getPersonalityProfile(this.getFactionIdForUnit(unit));
@@ -411,6 +421,10 @@ class AIManager {
     }
 
     findNearestPlayerTarget(unit, context, plan) {
+        const factionId = context?.factionId || this.getFactionIdForUnit(unit);
+        if (typeof gameState?.isFactionHostileToPlayer === 'function' && !gameState.isFactionHostileToPlayer(factionId)) {
+            return null;
+        }
         const playerUnits = gameState.units.filter((u) => u.owner === 'player');
         const playerCities = context?.playerCities || [];
         const allTargets = [

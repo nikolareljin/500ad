@@ -128,6 +128,11 @@ class UIManager {
             this.researchTechnology();
         });
 
+        document.getElementById('btn-diplomacy')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.manageDiplomacy();
+        });
+
         document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.attackWithSelectedUnit();
@@ -687,6 +692,93 @@ class UIManager {
                 this.showNotification(`Technology researched: ${result.name}`, 'success');
             }
         );
+    }
+
+    manageDiplomacy() {
+        if (!gameState?.initialized) {
+            this.showNotification('Start a campaign before opening diplomacy.', 'error');
+            return;
+        }
+
+        const renderDiplomacyModal = () => {
+            const overview = (typeof gameState.getDiplomacyOverview === 'function') ? gameState.getDiplomacyOverview() : [];
+            const reputation = gameState?.diplomacyState?.reputation || 0;
+            const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route.active).length;
+            const rows = overview.map((entry) => {
+                const actions = this.getDiplomacyActions(entry);
+                const actionButtons = actions.map((action) => `
+                    <button class="menu-btn choice-btn${action.disabled ? ' choice-btn-disabled' : ''}" data-dipl-action="${action.id}" data-dipl-faction="${entry.factionId}" ${action.disabled ? 'disabled aria-disabled="true"' : ''}>
+                        <span class="btn-text">${action.title}</span>
+                        <small class="choice-btn-subtitle">${action.subtitle || ''}</small>
+                    </button>
+                `).join('');
+                return `
+                    <div class="dipl-row">
+                        <h3>${this.formatFactionName(entry.factionId)}</h3>
+                        <p>Status: <strong>${entry.status}</strong> | Hostility: ${entry.hostility} | Trust: ${entry.trust}</p>
+                        <p>Trade: ${entry.tradeAgreement ? 'Agreement active' : 'No agreement'}${entry.route ? ` | Route value: ${entry.route.value}g` : ''}</p>
+                        <div class="dipl-actions">${actionButtons}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const content = `
+                <h2>Diplomacy & Trade</h2>
+                <p>Reputation: <strong>${reputation}</strong> | Active Trade Routes: <strong>${activeRoutes}</strong></p>
+                <div class="dipl-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:60vh;overflow:auto;">
+                    ${rows || '<p>No known factions to negotiate with yet.</p>'}
+                </div>
+                <div style="margin-top:1rem;">
+                    <button class="menu-btn" id="btn-close-diplomacy">Close</button>
+                </div>
+            `;
+
+            this.showModal(content);
+            this.modalContent?.querySelector('#btn-close-diplomacy')?.addEventListener('click', () => this.closeModal());
+            this.modalContent?.querySelectorAll('[data-dipl-action]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const actionId = btn.getAttribute('data-dipl-action');
+                    const factionId = btn.getAttribute('data-dipl-faction');
+                    const result = gameState.applyDiplomacyAction(actionId, factionId);
+                    this.showNotification(result.message, result.success ? 'success' : 'error');
+                    this.updateHUD();
+                    renderDiplomacyModal();
+                });
+            });
+        };
+
+        renderDiplomacyModal();
+    }
+
+    getDiplomacyActions(entry) {
+        const status = entry?.status || 'war';
+        const tradeAgreement = Boolean(entry?.tradeAgreement);
+        return [
+            {
+                id: 'propose_truce',
+                title: 'Propose Truce',
+                subtitle: 'Pause hostilities',
+                disabled: status !== 'war'
+            },
+            {
+                id: 'propose_alliance',
+                title: 'Propose Alliance',
+                subtitle: 'Mutual non-aggression',
+                disabled: status === 'war' || status === 'alliance'
+            },
+            {
+                id: 'trade_agreement',
+                title: 'Trade Agreement',
+                subtitle: 'Establish income routes',
+                disabled: status === 'war' || tradeAgreement
+            },
+            {
+                id: 'declare_war',
+                title: 'Declare War',
+                subtitle: 'Break ties and fight',
+                disabled: status === 'war'
+            }
+        ];
     }
 
     showChoiceModal(title, options, onSelect) {

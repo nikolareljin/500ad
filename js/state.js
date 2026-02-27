@@ -376,6 +376,7 @@ class GameState {
         this.selectedScenario = SCENARIOS.empire;
         this.aiFactions = {};
         this.aiEvents = [];
+        this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
     }
 
     /**
@@ -429,6 +430,7 @@ class GameState {
         this.buildings = [];
         this.aiFactions = {};
         this.aiEvents = [];
+        this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
         if (scenario === SCENARIOS.empire) {
             const empireStartTechs = [
@@ -453,6 +455,274 @@ class GameState {
 
         this.initialized = true;
         return true;
+    }
+
+    initializeDiplomacyState() {
+        this.diplomacyState = this.diplomacyState && typeof this.diplomacyState === 'object'
+            ? this.diplomacyState
+            : {};
+        if (!Number.isFinite(this.diplomacyState.reputation)) this.diplomacyState.reputation = 0;
+        if (!this.diplomacyState.factions || typeof this.diplomacyState.factions !== 'object') this.diplomacyState.factions = {};
+        if (!Array.isArray(this.diplomacyState.tradeRoutes)) this.diplomacyState.tradeRoutes = [];
+        this.diplomacyState.reputation = Math.max(-100, Math.min(100, Math.floor(this.diplomacyState.reputation)));
+    }
+
+    getKnownAIFactions() {
+        const ids = new Set(Object.keys(this.aiFactions || {}));
+        this.units.forEach((unit) => {
+            if (unit?.owner === 'enemy') ids.add(unit.faction || 'tribal');
+        });
+        (gameMap?.getCityTiles('enemy') || []).forEach((tile) => {
+            ids.add(this.resolveAIFactionForTile(tile));
+        });
+        ids.delete('player');
+        ids.delete('neutral');
+        ids.delete('');
+        return [...ids];
+    }
+
+    ensureDiplomacyFactionState(factionId) {
+        this.initializeDiplomacyState();
+        const id = factionId || 'tribal';
+        if (!this.diplomacyState.factions[id]) {
+            this.diplomacyState.factions[id] = {
+                status: 'war',
+                trust: 35,
+                tradeAgreement: false,
+                lastChangedTurn: this.turn
+            };
+        }
+        return this.diplomacyState.factions[id];
+    }
+
+    getFactionDiplomacyStatus(factionId) {
+        return this.ensureDiplomacyFactionState(factionId).status || 'war';
+    }
+
+    isFactionHostileToPlayer(factionId) {
+        const status = this.getFactionDiplomacyStatus(factionId);
+        return status === 'war';
+    }
+
+    getDiplomacyOverview() {
+        const knownFactions = this.getKnownAIFactions();
+        return knownFactions.map((factionId) => {
+            const state = this.ensureDiplomacyFactionState(factionId);
+            const aiState = this.ensureAIFactionState(factionId);
+            const route = (this.diplomacyState.tradeRoutes || []).find((r) => r.factionId === factionId && r.active);
+            return {
+                factionId,
+                status: state.status,
+                tradeAgreement: Boolean(state.tradeAgreement),
+                trust: Math.max(0, Math.min(100, Math.floor(state.trust || 0))),
+                hostility: Math.max(-50, Math.min(100, Math.floor(aiState?.diplomacy?.player || 0))),
+                route: route ? { id: route.id, value: route.value, status: route.status } : null
+            };
+        });
+    }
+
+    adjustReputation(delta) {
+        this.initializeDiplomacyState();
+        this.diplomacyState.reputation = Math.max(-100, Math.min(100, Math.floor((this.diplomacyState.reputation || 0) + delta)));
+        return this.diplomacyState.reputation;
+    }
+
+    setDiplomacyStatus(factionId, status, meta = {}) {
+        const state = this.ensureDiplomacyFactionState(factionId);
+        const previous = state.status;
+        if (previous === status) {
+            return { changed: false, previous, current: status };
+        }
+        state.status = status;
+        state.lastChangedTurn = this.turn;
+        if (status === 'war') {
+            state.tradeAgreement = false;
+            (this.diplomacyState.tradeRoutes || []).forEach((route) => {
+                if (route.factionId === factionId && route.active) {
+                    route.active = false;
+                    route.status = 'war-blocked';
+                    route.lastDisruptedTurn = this.turn;
+                }
+            });
+        }
+        this.recordAIWorldEvent('diplomacy_status_changed', {
+            factionId,
+            previousStatus: previous,
+            status,
+            source: meta.source || 'system'
+        });
+        return { changed: true, previous, current: status };
+    }
+
+    createTradeRouteWithFaction(factionId) {
+        if (this.getFactionDiplomacyStatus(factionId) === 'war') {
+            return { success: false, message: 'Cannot establish trade routes while at war.' };
+        }
+        const playerCities = gameMap?.getCityTiles('player') || [];
+        const factionCities = this.getAIFactionCityTiles(factionId);
+        if (!playerCities.length || !factionCities.length) {
+            return { success: false, message: 'Trade routes require both sides to control at least one city.' };
+        }
+        const existing = (this.diplomacyState.tradeRoutes || []).find((route) => route.factionId === factionId && route.active);
+        if (existing) {
+            return { success: false, message: 'A trade route already exists with that faction.' };
+        }
+
+        let best = null;
+        playerCities.forEach((pc) => {
+            factionCities.forEach((fc) => {
+                const dist = Math.abs(pc.x - fc.x) + Math.abs(pc.y - fc.y);
+                const score = (12 - Math.min(12, dist)) + (pc.cityData?.population || 4) * 0.4 + (fc.cityData?.population || 4) * 0.35;
+                if (!best || score > best.score) best = { pc, fc, dist, score };
+            });
+        });
+        if (!best) {
+            return { success: false, message: 'Could not determine a valid trade route path.' };
+        }
+        const trust = this.ensureDiplomacyFactionState(factionId).trust || 35;
+        const value = Math.max(4, Math.floor(6 + trust * 0.06 + Math.max(0, 10 - Math.floor(best.dist / 3))));
+        const route = {
+            id: `trade_${factionId}_${this.turn}_${Date.now()}`,
+            factionId,
+            fromCityId: best.pc.cityData?.id || `${best.pc.x},${best.pc.y}`,
+            toCityId: best.fc.cityData?.id || `${best.fc.x},${best.fc.y}`,
+            value,
+            status: 'active',
+            active: true,
+            establishedTurn: this.turn,
+            lastIncomeTurn: null,
+            lastDisruptedTurn: null
+        };
+        this.diplomacyState.tradeRoutes.push(route);
+        this.recordAIWorldEvent('trade_route_established', {
+            factionId,
+            routeId: route.id,
+            value
+        });
+        return { success: true, route };
+    }
+
+    applyDiplomacyAction(actionId, factionId) {
+        const id = factionId || 'tribal';
+        const factionState = this.ensureDiplomacyFactionState(id);
+        const aiState = this.ensureAIFactionState(id);
+        const currentHostility = Math.max(-50, Math.min(100, aiState?.diplomacy?.player || 0));
+        const reputation = this.diplomacyState.reputation || 0;
+
+        const acceptRoll = (threshold) => Math.random() < Math.max(0.05, Math.min(0.95, threshold));
+        if (actionId === 'declare_war') {
+            const result = this.setDiplomacyStatus(id, 'war', { source: 'player' });
+            factionState.tradeAgreement = false;
+            this.adjustReputation(-6);
+            if (aiState?.diplomacy) aiState.diplomacy.player = Math.min(100, (aiState.diplomacy.player || 0) + 18);
+            return { success: true, message: result.changed ? 'War has been declared.' : 'Already at war.' };
+        }
+
+        if (actionId === 'propose_truce') {
+            if (factionState.status !== 'war') return { success: false, message: 'A truce can only be proposed during war.' };
+            const accepted = acceptRoll(0.55 + (reputation * 0.002) - (currentHostility * 0.003));
+            if (!accepted) {
+                this.adjustReputation(-2);
+                if (aiState?.diplomacy) aiState.diplomacy.player = Math.min(100, (aiState.diplomacy.player || 0) + 4);
+                return { success: false, message: `${id} rejected your truce proposal.` };
+            }
+            this.setDiplomacyStatus(id, 'truce', { source: 'player' });
+            this.adjustReputation(3);
+            factionState.trust = Math.min(100, (factionState.trust || 35) + 10);
+            if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 16);
+            return { success: true, message: `${id} accepted a truce.` };
+        }
+
+        if (actionId === 'propose_alliance') {
+            if (factionState.status === 'war') return { success: false, message: 'End the war before proposing an alliance.' };
+            const accepted = acceptRoll(0.38 + (factionState.trust || 35) * 0.004 + (reputation * 0.003) - (currentHostility * 0.0035));
+            if (!accepted) {
+                this.adjustReputation(-1);
+                factionState.trust = Math.max(0, (factionState.trust || 35) - 5);
+                return { success: false, message: `${id} declined the alliance for now.` };
+            }
+            this.setDiplomacyStatus(id, 'alliance', { source: 'player' });
+            factionState.trust = Math.min(100, (factionState.trust || 35) + 14);
+            this.adjustReputation(6);
+            if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 22);
+            return { success: true, message: `Alliance formed with ${id}.` };
+        }
+
+        if (actionId === 'trade_agreement') {
+            if (factionState.status === 'war') return { success: false, message: 'Cannot sign trade agreements during war.' };
+            if (factionState.tradeAgreement) return { success: false, message: 'Trade agreement already active.' };
+            const accepted = acceptRoll(0.5 + (factionState.trust || 35) * 0.003 + (reputation * 0.002));
+            if (!accepted) {
+                this.adjustReputation(-1);
+                return { success: false, message: `${id} refused the proposed trade terms.` };
+            }
+            factionState.tradeAgreement = true;
+            factionState.trust = Math.min(100, (factionState.trust || 35) + 8);
+            const routeResult = this.createTradeRouteWithFaction(id);
+            if (!routeResult.success) {
+                factionState.tradeAgreement = false;
+                return routeResult;
+            }
+            this.adjustReputation(4);
+            return { success: true, message: `Trade agreement signed with ${id}.`, route: routeResult.route };
+        }
+
+        return { success: false, message: 'Unknown diplomacy action.' };
+    }
+
+    processDiplomacyAndTradeTurn() {
+        this.initializeDiplomacyState();
+        let tradeGold = 0;
+        let tradePrestige = 0;
+        let disrupted = 0;
+        let active = 0;
+
+        (this.diplomacyState.tradeRoutes || []).forEach((route) => {
+            if (!route || !route.active) return;
+            const factionId = route.factionId || 'tribal';
+            const factionState = this.ensureDiplomacyFactionState(factionId);
+            const aiState = this.ensureAIFactionState(factionId);
+            const hostility = Math.max(-50, Math.min(100, aiState?.diplomacy?.player || 0));
+            if (factionState.status === 'war' || !factionState.tradeAgreement) {
+                route.active = false;
+                route.status = 'blocked';
+                route.lastDisruptedTurn = this.turn;
+                disrupted += 1;
+                this.recordAIWorldEvent('trade_route_disrupted', { routeId: route.id, factionId, reason: 'war_or_no_treaty' });
+                return;
+            }
+            const raidChance = Math.max(0.02, Math.min(0.55, 0.06 + Math.max(0, hostility) * 0.004));
+            const raided = Math.random() < raidChance;
+            if (raided) {
+                const lost = Math.max(2, Math.floor((route.value || 5) * 0.45));
+                tradeGold += Math.max(0, (route.value || 5) - lost);
+                route.status = 'raided';
+                route.lastDisruptedTurn = this.turn;
+                disrupted += 1;
+                this.adjustReputation(-1);
+                this.recordAIWorldEvent('trade_route_raided', { routeId: route.id, factionId, lostGold: lost });
+            } else {
+                const allianceBonus = factionState.status === 'alliance' ? 1.2 : (factionState.status === 'truce' ? 1.08 : 1);
+                const income = Math.max(2, Math.floor((route.value || 5) * allianceBonus));
+                tradeGold += income;
+                tradePrestige += factionState.status === 'alliance' ? 1 : 0;
+                route.status = 'active';
+                route.lastIncomeTurn = this.turn;
+                active += 1;
+            }
+        });
+
+        if (tradeGold > 0 || tradePrestige > 0) {
+            this.addResources(tradeGold, 0, tradePrestige);
+            this.recordAIWorldEvent('trade_income', {
+                tradeGold,
+                tradePrestige,
+                routesActive: active,
+                routesDisrupted: disrupted
+            });
+        }
+
+        return { gold: tradeGold, prestige: tradePrestige, activeRoutes: active, disruptedRoutes: disrupted };
     }
 
     /**
@@ -631,6 +901,7 @@ class GameState {
                 && event.capturerFaction === factionId
                 && event.oldOwner === 'player'
             ).length;
+            const diplomacyStatus = this.getFactionDiplomacyStatus(factionId);
 
             state.intel.playerThreat = Math.max(0, Math.min(100,
                 (playerCities * 4)
@@ -649,8 +920,11 @@ class GameState {
                 (hostileCaptures * 8)
                 + (neutralExpansion * (state.personality === 'diplomatic' ? 4 : 2))
                 - (citiesCapturedFromPlayer * 3);
+            const treatyDelta = diplomacyStatus === 'alliance'
+                ? -6
+                : (diplomacyStatus === 'truce' ? -3 : (diplomacyStatus === 'war' ? 4 : 0));
             state.diplomacy.player = Math.max(-50, Math.min(100,
-                currentHostilityTowardPlayer + hostilityDeltaFromRecentEvents
+                currentHostilityTowardPlayer + hostilityDeltaFromRecentEvents + treatyDelta
             ));
         });
     }
@@ -2219,6 +2493,7 @@ class GameState {
             iron: cityProduction.strategic?.iron || 0,
             rare: cityProduction.strategic?.rare || 0
         });
+        const diplomacyTradeIncome = this.processDiplomacyAndTradeTurn();
 
         // Reset unit movement before any automated destination processing.
         this.units.forEach(unit => {
@@ -2255,11 +2530,12 @@ class GameState {
         return {
             turn: this.turn,
             income: {
-                gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold,
+                gold: Math.floor(baseGold * goldBonus) + territoryBonus + cityProduction.gold + (diplomacyTradeIncome.gold || 0),
                 manpower: Math.floor(baseManpower * manpowerBonus) + cityProduction.manpower,
-                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0),
+                prestige: basePrestige + (this.player.techEffects.prestigePerTurn || 0) + (diplomacyTradeIncome.prestige || 0),
                 food: cityProduction.food + (cityProduction.strategic?.food || 0),
-                strategic: { ...(cityProduction.strategic || {}) }
+                strategic: { ...(cityProduction.strategic || {}) },
+                diplomacyTrade: diplomacyTradeIncome
             },
             upkeep: totalUpkeep,
             cityProduction
@@ -2359,6 +2635,7 @@ class GameState {
                     : null),
             aiFactions: this.aiFactions,
             aiEvents: this.aiEvents,
+            diplomacyState: this.diplomacyState,
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -2578,6 +2855,10 @@ class GameState {
         this.player = data.player;
         this.aiFactions = (data.aiFactions && typeof data.aiFactions === 'object') ? data.aiFactions : {};
         this.aiEvents = Array.isArray(data.aiEvents) ? data.aiEvents.slice(-40) : [];
+        this.diplomacyState = (data.diplomacyState && typeof data.diplomacyState === 'object')
+            ? data.diplomacyState
+            : { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.initializeDiplomacyState();
         this.ensureStrategicResourceStockpile();
         if (!this.player.techResearched) this.player.techResearched = [];
         if (!this.player.techEffects) {
