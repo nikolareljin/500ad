@@ -39,6 +39,25 @@ const TERRAIN_TACTICAL_MODIFIERS = {
     water: { attackMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1, moraleMultiplier: 1 }
 };
 
+const BATTLE_TYPE_TACTICAL_MODIFIERS = {
+    field: {
+        attacker: { attackMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1, moraleMultiplier: 1 },
+        defender: { attackMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1, moraleMultiplier: 1 }
+    },
+    siege: {
+        attacker: { attackMultiplier: 0.94, defenseMultiplier: 0.96, speedMultiplier: 0.9, moraleMultiplier: 0.96 },
+        defender: { attackMultiplier: 1.02, defenseMultiplier: 1.12, speedMultiplier: 0.92, moraleMultiplier: 1.06 }
+    },
+    ambush: {
+        attacker: { attackMultiplier: 1.08, defenseMultiplier: 0.96, speedMultiplier: 1.05, moraleMultiplier: 1.03 },
+        defender: { attackMultiplier: 0.95, defenseMultiplier: 1.08, speedMultiplier: 0.93, moraleMultiplier: 1.02 }
+    },
+    naval: {
+        attacker: { attackMultiplier: 1.03, defenseMultiplier: 0.98, speedMultiplier: 1.06, moraleMultiplier: 1 },
+        defender: { attackMultiplier: 1.01, defenseMultiplier: 1.01, speedMultiplier: 1.04, moraleMultiplier: 1 }
+    }
+};
+
 function resolveFormation(formationId) {
     return TACTICAL_FORMATIONS[formationId] || TACTICAL_FORMATIONS.line;
 }
@@ -67,25 +86,32 @@ function chooseFormation(side, unit, enemy, terrain, battleType, requestedFormat
     if (unit?.owner === 'enemy') {
         return pickEnemyFormation(unit, enemy, terrain, battleType);
     }
+    if (side === 'defender' && (battleType === 'siege' || terrain === 'city')) {
+        return 'shield_wall';
+    }
+    if (side === 'attacker' && battleType === 'ambush' && (unit?.morale || 0) >= 70) {
+        return 'wedge';
+    }
     return 'line';
 }
 
-function calculateTacticalStats(unit, enemy, terrain, battleType, formationId) {
+function calculateTacticalStats(unit, enemy, terrain, battleType, formationId, side = 'attacker') {
     const unitType = getUnitById(unit.typeId);
     const formation = resolveFormation(formationId);
     const terrainMod = TERRAIN_TACTICAL_MODIFIERS[terrain] || TERRAIN_TACTICAL_MODIFIERS.plains;
+    const battleTypeMod = BATTLE_TYPE_TACTICAL_MODIFIERS[battleType]?.[side] || BATTLE_TYPE_TACTICAL_MODIFIERS.field[side];
     const mapTerrainEffects = gameMap?.getTerrainEffects?.(terrain, {
         unit,
         attacker: unit,
         defender: enemy
     }) || { attackMultiplier: 1, defenseMultiplier: 1 };
     const levelBonus = 1 + ((unit.level || 1) - 1) * 0.1;
-    const moraleFactor = Math.max(0.25, Math.min(1.2, (unit.morale || 0) / 100));
 
     let attack = (unit.stats.attack || 1);
     let defense = (unit.stats.defense || 1);
-    const speed = getUnitSpeedStat(unit) * formation.speedMultiplier * terrainMod.speedMultiplier;
-    const morale = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier;
+    const speed = getUnitSpeedStat(unit) * formation.speedMultiplier * terrainMod.speedMultiplier * battleTypeMod.speedMultiplier;
+    const effectiveMorale = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier * battleTypeMod.moraleMultiplier;
+    const moraleFactor = Math.max(0.25, Math.min(1.2, effectiveMorale / 100));
 
     // Existing counter-type modifiers are preserved as tactical layer inputs.
     if (enemy && unitType?.bonuses) {
@@ -97,14 +123,24 @@ function calculateTacticalStats(unit, enemy, terrain, battleType, formationId) {
         }
     }
 
-    attack *= formation.attackMultiplier * terrainMod.attackMultiplier * (mapTerrainEffects.attackMultiplier || 1) * levelBonus * moraleFactor;
-    defense *= formation.defenseMultiplier * terrainMod.defenseMultiplier * (mapTerrainEffects.defenseMultiplier || 1) * levelBonus * moraleFactor;
+    attack *= formation.attackMultiplier
+        * terrainMod.attackMultiplier
+        * battleTypeMod.attackMultiplier
+        * (mapTerrainEffects.attackMultiplier || 1)
+        * levelBonus
+        * moraleFactor;
+    defense *= formation.defenseMultiplier
+        * terrainMod.defenseMultiplier
+        * battleTypeMod.defenseMultiplier
+        * (mapTerrainEffects.defenseMultiplier || 1)
+        * levelBonus
+        * moraleFactor;
 
     return {
         attack: Math.max(1, attack),
         defense: Math.max(1, defense),
         speed: Math.max(0.5, speed),
-        morale: Math.max(0, Math.min(100, morale)),
+        morale: Math.max(0, Math.min(100, effectiveMorale)),
         formationId: formation.id,
         formationName: formation.name
     };
@@ -130,8 +166,8 @@ function calculateCombatDamage(attacker, defender, terrain = 'plains', battleTyp
         battleType,
         options.defenderFormation
     );
-    const attackerTactical = calculateTacticalStats(attacker, defender, terrain, battleType, attackerFormation);
-    const defenderTactical = calculateTacticalStats(defender, attacker, terrain, battleType, defenderFormation);
+    const attackerTactical = calculateTacticalStats(attacker, defender, terrain, battleType, attackerFormation, 'attacker');
+    const defenderTactical = calculateTacticalStats(defender, attacker, terrain, battleType, defenderFormation, 'defender');
 
     const baseAttackerDamage = Math.max(
         1,
