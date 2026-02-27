@@ -412,6 +412,29 @@ p {
     color: #f7c7c7;
 }
 
+.dipl-row {
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 10px;
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.dipl-row h3 {
+    margin: 0 0 0.35rem 0;
+}
+
+.dipl-row p {
+    margin: 0.2rem 0;
+    font-size: 0.95rem;
+}
+
+.dipl-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 /* === Utility Classes === */
 .hidden {
     display: none !important;

@@ -390,6 +390,10 @@ class AIManager {
     }
 
     findNearbyTarget(unit, context, plan) {
+        const factionId = context?.factionId || this.getFactionIdForUnit(unit);
+        if (typeof gameState?.isFactionHostileToPlayer === 'function' && !gameState.isFactionHostileToPlayer(factionId)) {
+            return null;
+        }
         const unitType = getUnitById(unit.typeId);
         const range = unitType?.stats?.range || 1;
         const profile = context?.profile || this.getPersonalityProfile(this.getFactionIdForUnit(unit));
@@ -411,6 +415,10 @@ class AIManager {
     }
 
     findNearestPlayerTarget(unit, context, plan) {
+        const factionId = context?.factionId || this.getFactionIdForUnit(unit);
+        if (typeof gameState?.isFactionHostileToPlayer === 'function' && !gameState.isFactionHostileToPlayer(factionId)) {
+            return null;
+        }
         const playerUnits = gameState.units.filter((u) => u.owner === 'player');
         const playerCities = context?.playerCities || [];
         const allTargets = [

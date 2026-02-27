@@ -70,6 +70,8 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Unit Progression**: Experience and leveling system
 - **Combat System**: Type advantages, terrain modifiers, morale, and fortification modifiers
 - **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
+- **Diplomacy & Trade System**: Negotiate truces, alliances, trade agreements, and declarations of war with per-faction trust/hostility and reputation impacts
+- **Trade Routes**: Active agreements create income routes that can be raided/disrupted by hostile pressure and war outcomes
 - **Unit Vitality UI**: Recently damaged units show a map health ring (green -> red) to highlight their current health
 - **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
 - **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
@@ -351,7 +353,7 @@ window.setWorldGenerationConfig({
 ### AI Faction Behavior (Current Scope)
 - Enemy forces are still represented as `owner: enemy`, but now coordinate by `unit.faction` / city faction identity.
 - AI personalities influence whether factions prioritize expansion, defense, opportunistic attacks, or resource investment.
-- AI diplomacy is currently an internal behavior model (using per-faction diplomacy/hostility scores for threat and targeting decisions) and is not exposed in any player-facing diplomacy UI.
+- Diplomacy is now player-driven through the `Diplomacy` panel and still feeds AI-side hostility/targeting decisions.
 - AI reactions are driven by world-state events such as city captures and changing frontier pressure.
 
 ## Historical Notes
@@ -375,7 +377,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.6.0** - Multi-faction AI personalities with strategic behavior loops, persistent AI faction intel/diplomacy state, plus prior seeded world generation systems (see changelog for full details)
+**Version 1.7.0** - Adds player diplomacy/trade routes with reputation-driven AI interactions, treaty-aware hostility behavior, and persistent diplomacy/trade state (see changelog for full details)
 
 ## License
 

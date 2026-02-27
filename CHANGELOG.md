@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.7.0] - 2026-02-27
+
+### Added
+- Added a player-facing `Diplomacy & Trade` panel with faction actions for `Propose Truce`, `Propose Alliance`, `Trade Agreement`, and `Declare War`.
+- Added persistent diplomacy state (`reputation`, per-faction treaty/trust, and trade routes) to save data and turn simulation.
+- Added trade route simulation that generates income from active agreements, with disruption/raid outcomes recorded as world events.
+
+### Changed
+- Updated AI targeting behavior to respect non-hostile treaties (`truce`/`alliance`) when deciding direct attacks on player targets.
+- Updated AI diplomacy pressure modeling to incorporate treaty outcomes, warfare focus, and hostility/reputation interactions.
+
+### Fixed
+- Fixed AI diplomacy/trade integration to use centralized game-state helpers for AI infrastructure upgrades and fortification updates.
+- Fixed faction expansion/defense robustness by guarding historical-town lookups and handling spawn fallback paths consistently.
+- Fixed diplomacy messaging/consistency issues (formatted faction names, no duplicate treaty hostility application, and no trust/reputation gain when trade-route creation fails).
+- Fixed diplomacy/trade state isolation and safety in long campaigns (fresh state on new games, sanitized faction discovery, bounded trade-route reuse/retention, and escaped diplomacy modal content).
+
 ## [1.6.0] - 2026-02-26
 
 ### Added

@@ -128,6 +128,11 @@ class UIManager {
             this.researchTechnology();
         });
 
+        document.getElementById('btn-diplomacy')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.manageDiplomacy();
+        });
+
         document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.attackWithSelectedUnit();
@@ -689,6 +694,100 @@ class UIManager {
         );
     }
 
+    manageDiplomacy() {
+        if (!gameState?.initialized) {
+            this.showNotification('Start a campaign before opening diplomacy.', 'error');
+            return;
+        }
+
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        const renderDiplomacyModal = () => {
+            const overview = (typeof gameState.getDiplomacyOverview === 'function') ? gameState.getDiplomacyOverview() : [];
+            const reputation = gameState?.diplomacyState?.reputation || 0;
+            const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route?.active).length;
+            const rows = overview.map((entry) => {
+                const actions = this.getDiplomacyActions(entry);
+                const actionButtons = actions.map((action) => `
+                    <button class="menu-btn choice-btn${action.disabled ? ' choice-btn-disabled' : ''}" data-dipl-action="${escapeHtml(action.id)}" data-dipl-faction="${escapeHtml(entry.factionId)}" ${action.disabled ? 'disabled aria-disabled="true"' : ''}>
+                        <span class="btn-text">${escapeHtml(action.title)}</span>
+                        <small class="choice-btn-subtitle">${escapeHtml(action.subtitle || '')}</small>
+                    </button>
+                `).join('');
+                return `
+                    <div class="dipl-row">
+                        <h3>${escapeHtml(entry.displayName || this.formatFactionName(entry.factionId))}</h3>
+                        <p>Status: <strong>${escapeHtml(entry.status)}</strong> | Hostility: ${escapeHtml(entry.hostility)} | Trust: ${escapeHtml(entry.trust)}</p>
+                        <p>Trade: ${entry.tradeAgreement ? 'Agreement active' : 'No agreement'}${entry.route ? ` | Route value: ${escapeHtml(entry.route.value)}g` : ''}</p>
+                        <div class="dipl-actions">${actionButtons}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const content = `
+                <h2>Diplomacy & Trade</h2>
+                <p>Reputation: <strong>${reputation}</strong> | Active Trade Routes: <strong>${activeRoutes}</strong></p>
+                <div class="dipl-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:60vh;overflow:auto;">
+                    ${overview.length > 0 ? rows : '<p>No known factions to negotiate with yet.</p>'}
+                </div>
+                <div style="margin-top:1rem;">
+                    <button class="menu-btn" id="btn-close-diplomacy">Close</button>
+                </div>
+            `;
+
+            this.showModal(content);
+            this.modalContent?.querySelector('#btn-close-diplomacy')?.addEventListener('click', () => this.closeModal());
+            this.modalContent?.querySelectorAll('[data-dipl-action]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const actionId = btn.getAttribute('data-dipl-action');
+                    const factionId = btn.getAttribute('data-dipl-faction');
+                    const result = gameState.applyDiplomacyAction(actionId, factionId);
+                    this.showNotification(result.message, result.success ? 'success' : 'error');
+                    this.updateHUD();
+                    renderDiplomacyModal();
+                });
+            });
+        };
+
+        renderDiplomacyModal();
+    }
+
+    getDiplomacyActions(entry) {
+        const status = entry?.status || 'war';
+        const tradeAgreement = Boolean(entry?.tradeAgreement);
+        return [
+            {
+                id: 'propose_truce',
+                title: 'Propose Truce',
+                subtitle: 'Pause hostilities',
+                disabled: status !== 'war'
+            },
+            {
+                id: 'propose_alliance',
+                title: 'Propose Alliance',
+                subtitle: 'Mutual non-aggression',
+                disabled: status === 'war' || status === 'alliance'
+            },
+            {
+                id: 'trade_agreement',
+                title: 'Trade Agreement',
+                subtitle: 'Establish income routes',
+                disabled: status === 'war' || tradeAgreement
+            },
+            {
+                id: 'declare_war',
+                title: 'Declare War',
+                subtitle: 'Break ties and fight',
+                disabled: status === 'war'
+            }
+        ];
+    }
+
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
             <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
@@ -741,6 +840,11 @@ class UIManager {
         );
         if (!target) {
             this.showNotification('No enemy unit on selected tile', 'error');
+            return;
+        }
+        const engagement = gameState.canUnitsEngage(selected, target);
+        if (!engagement.allowed) {
+            this.showNotification(engagement.reason || 'Attack not allowed.', 'error');
             return;
         }
 
@@ -1096,16 +1200,36 @@ class UIManager {
     }
 
     /**
-     * Show simplified combat result
+     * Show concise combat result with clear winner/loser and post-battle HP.
      */
     showCombatResult(result) {
-        const attacker = gameState.units.find(u => u.id === result.attacker.id);
-        const defender = gameState.units.find(u => u.id === result.defender.id);
+        const resolveCombatant = (side) => {
+            const payload = result?.[side] || {};
+            const live = gameState.units.find((u) => u.id === payload.id);
+            const maxHealth = Math.max(
+                1,
+                Number(live?.stats?.health ?? payload.maxHealth ?? 1)
+            );
+            const healthValue = Number.isFinite(live?.currentHealth)
+                ? live.currentHealth
+                : (Number.isFinite(payload.health) ? payload.health : 0);
+            return {
+                id: payload.id || live?.id || null,
+                name: live?.name || payload.name || (side === 'attacker' ? 'Attacker' : 'Defender'),
+                owner: live?.owner || payload.owner || null,
+                position: live?.position || null,
+                health: Math.max(0, Math.floor(healthValue)),
+                maxHealth
+            };
+        };
+
+        const attacker = resolveCombatant('attacker');
+        const defender = resolveCombatant('defender');
         if (gameMap) {
             gameMap.focusOnBattleUnits(attacker, defender);
             const highlighted = [];
-            if (attacker && attacker.currentHealth < attacker.stats.health) highlighted.push(attacker.id);
-            if (defender && defender.currentHealth < defender.stats.health) highlighted.push(defender.id);
+            if (attacker?.id && attacker.health < attacker.maxHealth) highlighted.push(attacker.id);
+            if (defender?.id && defender.health < defender.maxHealth) highlighted.push(defender.id);
             gameMap.setBattleHealthHighlights(highlighted, 3500);
         }
         const battlePosition = defender?.position || attacker?.position;
@@ -1126,8 +1250,40 @@ class UIManager {
             }
         }
 
-        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}${locationText}. Target health: ${result.defender.health}`;
-        this.showNotification(message, 'info');
+        const playerSide = attacker.owner === 'player'
+            ? 'attacker'
+            : (defender.owner === 'player' ? 'defender' : null);
+        const ourUnit = playerSide === 'attacker' ? attacker : (playerSide === 'defender' ? defender : null);
+        const enemyUnit = playerSide === 'attacker' ? defender : (playerSide === 'defender' ? attacker : null);
+
+        let outcome = 'Engagement';
+        let level = 'info';
+        if (result.attackerDied && result.defenderDied) {
+            outcome = 'Mutual Losses';
+            level = 'error';
+        } else if (playerSide === 'attacker' || playerSide === 'defender') {
+            const ourLost = playerSide === 'attacker' ? Boolean(result.attackerDied) : Boolean(result.defenderDied);
+            const enemyLost = playerSide === 'attacker' ? Boolean(result.defenderDied) : Boolean(result.attackerDied);
+            if (enemyLost && !ourLost) {
+                outcome = 'Victory';
+                level = 'success';
+            } else if (ourLost && !enemyLost) {
+                outcome = 'Defeat';
+                level = 'error';
+            } else {
+                outcome = 'Stalemate';
+                level = 'info';
+            }
+        } else if (result.defenderDied && !result.attackerDied) {
+            outcome = `${attacker.name} won`;
+        } else if (result.attackerDied && !result.defenderDied) {
+            outcome = `${defender.name} won`;
+        }
+
+        const message = ourUnit && enemyUnit
+            ? `${outcome}${locationText}: Our ${ourUnit.name} ${ourUnit.health}/${ourUnit.maxHealth} HP vs ${enemyUnit.name} ${enemyUnit.health}/${enemyUnit.maxHealth} HP`
+            : `${outcome}${locationText}: ${attacker.name} ${attacker.health}/${attacker.maxHealth} HP vs ${defender.name} ${defender.health}/${defender.maxHealth} HP`;
+        this.showNotification(message, level);
 
         // Flash the screen if player was attacked
         if (defender?.owner === 'player') {

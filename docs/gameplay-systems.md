@@ -53,6 +53,20 @@ Units recover health at end of turn from these sources:
   - border defense/fortification
   - neutral-city expansion
   - resource/infrastructure investment
-  - AI-side diplomacy hostility toward the player
+  - diplomacy hostility and treaty pressure toward the player
 - AI factions react to world-state events (especially city captures) via persistent faction intel/threat memory.
-- AI diplomacy is currently internal logic only (no player diplomacy UI yet).
+
+## Diplomacy and Trade
+
+- Player diplomacy panel supports:
+  - `Propose Truce`
+  - `Propose Alliance`
+  - `Trade Agreement`
+  - `Declare War`
+- Diplomacy now tracks:
+  - player `reputation` (`-100` to `100`)
+  - per-faction treaty status (`war`, `truce`, `alliance`)
+  - per-faction trust and hostility pressure
+- Trade agreements create faction-linked trade routes that generate turn income (`gold`, optional `prestige` from alliance routes).
+- Routes can be raided/disrupted based on hostility and war state; outcomes are recorded as world events and affect reputation.
+- AI hostility and tactical target selection now honor treaty outcomes (for example, allied/truce factions avoid direct attacks).
