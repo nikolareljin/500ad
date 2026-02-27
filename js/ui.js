@@ -842,6 +842,11 @@ class UIManager {
             this.showNotification('No enemy unit on selected tile', 'error');
             return;
         }
+        const engagement = gameState.canUnitsEngage(selected, target);
+        if (!engagement.allowed) {
+            this.showNotification(engagement.reason || 'Attack not allowed.', 'error');
+            return;
+        }
 
         const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
         const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {

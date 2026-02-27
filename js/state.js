@@ -533,6 +533,62 @@ class GameState {
         return status === 'war';
     }
 
+    resolveUnitFactionForDiplomacy(unit) {
+        if (!unit || typeof unit !== 'object') return 'tribal';
+        if (unit.owner === 'player') return this.getPlayerFactionId();
+        if (typeof unit.faction === 'string' && unit.faction) return unit.faction;
+        if (unit.position && gameMap) {
+            const tile = gameMap.getTile(unit.position.x, unit.position.y);
+            if (tile) return this.resolveAIFactionForTile(tile, 'tribal');
+        }
+        return unit.owner === 'enemy' ? 'tribal' : 'neutral';
+    }
+
+    canUnitsEngage(attacker, defender) {
+        if (!attacker || !defender) {
+            return { allowed: false, reason: 'Invalid battle participants.' };
+        }
+        if (attacker.owner === defender.owner) {
+            return { allowed: false, reason: 'Cannot attack allied forces.' };
+        }
+        const attackerIsPlayer = attacker.owner === 'player';
+        const defenderIsPlayer = defender.owner === 'player';
+        if (!attackerIsPlayer && !defenderIsPlayer) {
+            return { allowed: true };
+        }
+
+        const enemyUnit = attackerIsPlayer ? defender : attacker;
+        const enemyFactionId = this.resolveUnitFactionForDiplomacy(enemyUnit);
+        if (!this.isFactionHostileToPlayer(enemyFactionId)) {
+            const factionName = this.getFactionDisplayName(enemyFactionId);
+            return {
+                allowed: false,
+                reason: `${factionName} is not at war with you. Declare war before attacking.`
+            };
+        }
+        return { allowed: true };
+    }
+
+    canAssaultFort(attacker, tile) {
+        if (!attacker || !tile?.fort || tile.fort.owner === attacker.owner) {
+            return { allowed: true };
+        }
+        const attackerIsPlayer = attacker.owner === 'player';
+        const defenderIsPlayer = tile.fort.owner === 'player';
+        if (!attackerIsPlayer && !defenderIsPlayer) {
+            return { allowed: true };
+        }
+        const enemyFactionId = this.resolveAIFactionForTile(tile, 'tribal');
+        if (!this.isFactionHostileToPlayer(enemyFactionId)) {
+            const factionName = this.getFactionDisplayName(enemyFactionId);
+            return {
+                allowed: false,
+                reason: `${factionName} is not at war with you. Declare war before assaulting fortifications.`
+            };
+        }
+        return { allowed: true };
+    }
+
     getDiplomacyOverview() {
         const playerFactionId = this.getPlayerFactionId();
         const knownFactions = this.getKnownAIFactions();
@@ -2331,6 +2387,11 @@ class GameState {
         }
 
         if (destination.fort && destination.fort.owner !== unit.owner && !blockingUnit) {
+            const fortEngagement = this.canAssaultFort(unit, destination);
+            if (!fortEngagement.allowed) {
+                if (window.uiManager) uiManager.showNotification(fortEngagement.reason, 'error');
+                return false;
+            }
             const fortAssault = this.resolveFortAssault(unit, destination);
             if (window.uiManager) {
                 const outcome = fortAssault.destroyed
@@ -2349,6 +2410,11 @@ class GameState {
         if (travelCost <= maxMovement) {
             if (blockingUnit) {
                 if (blockingUnit.owner === unit.owner) return false;
+                const engagement = this.canUnitsEngage(unit, blockingUnit);
+                if (!engagement.allowed) {
+                    if (window.uiManager) uiManager.showNotification(engagement.reason, 'error');
+                    return false;
+                }
                 unit.currentMovement = 0;
                 return this.resolveBattleOnMove(unit, blockingUnit, newPosition);
             }
