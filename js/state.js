@@ -2039,6 +2039,7 @@ class GameState {
     }
 
     processUnitAutomation(unit) {
+        if (!gameMap) return;
         if (unit.typeId === 'civil_engineers') {
             const tile = gameMap.getTile(unit.position.x, unit.position.y);
             const hostileEnemyUnits = this.getHostileEnemyUnitsNearPlayerCities(8);
