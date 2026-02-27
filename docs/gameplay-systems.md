@@ -9,6 +9,22 @@
   - Red: critical health
 - Numeric HP values are not rendered directly on the map.
 
+## Tactical Combat Layer
+
+- Battles now run through a tactical combat layer when opposing armies engage.
+- Tactical combat evaluates four per-unit combat stats each battle:
+  - `attack`
+  - `defense`
+  - `morale`
+  - `speed`
+- Formations are applied per side with tactical tradeoffs:
+  - `line`: balanced
+  - `wedge`: higher attack/speed, lower defense
+  - `shield_wall`: higher defense/morale, lower attack/speed
+- Terrain now affects tactical performance (`plains`, `forest`, `hills`, `mountains`, `city`, `water`) through attack/defense/speed/morale modifiers.
+- Combat results include a concise tactical summary and combat log lines for formation matchup, stat context, damage exchange, and outcome.
+- Enemy forces use basic tactical AI to select formations based on unit role, health/morale state, battle type, and terrain context.
+
 ## Healing and Recharge
 
 Units recover health at end of turn from these sources:

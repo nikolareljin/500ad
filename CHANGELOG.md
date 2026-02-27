@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.9.0] - 2026-02-27
+
+### Added
+- Added a tactical combat layer that triggers when armies engage and evaluates `attack`, `defense`, `morale`, and `speed`.
+- Added formation systems for `Line`, `Wedge`, and `Shield Wall`, each with tactical tradeoffs.
+- Added tactical terrain combat modifiers for `plains`, `forest`, `hills`, `mountains`, `city`, and `water`.
+- Added concise combat-log/summary output that reports formation matchup, tactical stat context, damage exchange, and outcome.
+- Added basic enemy tactical AI for formation selection based on terrain, unit condition, and battle type.
+
 ## [1.7.0] - 2026-02-27
 
 ### Added

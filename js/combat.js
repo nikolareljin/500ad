@@ -3,69 +3,159 @@
  * Turn-based combat calculations with Byzantine tactics
  */
 
+const TACTICAL_FORMATIONS = {
+    line: {
+        id: 'line',
+        name: 'Line',
+        attackMultiplier: 1,
+        defenseMultiplier: 1,
+        moraleMultiplier: 1,
+        speedMultiplier: 1
+    },
+    wedge: {
+        id: 'wedge',
+        name: 'Wedge',
+        attackMultiplier: 1.22,
+        defenseMultiplier: 0.88,
+        moraleMultiplier: 0.96,
+        speedMultiplier: 1.1
+    },
+    shield_wall: {
+        id: 'shield_wall',
+        name: 'Shield Wall',
+        attackMultiplier: 0.85,
+        defenseMultiplier: 1.28,
+        moraleMultiplier: 1.08,
+        speedMultiplier: 0.82
+    }
+};
+
+const TERRAIN_TACTICAL_MODIFIERS = {
+    plains: { attackMultiplier: 1.03, defenseMultiplier: 0.98, speedMultiplier: 1.07, moraleMultiplier: 1 },
+    forest: { attackMultiplier: 0.94, defenseMultiplier: 1.14, speedMultiplier: 0.84, moraleMultiplier: 1.03 },
+    hills: { attackMultiplier: 0.95, defenseMultiplier: 1.18, speedMultiplier: 0.87, moraleMultiplier: 1.04 },
+    mountains: { attackMultiplier: 0.9, defenseMultiplier: 1.25, speedMultiplier: 0.73, moraleMultiplier: 1.08 },
+    city: { attackMultiplier: 0.96, defenseMultiplier: 1.22, speedMultiplier: 0.9, moraleMultiplier: 1.05 },
+    water: { attackMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1, moraleMultiplier: 1 }
+};
+
+function resolveFormation(formationId) {
+    return TACTICAL_FORMATIONS[formationId] || TACTICAL_FORMATIONS.line;
+}
+
+function getUnitSpeedStat(unit) {
+    return Math.max(1, Number(unit?.stats?.speed ?? unit?.stats?.movement ?? 1));
+}
+
+function pickEnemyFormation(unit, enemy, terrain, battleType) {
+    const unitType = getUnitById(unit?.typeId);
+    const healthRatio = Math.max(0, Math.min(1, (unit?.currentHealth || 0) / Math.max(1, unit?.stats?.health || 1)));
+    if (healthRatio < 0.45) return 'shield_wall';
+    if (battleType === 'siege' || terrain === 'city') return 'shield_wall';
+    if (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains') {
+        if ((unit?.stats?.defense || 0) >= (unit?.stats?.attack || 0)) return 'shield_wall';
+    }
+    if ((unitType?.type === 'cavalry' || unitType?.category === 'shock') && (unit?.morale || 0) >= 65) return 'wedge';
+    if (getUnitSpeedStat(unit) >= getUnitSpeedStat(enemy) + 1 && (unit?.morale || 0) >= 70) return 'wedge';
+    return 'line';
+}
+
+function chooseFormation(side, unit, enemy, terrain, battleType, requestedFormation) {
+    if (resolveFormation(requestedFormation).id === requestedFormation) {
+        return requestedFormation;
+    }
+    if (unit?.owner === 'enemy') {
+        return pickEnemyFormation(unit, enemy, terrain, battleType);
+    }
+    return 'line';
+}
+
+function calculateTacticalStats(unit, enemy, terrain, battleType, formationId) {
+    const unitType = getUnitById(unit.typeId);
+    const formation = resolveFormation(formationId);
+    const terrainMod = TERRAIN_TACTICAL_MODIFIERS[terrain] || TERRAIN_TACTICAL_MODIFIERS.plains;
+    const mapTerrainEffects = gameMap?.getTerrainEffects?.(terrain, {
+        unit,
+        attacker: unit,
+        defender: enemy
+    }) || { attackMultiplier: 1, defenseMultiplier: 1 };
+    const levelBonus = 1 + ((unit.level || 1) - 1) * 0.1;
+    const moraleFactor = Math.max(0.25, Math.min(1.2, (unit.morale || 0) / 100));
+
+    let attack = (unit.stats.attack || 1);
+    let defense = (unit.stats.defense || 1);
+    const speed = getUnitSpeedStat(unit) * formation.speedMultiplier * terrainMod.speedMultiplier;
+    const morale = (unit.morale || 0) * formation.moraleMultiplier * terrainMod.moraleMultiplier;
+
+    // Existing counter-type modifiers are preserved as tactical layer inputs.
+    if (enemy && unitType?.bonuses) {
+        const enemyType = getUnitById(enemy.typeId);
+        if (enemyType?.type === 'infantry' && unitType.bonuses.vsInfantry) {
+            attack *= unitType.bonuses.vsInfantry;
+        } else if (enemyType?.type === 'cavalry' && unitType.bonuses.vsCavalry) {
+            attack *= unitType.bonuses.vsCavalry;
+        }
+    }
+
+    attack *= formation.attackMultiplier * terrainMod.attackMultiplier * (mapTerrainEffects.attackMultiplier || 1) * levelBonus * moraleFactor;
+    defense *= formation.defenseMultiplier * terrainMod.defenseMultiplier * (mapTerrainEffects.defenseMultiplier || 1) * levelBonus * moraleFactor;
+
+    return {
+        attack: Math.max(1, attack),
+        defense: Math.max(1, defense),
+        speed: Math.max(0.5, speed),
+        morale: Math.max(0, Math.min(100, morale)),
+        formationId: formation.id,
+        formationName: formation.name
+    };
+}
+
 /**
  * Calculate combat damage between attacker and defender
  */
-function calculateCombatDamage(attacker, defender, terrain = 'plains') {
-    const attackerType = getUnitById(attacker.typeId);
-    const defenderType = getUnitById(defender.typeId);
-
-    if (!attackerType || !defenderType) return { attackerDamage: 0, defenderDamage: 0 };
-
-    // Base attack values
-    let attackPower = attacker.stats.attack;
-    let defensePower = defender.stats.defense;
-    const terrainEffects = gameMap?.getTerrainEffects?.(terrain, {
-        unit: attacker,
+function calculateCombatDamage(attacker, defender, terrain = 'plains', battleType = 'field', options = {}) {
+    const attackerFormation = chooseFormation(
+        'attacker',
         attacker,
-        defender
-    }) || { attackMultiplier: 1, defenseMultiplier: 1 };
+        defender,
+        terrain,
+        battleType,
+        options.attackerFormation
+    );
+    const defenderFormation = chooseFormation(
+        'defender',
+        defender,
+        attacker,
+        terrain,
+        battleType,
+        options.defenderFormation
+    );
+    const attackerTactical = calculateTacticalStats(attacker, defender, terrain, battleType, attackerFormation);
+    const defenderTactical = calculateTacticalStats(defender, attacker, terrain, battleType, defenderFormation);
 
-    // Apply type bonuses
-    if (defenderType.type === 'infantry' && attackerType.bonuses.vsInfantry) {
-        attackPower *= attackerType.bonuses.vsInfantry;
-    } else if (defenderType.type === 'cavalry' && attackerType.bonuses.vsCavalry) {
-        attackPower *= attackerType.bonuses.vsCavalry;
-    }
+    const baseAttackerDamage = Math.max(
+        1,
+        Math.floor((attackerTactical.attack - defenderTactical.defense * 0.45) + attackerTactical.speed * 0.6)
+    );
+    const baseDefenderDamage = Math.max(
+        1,
+        Math.floor((defenderTactical.attack - attackerTactical.defense * 0.35) + defenderTactical.speed * 0.45)
+    );
+    const randomFactor = () => 0.85 + Math.random() * 0.3;
+    const attackerDamage = Math.max(1, Math.floor(baseAttackerDamage * randomFactor()));
+    const defenderDamage = Math.max(1, Math.floor(baseDefenderDamage * randomFactor()));
 
-    // Apply defender bonuses
-    if (attackerType.type === 'infantry' && defenderType.bonuses.vsInfantry) {
-        defensePower *= defenderType.bonuses.vsInfantry;
-    } else if (attackerType.type === 'cavalry' && defenderType.bonuses.vsCavalry) {
-        defensePower *= defenderType.bonuses.vsCavalry;
-    }
-
-    // Apply terrain modifiers
-    if (terrain === 'forest' || terrain === 'hills') {
-        if (attackerType.bonuses.terrain) {
-            attackPower *= attackerType.bonuses.terrain;
-        }
-    }
-    attackPower *= terrainEffects.attackMultiplier || 1;
-    defensePower *= terrainEffects.defenseMultiplier || 1;
-
-    // Apply morale
-    const attackerMorale = attacker.morale / 100;
-    const defenderMorale = defender.morale / 100;
-    attackPower *= attackerMorale;
-    defensePower *= defenderMorale;
-
-    // Apply level/experience bonuses
-    const attackerLevelBonus = 1 + (attacker.level - 1) * 0.1;
-    const defenderLevelBonus = 1 + (defender.level - 1) * 0.1;
-    attackPower *= attackerLevelBonus;
-    defensePower *= defenderLevelBonus;
-
-    // Calculate damage
-    const attackerDamage = Math.max(1, Math.floor(attackPower - defensePower * 0.5));
-    const defenderDamage = Math.max(1, Math.floor(defender.stats.attack * defenderMorale * 0.7));
-
-    // Add randomness (±20%)
-    const randomFactor = () => 0.8 + Math.random() * 0.4;
+    const tacticalLog = [
+        `${attacker.name} (${attackerTactical.formationName}) vs ${defender.name} (${defenderTactical.formationName}) on ${terrain}.`,
+        `Stats A/D/S/M: ${Math.round(attackerTactical.attack)}/${Math.round(attackerTactical.defense)}/${attackerTactical.speed.toFixed(1)}/${Math.round(attackerTactical.morale)} vs ${Math.round(defenderTactical.attack)}/${Math.round(defenderTactical.defense)}/${defenderTactical.speed.toFixed(1)}/${Math.round(defenderTactical.morale)}.`
+    ];
 
     return {
-        attackerDamage: Math.floor(attackerDamage * randomFactor()),
-        defenderDamage: Math.floor(defenderDamage * randomFactor())
+        attackerDamage,
+        defenderDamage,
+        attackerTactical,
+        defenderTactical,
+        tacticalLog
     };
 }
 
@@ -138,14 +228,16 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
     };
 }
 
-function maybeRetreat(unit, enemy, side, options = {}) {
+function maybeRetreat(unit, enemy, side, options = {}, tactical = null) {
     const requestedSide = options.retreatSide || 'defender';
     if (requestedSide !== side) return { success: false };
     if (!options.attemptRetreat) return { success: false };
     if (unit.currentHealth > unit.stats.health * 0.6) return { success: false };
 
     const baseChance = 0.45;
-    const mobilityBonus = unit.stats.movement >= enemy.stats.movement ? 0.15 : 0;
+    const unitSpeed = tactical?.speed ?? getUnitSpeedStat(unit);
+    const enemySpeed = getUnitSpeedStat(enemy);
+    const mobilityBonus = unitSpeed >= enemySpeed ? 0.15 : 0;
     const moraleBonus = unit.morale >= 65 ? 0.1 : -0.05;
     const chance = Math.max(0.15, Math.min(0.85, baseChance + mobilityBonus + moraleBonus));
     const roll = Math.random();
@@ -188,20 +280,24 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
         maxHealth: Math.max(1, Number(defender.stats?.health || 1))
     };
 
-    const baseDamage = calculateCombatDamage(attacker, defender, terrain);
+    const baseDamage = calculateCombatDamage(attacker, defender, terrain, battleType, options);
     const adjustedDamage = applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseDamage);
     let attackerDamage = adjustedDamage.attackerDamage;
     let defenderDamage = adjustedDamage.defenderDamage;
 
     attacker.fortified = false;
 
-    const attackerRetreat = maybeRetreat(attacker, defender, 'attacker', options);
+    const combatLog = [...(baseDamage.tacticalLog || [])];
+
+    const attackerRetreat = maybeRetreat(attacker, defender, 'attacker', options, baseDamage.attackerTactical);
     if (attackerRetreat.success) {
         attackerDamage = Math.floor(attackerDamage * 0.5);
+        combatLog.push(`${attacker.name} attempted a tactical withdrawal.`);
     }
-    const defenderRetreat = maybeRetreat(defender, attacker, 'defender', options);
+    const defenderRetreat = maybeRetreat(defender, attacker, 'defender', options, baseDamage.defenderTactical);
     if (defenderRetreat.success) {
         defenderDamage = Math.floor(defenderDamage * 0.5);
+        combatLog.push(`${defender.name} attempted a tactical withdrawal.`);
     }
 
     defender.currentHealth -= attackerDamage;
@@ -240,23 +336,36 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
         ? defenderRetreat
         : (attackerRetreat.success ? attackerRetreat : { success: false });
 
+    let outcome = 'stalemate';
+    if (attackerDied && defenderDied) outcome = 'mutual_losses';
+    else if (defenderDied) outcome = 'attacker_victory';
+    else if (attackerDied) outcome = 'defender_victory';
+    combatLog.push(`Damage exchange: ${attacker.name} dealt ${attackerDamage}, ${defender.name} dealt ${defenderDamage}.`);
+    combatLog.push(`Outcome: ${outcome.replace(/_/g, ' ')}.`);
+
     return {
         success: true,
         battleType,
+        terrain,
         attackerDamage,
         defenderDamage,
         defenderDied,
         attackerDied,
         retreat,
+        outcome,
+        summary: `${attacker.name} ${baseDamage.attackerTactical?.formationName || 'Line'} vs ${defender.name} ${baseDamage.defenderTactical?.formationName || 'Line'} (${terrain}) -> ${outcome.replace(/_/g, ' ')}`,
+        combatLog,
         attacker: {
             ...attackerSnapshot,
             health: attackerHealthAfter,
-            morale: attacker.morale
+            morale: attacker.morale,
+            tactical: baseDamage.attackerTactical
         },
         defender: {
             ...defenderSnapshot,
             health: defenderHealthAfter,
-            morale: defender.morale
+            morale: defender.morale,
+            tactical: baseDamage.defenderTactical
         }
     };
 }

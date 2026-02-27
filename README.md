@@ -68,7 +68,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system
-- **Combat System**: Type advantages, terrain modifiers, morale, and fortification modifiers
+- **Combat System**: Tactical layer with formations (`Line`, `Wedge`, `Shield Wall`), terrain modifiers, morale/speed factors, and concise combat logs
 - **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
 - **Diplomacy & Trade System**: Negotiate truces, alliances, trade agreements, and declarations of war with per-faction trust/hostility and reputation impacts
 - **Trade Routes**: Active agreements create income routes that can be raided/disrupted by hostile pressure and war outcomes

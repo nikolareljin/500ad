@@ -1280,9 +1280,14 @@ class UIManager {
             outcome = `${defender.name} won`;
         }
 
-        const message = ourUnit && enemyUnit
+        const baseMessage = ourUnit && enemyUnit
             ? `${outcome}${locationText}: Our ${ourUnit.name} ${ourUnit.health}/${ourUnit.maxHealth} HP vs ${enemyUnit.name} ${enemyUnit.health}/${enemyUnit.maxHealth} HP`
             : `${outcome}${locationText}: ${attacker.name} ${attacker.health}/${attacker.maxHealth} HP vs ${defender.name} ${defender.health}/${defender.maxHealth} HP`;
+        const tacticalSummary = result?.summary ? ` | ${result.summary}` : '';
+        const combatLogTail = Array.isArray(result?.combatLog) && result.combatLog.length > 0
+            ? ` | ${result.combatLog[result.combatLog.length - 1]}`
+            : '';
+        const message = `${baseMessage}${tacticalSummary}${combatLogTail}`;
         this.showNotification(message, level);
 
         // Flash the screen if player was attacked
