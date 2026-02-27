@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.6.0] - 2026-02-26
+
+### Added
+- Added multi-faction enemy AI coordination that processes hostile forces by faction identity (for example `arab`, `bulgar`, `frank`, `sassanid`, `tribal`) instead of a single undifferentiated enemy blob.
+- Added AI personality profiles (`aggressive`, `defensive`, `opportunistic`, `diplomatic`) with per-faction strategic bias values for warfare, defense, expansion, resource investment, and diplomacy.
+- Added persistent AI faction state and world-event memory (`aiFactions`, `aiEvents`) to save data so AI personalities/intel/diplomacy persist across save/load.
+
+### Changed
+- Updated enemy turn logic to run faction-level strategic phases (diplomacy, resource investment, expansion, defense) before unit actions.
+- Updated enemy target selection to score player units/cities by faction threat context and personality priorities instead of pure nearest-distance behavior.
+
+### Fixed
+- Fixed AI state initialization/restoration gaps by rebuilding faction intel from current world state after new-game setup and save load.
+- Fixed AI personality behavior default wiring by exposing the shared profile-default helper to `state.js` at runtime.
+- Fixed AI expansion event fidelity so `city_captured.cityFaction` reflects the pre-capture faction owner (`oldFaction`) for correct intel attribution.
+- Fixed AI faction army-spawn signaling so `spawnFactionArmyAtTown(...)` returns success/failure and AI fallback fortification logic can react correctly.
+- Fixed AI faction expansion pacing/economy balance by applying explicit stockpile costs and turn-based expansion limits.
+- Fixed AI defense/expansion robustness by guarding direct `HISTORIC_TOWNS` lookups and reusing cached city-tile rebuilds after expansion-state invalidation.
+- Fixed AI diplomacy-turn behavior drift by allowing warfare-focused plans to increase hostility pressure while diplomacy-focused plans reduce it.
+
 ## [1.5.0] - 2026-02-26
 
 ### Added

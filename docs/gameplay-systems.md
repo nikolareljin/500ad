@@ -39,3 +39,20 @@ Units recover health at end of turn from these sources:
 - Enemy town control varies by selected century through historical control overrides.
 - In `Managing an Empire`, player-controlled capital seats can be tracked as `primary` or `secondary` (by realm/leader priority), allowing starts and camera focus to prefer the active primary capital even when multiple historic capitals are controlled.
 - Some leaders can start as a field army (nomadic-style start) in `Building the Civilization`, with no initial town under player control.
+
+## Multi-Faction AI Personalities
+
+- Enemy turns are processed by faction identity (for example `arab`, `bulgar`, `frank`, `sassanid`, `tribal`) rather than as one shared AI block.
+- Each AI faction uses a personality archetype:
+  - `aggressive`
+  - `defensive`
+  - `opportunistic`
+  - `diplomatic`
+- Personalities influence strategic priorities for:
+  - warfare target pressure
+  - border defense/fortification
+  - neutral-city expansion
+  - resource/infrastructure investment
+  - AI-side diplomacy hostility toward the player
+- AI factions react to world-state events (especially city captures) via persistent faction intel/threat memory.
+- AI diplomacy is currently internal logic only (no player diplomacy UI yet).
