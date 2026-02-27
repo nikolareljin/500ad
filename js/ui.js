@@ -714,9 +714,9 @@ class UIManager {
             const rows = overview.map((entry) => {
                 const actions = this.getDiplomacyActions(entry);
                 const actionButtons = actions.map((action) => `
-                    <button class="menu-btn choice-btn${action.disabled ? ' choice-btn-disabled' : ''}" data-dipl-action="${action.id}" data-dipl-faction="${entry.factionId}" ${action.disabled ? 'disabled aria-disabled="true"' : ''}>
-                        <span class="btn-text">${action.title}</span>
-                        <small class="choice-btn-subtitle">${action.subtitle || ''}</small>
+                    <button class="menu-btn choice-btn${action.disabled ? ' choice-btn-disabled' : ''}" data-dipl-action="${escapeHtml(action.id)}" data-dipl-faction="${escapeHtml(entry.factionId)}" ${action.disabled ? 'disabled aria-disabled="true"' : ''}>
+                        <span class="btn-text">${escapeHtml(action.title)}</span>
+                        <small class="choice-btn-subtitle">${escapeHtml(action.subtitle || '')}</small>
                     </button>
                 `).join('');
                 return `

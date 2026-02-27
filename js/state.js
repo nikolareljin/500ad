@@ -661,21 +661,21 @@ class GameState {
             }
             this.setDiplomacyStatus(id, 'truce', { source: 'player' });
             this.adjustReputation(3);
-            factionState.trust = Math.min(100, (factionState.trust || 35) + 10);
+            factionState.trust = Math.min(100, (factionState.trust ?? 35) + 10);
             if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 16);
             return { success: true, message: `${factionName} accepted a truce.` };
         }
 
         if (actionId === 'propose_alliance') {
             if (factionState.status === 'war') return { success: false, message: 'End the war before proposing an alliance.' };
-            const accepted = acceptRoll(0.38 + (factionState.trust || 35) * 0.004 + (reputation * 0.003) - (currentHostility * 0.0035));
+            const accepted = acceptRoll(0.38 + (factionState.trust ?? 35) * 0.004 + (reputation * 0.003) - (currentHostility * 0.0035));
             if (!accepted) {
                 this.adjustReputation(-1);
-                factionState.trust = Math.max(0, (factionState.trust || 35) - 5);
+                factionState.trust = Math.max(0, (factionState.trust ?? 35) - 5);
                 return { success: false, message: `${factionName} declined the alliance for now.` };
             }
             this.setDiplomacyStatus(id, 'alliance', { source: 'player' });
-            factionState.trust = Math.min(100, (factionState.trust || 35) + 14);
+            factionState.trust = Math.min(100, (factionState.trust ?? 35) + 14);
             this.adjustReputation(6);
             if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 22);
             return { success: true, message: `Alliance formed with ${factionName}.` };
@@ -684,7 +684,7 @@ class GameState {
         if (actionId === 'trade_agreement') {
             if (factionState.status === 'war') return { success: false, message: 'Cannot sign trade agreements during war.' };
             if (factionState.tradeAgreement) return { success: false, message: 'Trade agreement already active.' };
-            const accepted = acceptRoll(0.5 + (factionState.trust || 35) * 0.003 + (reputation * 0.002));
+            const accepted = acceptRoll(0.5 + (factionState.trust ?? 35) * 0.003 + (reputation * 0.002));
             if (!accepted) {
                 this.adjustReputation(-1);
                 return { success: false, message: `${factionName} refused the proposed trade terms.` };
@@ -695,7 +695,7 @@ class GameState {
                 factionState.tradeAgreement = false;
                 return routeResult;
             }
-            factionState.trust = Math.min(100, (factionState.trust || 35) + 8);
+            factionState.trust = Math.min(100, (factionState.trust ?? 35) + 8);
             this.adjustReputation(4);
             return { success: true, message: `Trade agreement signed with ${factionName}.`, route: routeResult.route };
         }
