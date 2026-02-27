@@ -700,6 +700,13 @@ class UIManager {
             return;
         }
 
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
         const renderDiplomacyModal = () => {
             const overview = (typeof gameState.getDiplomacyOverview === 'function') ? gameState.getDiplomacyOverview() : [];
             const reputation = gameState?.diplomacyState?.reputation || 0;
@@ -714,9 +721,9 @@ class UIManager {
                 `).join('');
                 return `
                     <div class="dipl-row">
-                        <h3>${this.formatFactionName(entry.factionId)}</h3>
-                        <p>Status: <strong>${entry.status}</strong> | Hostility: ${entry.hostility} | Trust: ${entry.trust}</p>
-                        <p>Trade: ${entry.tradeAgreement ? 'Agreement active' : 'No agreement'}${entry.route ? ` | Route value: ${entry.route.value}g` : ''}</p>
+                        <h3>${escapeHtml(this.formatFactionName(entry.factionId))}</h3>
+                        <p>Status: <strong>${escapeHtml(entry.status)}</strong> | Hostility: ${escapeHtml(entry.hostility)} | Trust: ${escapeHtml(entry.trust)}</p>
+                        <p>Trade: ${entry.tradeAgreement ? 'Agreement active' : 'No agreement'}${entry.route ? ` | Route value: ${escapeHtml(entry.route.value)}g` : ''}</p>
                         <div class="dipl-actions">${actionButtons}</div>
                     </div>
                 `;

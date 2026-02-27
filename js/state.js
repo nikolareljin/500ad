@@ -430,6 +430,7 @@ class GameState {
         this.buildings = [];
         this.aiFactions = {};
         this.aiEvents = [];
+        this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
         if (scenario === SCENARIOS.empire) {
@@ -473,12 +474,13 @@ class GameState {
             if (unit?.owner === 'enemy') ids.add(unit.faction || 'tribal');
         });
         (gameMap?.getCityTiles('enemy') || []).forEach((tile) => {
-            ids.add(this.resolveAIFactionForTile(tile));
+            const factionId = this.resolveAIFactionForTile(tile, 'tribal');
+            if (typeof factionId === 'string' && factionId) ids.add(factionId);
         });
         ids.delete('player');
         ids.delete('neutral');
         ids.delete('');
-        return [...ids];
+        return [...ids].filter((id) => typeof id === 'string' && id);
     }
 
     ensureDiplomacyFactionState(factionId) {
@@ -596,21 +598,34 @@ class GameState {
         if (!best) {
             return { success: false, message: 'Could not determine a valid trade route path.' };
         }
-        const trust = this.ensureDiplomacyFactionState(factionId).trust || 35;
+        const trust = this.ensureDiplomacyFactionState(factionId).trust ?? 35;
         const value = Math.max(4, Math.floor(6 + trust * 0.06 + Math.max(0, 10 - Math.floor(best.dist / 3))));
-        const route = {
+        const previousRoute = (this.diplomacyState.tradeRoutes || []).find((route) => route.factionId === factionId);
+        const route = previousRoute || {
             id: `trade_${factionId}_${this.turn}_${Date.now()}`,
-            factionId,
-            fromCityId: best.pc.cityData?.id || `${best.pc.x},${best.pc.y}`,
-            toCityId: best.fc.cityData?.id || `${best.fc.x},${best.fc.y}`,
-            value,
-            status: 'active',
-            active: true,
-            establishedTurn: this.turn,
-            lastIncomeTurn: null,
-            lastDisruptedTurn: null
+            factionId
         };
-        this.diplomacyState.tradeRoutes.push(route);
+        route.fromCityId = best.pc.cityData?.id || `${best.pc.x},${best.pc.y}`;
+        route.toCityId = best.fc.cityData?.id || `${best.fc.x},${best.fc.y}`;
+        route.value = value;
+        route.status = 'active';
+        route.active = true;
+        route.establishedTurn = this.turn;
+        route.lastIncomeTurn = null;
+        route.lastDisruptedTurn = null;
+        if (!previousRoute) {
+            this.diplomacyState.tradeRoutes.push(route);
+        }
+        if (this.diplomacyState.tradeRoutes.length > 80) {
+            const keep = [];
+            const activeRoutes = this.diplomacyState.tradeRoutes.filter((entry) => entry?.active);
+            const inactiveRoutes = this.diplomacyState.tradeRoutes
+                .filter((entry) => entry && !entry.active)
+                .sort((a, b) => (b.lastDisruptedTurn || 0) - (a.lastDisruptedTurn || 0));
+            keep.push(...activeRoutes);
+            keep.push(...inactiveRoutes.slice(0, Math.max(0, 80 - activeRoutes.length)));
+            this.diplomacyState.tradeRoutes = keep;
+        }
         this.recordAIWorldEvent('trade_route_established', {
             factionId,
             routeId: route.id,
