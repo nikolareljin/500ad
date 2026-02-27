@@ -31,12 +31,12 @@ const TACTICAL_FORMATIONS = {
 };
 
 const TERRAIN_TACTICAL_MODIFIERS = {
-    plains: { attackMultiplier: 1.03, defenseMultiplier: 0.98, speedMultiplier: 1.07, moraleMultiplier: 1 },
-    forest: { attackMultiplier: 0.94, defenseMultiplier: 1.14, speedMultiplier: 0.84, moraleMultiplier: 1.03 },
-    hills: { attackMultiplier: 0.95, defenseMultiplier: 1.18, speedMultiplier: 0.87, moraleMultiplier: 1.04 },
-    mountains: { attackMultiplier: 0.9, defenseMultiplier: 1.25, speedMultiplier: 0.73, moraleMultiplier: 1.08 },
-    city: { attackMultiplier: 0.96, defenseMultiplier: 1.22, speedMultiplier: 0.9, moraleMultiplier: 1.05 },
-    water: { attackMultiplier: 1, defenseMultiplier: 1, speedMultiplier: 1, moraleMultiplier: 1 }
+    plains: { speedMultiplier: 1.07, moraleMultiplier: 1 },
+    forest: { speedMultiplier: 0.84, moraleMultiplier: 1.03 },
+    hills: { speedMultiplier: 0.87, moraleMultiplier: 1.04 },
+    mountains: { speedMultiplier: 0.73, moraleMultiplier: 1.08 },
+    city: { speedMultiplier: 0.9, moraleMultiplier: 1.05 },
+    water: { speedMultiplier: 1, moraleMultiplier: 1 }
 };
 
 const BATTLE_TYPE_TACTICAL_MODIFIERS = {

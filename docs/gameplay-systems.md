@@ -21,7 +21,7 @@
   - `line`: balanced
   - `wedge`: higher attack/speed, lower defense
   - `shield_wall`: higher defense/morale, lower attack/speed
-- Terrain now affects tactical performance (`plains`, `forest`, `hills`, `mountains`, `city`, `water`) through attack/defense/speed/morale modifiers.
+- Terrain now affects tactical performance (`plains`, `forest`, `hills`, `mountains`, `city`, `water`) through speed/morale tactical modifiers and map-driven combat effects.
 - Battle type now also contributes tactical modifiers (`field`, `siege`, `ambush`, `naval`) and is applied per combat side.
 - Effective morale now feeds combat calculations directly (not just displayed summary values), so morale modifiers from formation/terrain/battle type impact attack and defense outcomes.
 - Tactical morale is clamped to the displayed `0-100` range before combat-factor scaling so logged morale values match applied calculations.
