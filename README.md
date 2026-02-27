@@ -378,7 +378,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.9.0** - Introduces tactical combat formations and terrain-aware battle modifiers, plus latest city-building/diplomacy stability fixes (see changelog for full details)
+**Version 1.9.1** - Introduces tactical combat formations and terrain-aware battle modifiers, plus latest city-building/diplomacy stability fixes (see changelog for full details)
 
 ## License
 

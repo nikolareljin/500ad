@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.9.1] - 2026-02-27
+
+### Fixed
+- Clarified city build-mode UX in the build modal by showing explicit `Mode: AUTO` / `Mode: MANUAL` status in the header and action details.
+- Updated auto-build toggle feedback to use explicit build-mode notifications (AUTO/MANUAL) instead of only ON/OFF wording.
+- Re-opened the build modal immediately after toggling auto-build so players can verify mode changes without manually reopening the menu.
+
 ## [1.9.0] - 2026-02-27
 
 ### Added
