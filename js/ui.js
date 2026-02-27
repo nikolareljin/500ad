@@ -726,7 +726,7 @@ class UIManager {
                 <h2>Diplomacy & Trade</h2>
                 <p>Reputation: <strong>${reputation}</strong> | Active Trade Routes: <strong>${activeRoutes}</strong></p>
                 <div class="dipl-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:60vh;overflow:auto;">
-                    ${rows || '<p>No known factions to negotiate with yet.</p>'}
+                    ${overview.length > 0 ? rows : '<p>No known factions to negotiate with yet.</p>'}
                 </div>
                 <div style="margin-top:1rem;">
                     <button class="menu-btn" id="btn-close-diplomacy">Close</button>

@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed AI diplomacy/trade integration to use centralized game-state helpers for AI infrastructure upgrades and fortification updates.
 - Fixed faction expansion/defense robustness by guarding historical-town lookups and handling spawn fallback paths consistently.
+- Fixed diplomacy messaging/consistency issues (formatted faction names, no duplicate treaty hostility application, and no trust/reputation gain when trade-route creation fails).
 
 ## [1.6.0] - 2026-02-26
 

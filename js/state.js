@@ -521,6 +521,23 @@ class GameState {
         });
     }
 
+    getFactionDisplayName(factionId) {
+        const labels = {
+            byzantine: 'Byzantines',
+            arab: 'Arabs',
+            bulgar: 'Bulgars',
+            frank: 'Franks',
+            sassanid: 'Sassanids',
+            tribal: 'Tribal Confederation',
+            enemy: 'Enemy Army',
+            neutral: 'Neutral'
+        };
+        if (labels[factionId]) return labels[factionId];
+        return String(factionId || 'Unknown')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (m) => m.toUpperCase());
+    }
+
     adjustReputation(delta) {
         this.initializeDiplomacyState();
         this.diplomacyState.reputation = Math.max(-100, Math.min(100, Math.floor((this.diplomacyState.reputation || 0) + delta)));
@@ -604,6 +621,7 @@ class GameState {
 
     applyDiplomacyAction(actionId, factionId) {
         const id = factionId || 'tribal';
+        const factionName = this.getFactionDisplayName(id);
         const factionState = this.ensureDiplomacyFactionState(id);
         const aiState = this.ensureAIFactionState(id);
         const currentHostility = Math.max(-50, Math.min(100, aiState?.diplomacy?.player || 0));
@@ -624,13 +642,13 @@ class GameState {
             if (!accepted) {
                 this.adjustReputation(-2);
                 if (aiState?.diplomacy) aiState.diplomacy.player = Math.min(100, (aiState.diplomacy.player || 0) + 4);
-                return { success: false, message: `${id} rejected your truce proposal.` };
+                return { success: false, message: `${factionName} rejected your truce proposal.` };
             }
             this.setDiplomacyStatus(id, 'truce', { source: 'player' });
             this.adjustReputation(3);
             factionState.trust = Math.min(100, (factionState.trust || 35) + 10);
             if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 16);
-            return { success: true, message: `${id} accepted a truce.` };
+            return { success: true, message: `${factionName} accepted a truce.` };
         }
 
         if (actionId === 'propose_alliance') {
@@ -639,13 +657,13 @@ class GameState {
             if (!accepted) {
                 this.adjustReputation(-1);
                 factionState.trust = Math.max(0, (factionState.trust || 35) - 5);
-                return { success: false, message: `${id} declined the alliance for now.` };
+                return { success: false, message: `${factionName} declined the alliance for now.` };
             }
             this.setDiplomacyStatus(id, 'alliance', { source: 'player' });
             factionState.trust = Math.min(100, (factionState.trust || 35) + 14);
             this.adjustReputation(6);
             if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 22);
-            return { success: true, message: `Alliance formed with ${id}.` };
+            return { success: true, message: `Alliance formed with ${factionName}.` };
         }
 
         if (actionId === 'trade_agreement') {
@@ -654,17 +672,17 @@ class GameState {
             const accepted = acceptRoll(0.5 + (factionState.trust || 35) * 0.003 + (reputation * 0.002));
             if (!accepted) {
                 this.adjustReputation(-1);
-                return { success: false, message: `${id} refused the proposed trade terms.` };
+                return { success: false, message: `${factionName} refused the proposed trade terms.` };
             }
             factionState.tradeAgreement = true;
-            factionState.trust = Math.min(100, (factionState.trust || 35) + 8);
             const routeResult = this.createTradeRouteWithFaction(id);
             if (!routeResult.success) {
                 factionState.tradeAgreement = false;
                 return routeResult;
             }
+            factionState.trust = Math.min(100, (factionState.trust || 35) + 8);
             this.adjustReputation(4);
-            return { success: true, message: `Trade agreement signed with ${id}.`, route: routeResult.route };
+            return { success: true, message: `Trade agreement signed with ${factionName}.`, route: routeResult.route };
         }
 
         return { success: false, message: 'Unknown diplomacy action.' };
@@ -798,13 +816,7 @@ class GameState {
             : null;
         const behaviorDefaults = behaviorDefaultsFn
             ? behaviorDefaultsFn(personality)
-            : (existing.behavior || {
-                aggression: 0.5,
-                expansion: 0.5,
-                defense: 0.5,
-                diplomacy: 0.5,
-                resourceFocus: 0.5
-            });
+            : (existing.behavior || this.getPersonalityBehaviorFallback(personality));
         if (!behaviorDefaultsFn && !this._aiBehaviorDefaultsFallbackWarned) {
             this._aiBehaviorDefaultsFallbackWarned = true;
             console.warn('AI personality defaults helper unavailable; using neutral fallback behavior values.');
@@ -840,6 +852,16 @@ class GameState {
             inactiveSinceTurn: existing.inactiveSinceTurn ?? null
         };
         return this.aiFactions[resolvedFactionId];
+    }
+
+    getPersonalityBehaviorFallback(personality) {
+        const fallbackByPersonality = {
+            aggressive: { aggression: 0.9, expansion: 0.75, defense: 0.35, diplomacy: 0.2, resourceFocus: 0.45 },
+            defensive: { aggression: 0.42, expansion: 0.38, defense: 0.92, diplomacy: 0.45, resourceFocus: 0.7 },
+            opportunistic: { aggression: 0.65, expansion: 0.88, defense: 0.55, diplomacy: 0.35, resourceFocus: 0.6 },
+            diplomatic: { aggression: 0.35, expansion: 0.5, defense: 0.55, diplomacy: 0.95, resourceFocus: 0.65 }
+        };
+        return fallbackByPersonality[personality] || fallbackByPersonality.defensive;
     }
 
     refreshAIFactionState() {

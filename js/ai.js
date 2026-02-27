@@ -201,19 +201,13 @@ class AIManager {
     }
 
     processFactionDiplomacy(context, plan) {
-        const { state, factionId } = context;
+        const { state } = context;
         if (!state) return;
         if (!state.diplomacy) state.diplomacy = { player: 0 };
-        const status = typeof gameState?.getFactionDiplomacyStatus === 'function'
-            ? gameState.getFactionDiplomacyStatus(factionId)
-            : 'war';
 
         let delta = 0;
         if (plan.primaryFocus === 'diplomacy') delta -= 2;
         else if (plan.primaryFocus === 'warfare') delta += 2;
-        if (status === 'alliance') delta -= 3;
-        if (status === 'truce') delta -= 1;
-        if (status === 'war') delta += 1;
         state.diplomacy.player = Math.max(-50, Math.min(100, (state.diplomacy.player || 0) + delta));
     }
 
