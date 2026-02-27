@@ -710,7 +710,7 @@ class UIManager {
         const renderDiplomacyModal = () => {
             const overview = (typeof gameState.getDiplomacyOverview === 'function') ? gameState.getDiplomacyOverview() : [];
             const reputation = gameState?.diplomacyState?.reputation || 0;
-            const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route.active).length;
+            const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route?.active).length;
             const rows = overview.map((entry) => {
                 const actions = this.getDiplomacyActions(entry);
                 const actionButtons = actions.map((action) => `
