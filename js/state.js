@@ -647,6 +647,9 @@ class GameState {
         if (!cityData.construction || typeof cityData.construction !== 'object') {
             cityData.construction = null;
         }
+        if (typeof cityData.autoBuildEnabled !== 'boolean') {
+            cityData.autoBuildEnabled = false;
+        }
         return cityData;
     }
 
@@ -1973,6 +1976,11 @@ class GameState {
     processUnitAutomation(unit) {
         if (unit.typeId === 'civil_engineers') {
             const tile = gameMap.getTile(unit.position.x, unit.position.y);
+            const hostileEnemyUnits = this.getHostileEnemyUnitsNearPlayerCities(8);
+            if (tile?.cityData && tile.owner === 'player' && unit.currentMovement >= 0.5) {
+                const improvedCity = this.processEngineerCityInfrastructure(unit, tile, hostileEnemyUnits);
+                if (improvedCity) return;
+            }
             // If on a tile without road, build one
             if (tile && !tile.road && tile.terrain !== 'water' && tile.terrain !== 'mountains' && !tile.cityData) {
                 if (unit.currentMovement >= 0.5) {
@@ -1989,6 +1997,110 @@ class GameState {
                 }
             }
         }
+    }
+
+    getHostileEnemyUnitsNearPlayerCities(maxDistance = 7) {
+        if (!gameMap) return [];
+        const playerCities = gameMap.getCityTiles('player') || [];
+        if (playerCities.length === 0) return [];
+        return this.units.filter((unit) => {
+            if (!unit || unit.owner !== 'enemy' || !unit.position) return false;
+            const factionId = this.resolveUnitFactionForDiplomacy(unit);
+            if (!this.isFactionHostileToPlayer(factionId)) return false;
+            return playerCities.some((city) =>
+                Math.abs(city.x - unit.position.x) + Math.abs(city.y - unit.position.y) <= maxDistance
+            );
+        });
+    }
+
+    isCityUnderHostileThreat(cityTile, hostileEnemyUnits = [], maxDistance = 6) {
+        if (!cityTile || !Array.isArray(hostileEnemyUnits) || hostileEnemyUnits.length === 0) return false;
+        return hostileEnemyUnits.some((enemy) =>
+            Math.abs(cityTile.x - enemy.position.x) + Math.abs(cityTile.y - enemy.position.y) <= maxDistance
+        );
+    }
+
+    pickAutoBuildingOption(cityTile, prioritizeDefense = false) {
+        const options = this.getCityBuildingOptions(cityTile).filter((entry) => entry.available);
+        if (options.length === 0) return null;
+        const priority = prioritizeDefense
+            ? ['walls', 'barracks', 'mine', 'workshop', 'farm', 'temple']
+            : ['farm', 'mine', 'workshop', 'temple', 'barracks', 'walls'];
+        for (const buildingId of priority) {
+            const match = options.find((entry) => entry.id === buildingId);
+            if (match) return match;
+        }
+        return options[0];
+    }
+
+    getEngineerInfrastructurePriorityActions(cityTile, prioritizeDefense = false) {
+        if (!cityTile?.cityData) return [];
+        const cityData = cityTile.cityData;
+        const infra = cityData.infrastructure || {};
+        const actions = prioritizeDefense
+            ? ['build_fort', 'build_road', 'establish_monastery', 'build_port', 'build_farm', 'irrigate']
+            : ['build_farm', 'irrigate', 'plant_forest', 'build_caravan_camp', 'build_road', 'build_port', 'build_canal', 'establish_monastery', 'build_fort'];
+        return actions.filter((actionId) => {
+            if (!BUILD_ACTIONS[actionId]) return false;
+            if (actionId === 'build_port' && cityData.port) return false;
+            if (actionId === 'build_caravan_camp' && cityData.caravanCamp) return false;
+            if (actionId === 'build_canal' && cityData.canal) return false;
+            if (actionId === 'establish_monastery' && cityData.monastery) return false;
+            if (actionId === 'build_road' && (infra.roads || 0) >= 8) return false;
+            if (actionId === 'build_farm' && (infra.agriculture || 0) >= 8) return false;
+            if (actionId === 'build_fort' && (cityData.fortLevel || 0) >= 6) return false;
+            return true;
+        });
+    }
+
+    processEngineerCityInfrastructure(unit, cityTile, hostileEnemyUnits = []) {
+        if (!unit || unit.typeId !== 'civil_engineers' || !cityTile?.cityData || cityTile.owner !== 'player') return false;
+        const prioritizeDefense = this.isCityUnderHostileThreat(cityTile, hostileEnemyUnits, 7);
+        const priorityActions = this.getEngineerInfrastructurePriorityActions(cityTile, prioritizeDefense);
+        for (const actionId of priorityActions) {
+            const result = this.applyCityBuildAction(cityTile, actionId);
+            if (result?.success) {
+                unit.currentMovement = 0;
+                if (window.uiManager) {
+                    uiManager.showNotification(
+                        `${cityTile.cityData?.name || `City ${cityTile.x},${cityTile.y}`}: Engineers improved infrastructure (${result.actionName})`,
+                        'info'
+                    );
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    processCityAutoBuildTurn() {
+        if (!gameMap) return [];
+        const hostileEnemyUnits = this.getHostileEnemyUnitsNearPlayerCities(8);
+        const started = [];
+        (gameMap.getCityTiles('player') || []).forEach((cityTile) => {
+            const cityData = this.ensureCityBuildingState(cityTile);
+            if (!cityData?.autoBuildEnabled || cityData.construction) return;
+            const prioritizeDefense = this.isCityUnderHostileThreat(cityTile, hostileEnemyUnits, 7);
+            const option = this.pickAutoBuildingOption(cityTile, prioritizeDefense);
+            if (!option) return;
+            const result = this.startCityBuildingProject(cityTile, option.id);
+            if (!result.success) return;
+            started.push({
+                cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
+                buildingName: result.buildingName,
+                level: result.targetLevel,
+                turns: result.turns
+            });
+        });
+        if (started.length > 0 && window.uiManager) {
+            started.forEach((entry) => {
+                uiManager.showNotification(
+                    `${entry.cityName}: Auto ON started ${entry.buildingName} L${entry.level} (${entry.turns} turns)`,
+                    'info'
+                );
+            });
+        }
+        return started;
     }
 
     findNearestUnroadedTile(pos) {
@@ -2865,6 +2977,7 @@ class GameState {
         // 2. Start New Turn for Player
         this.turn++;
         const completedConstruction = this.processCityConstructionTurn();
+        const autoStartedConstruction = this.processCityAutoBuildTurn();
 
         // Generate resources
         const baseGold = 100;
@@ -2941,7 +3054,8 @@ class GameState {
             },
             upkeep: totalUpkeep,
             cityProduction,
-            completedConstruction
+            completedConstruction,
+            autoStartedConstruction
         };
     }
 

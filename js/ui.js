@@ -642,6 +642,8 @@ class UIManager {
             this.showNotification('Build actions require a player-owned tile', 'error');
             return;
         }
+        const cityData = gameState.ensureCityBuildingState(tile);
+        const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
 
         const cityBuildingChoices = gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
@@ -650,17 +652,33 @@ class UIManager {
             detail: entry.available ? 'Available' : entry.reasons.join(' • '),
             disabled: !entry.available
         }));
+        const automationChoice = {
+            id: 'city_auto_toggle',
+            title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
+            subtitle: 'Defense if hostile-at-war enemies are near; otherwise growth',
+            detail: 'Applies per city each turn'
+        };
         const infrastructureChoices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
             id: `infra:${actionId}`,
             title: `${action.name} [Infrastructure]`,
             subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
         }));
-        const choices = [...cityBuildingChoices, ...infrastructureChoices];
+        const choices = [automationChoice, ...cityBuildingChoices, ...infrastructureChoices];
 
         this.showChoiceModal(
             `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
             choices,
             (choiceId) => {
+                if (choiceId === 'city_auto_toggle') {
+                    const current = gameState.ensureCityBuildingState(tile);
+                    current.autoBuildEnabled = !current.autoBuildEnabled;
+                    this.showNotification(
+                        `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: Auto Build ${current.autoBuildEnabled ? 'ON' : 'OFF'}`,
+                        'info'
+                    );
+                    this.buildInSelectedCity();
+                    return;
+                }
                 const isCityBuilding = choiceId.startsWith('city_building:');
                 const id = choiceId.includes(':') ? choiceId.split(':')[1] : choiceId;
                 const result = isCityBuilding
