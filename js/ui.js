@@ -648,7 +648,9 @@ class UIManager {
         const cityBuildingChoices = gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
             title: `${entry.name} (L${entry.currentLevel}/${entry.maxLevel})`,
-            subtitle: `Upgrade to L${entry.nextLevel} • ${entry.cost.gold}g / ${entry.cost.manpower}m / ${entry.cost.prestige || 0}p • ${entry.turns} turns`,
+            subtitle: entry.nextLevel && entry.cost
+                ? `Upgrade to L${entry.nextLevel} • ${entry.cost.gold}g / ${entry.cost.manpower}m / ${entry.cost.prestige || 0}p • ${entry.turns} turns`
+                : 'Max level reached',
             detail: entry.available ? 'Available' : entry.reasons.join(' • '),
             disabled: !entry.available
         }));

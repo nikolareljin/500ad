@@ -689,7 +689,7 @@ class GameState {
         const activeConstruction = cityData?.construction || null;
         return Object.entries(CITY_BUILDING_TREE).map(([buildingId, def]) => {
             const currentLevel = this.getCityBuildingLevel(cityTile, buildingId);
-            const nextLevel = currentLevel + 1;
+            const nextLevel = currentLevel < def.maxLevel ? (currentLevel + 1) : null;
             const reasons = [];
             let available = true;
 
@@ -716,13 +716,13 @@ class GameState {
                 reasons.push(`Construction active: ${activeConstruction.name} (${activeConstruction.turnsRemaining} turns)`);
             }
 
-            const cost = this.getCityBuildingUpgradeCost(buildingId, nextLevel);
-            const turns = this.getCityBuildingTurns(buildingId, nextLevel);
+            const cost = nextLevel ? this.getCityBuildingUpgradeCost(buildingId, nextLevel) : null;
+            const turns = nextLevel ? this.getCityBuildingTurns(buildingId, nextLevel) : null;
             const resources = this.player?.resources || {};
             const missing = [];
-            if ((resources.gold || 0) < cost.gold) missing.push(`${cost.gold - (resources.gold || 0)} gold`);
-            if ((resources.manpower || 0) < cost.manpower) missing.push(`${cost.manpower - (resources.manpower || 0)} manpower`);
-            if ((resources.prestige || 0) < cost.prestige) missing.push(`${cost.prestige - (resources.prestige || 0)} prestige`);
+            if (cost && (resources.gold || 0) < cost.gold) missing.push(`${cost.gold - (resources.gold || 0)} gold`);
+            if (cost && (resources.manpower || 0) < cost.manpower) missing.push(`${cost.manpower - (resources.manpower || 0)} manpower`);
+            if (cost && (resources.prestige || 0) < cost.prestige) missing.push(`${cost.prestige - (resources.prestige || 0)} prestige`);
             if (missing.length > 0) {
                 available = false;
                 reasons.push(`Missing ${missing.join(', ')}`);
@@ -784,11 +784,19 @@ class GameState {
         if (!option) return { success: false, message: 'Unknown city building.' };
         if (!option.available) return { success: false, message: option.reasons.join('; ') || 'Construction unavailable.' };
 
+        if (!option.nextLevel || !option.cost) {
+            return { success: false, message: 'No upgrade level available for that building.' };
+        }
+
         if (!this.spendResources(option.cost.gold, option.cost.manpower, option.cost.prestige || 0)) {
             return { success: false, message: `Need ${option.cost.gold}g/${option.cost.manpower}m/${option.cost.prestige || 0}p` };
         }
 
         const cityData = this.ensureCityBuildingState(cityTile);
+        if (cityTile.owner !== 'player') {
+            cityTile.owner = 'player';
+            gameMap?.markTerritoryDirty();
+        }
         cityData.construction = {
             id: buildingId,
             name: option.name,
