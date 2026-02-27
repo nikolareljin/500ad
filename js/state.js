@@ -371,6 +371,49 @@ const RECRUITMENT_UNIT_CATALOG = [
 ];
 
 const STRATEGIC_RESOURCE_KEYS = ['food', 'wood', 'stone', 'iron', 'rare'];
+const CITY_BUILDING_BALANCE = {
+    workshopRecruitGoldDiscountPerLevel: 0.06,
+    workshopRecruitGoldDiscountCap: 0.24,
+    barracksRecruitManpowerDiscountPerLevel: 0.05,
+    barracksRecruitManpowerDiscountCap: 0.20,
+    barracksRecruitXpPerLevel: 8,
+    templeResearchDiscountPerLevel: 0.02,
+    templeResearchDiscountCap: 0.18
+};
+// Global safeguard so stacked discount sources cannot trivialize research costs.
+const RESEARCH_DISCOUNT_CAP = 0.55;
+const CITY_PRODUCTION_BALANCE = {
+    farmFoodBonusPerLevel: 2,
+    workshopGoldBonusPerLevel: 2,
+    templeGoldBonusPerLevel: 1,
+    barracksManpowerBonusPerLevel: 2,
+    workshopManpowerBonusPerLevel: 1,
+    caravanCampGoldBonusBase: 2,
+    portGoldBonus: 2,
+    roadsGoldYield: 0.8,
+    populationGoldYield: 0.35,
+    foodToManpowerYield: 0.35,
+    industryToManpowerYield: 0.7,
+    infrastructureIndustryManpowerYield: 0.6,
+    strategicFoodExtractionMultiplier: 0.6,
+    infrastructureTier3ExtractionBonus: 0.25,
+    fortificationStoneExtractionBonus: 0.1,
+    mineStoneExtractionBonusPerLevel: 0.12,
+    wallStoneExtractionBonusPerLevel: 0.05,
+    mineIronExtractionBonusPerLevel: 0.12,
+    caravanRareExtractionBonus: 0.3
+};
+
+function extractStrategicYield(base, multiplier) {
+    const safeBase = Math.max(0, Math.floor(Number(base) || 0));
+    if (safeBase <= 0) return 0;
+    const safeMultiplier = Number(multiplier) || 0;
+    const scaled = Math.floor(safeBase * safeMultiplier);
+    if (safeMultiplier > 1) {
+        return Math.max(safeBase + 1, scaled);
+    }
+    return Math.max(0, scaled);
+}
 
 function parseSemver(version) {
     const raw = String(version || '').trim();
@@ -642,7 +685,8 @@ class GameState {
         }
         Object.keys(CITY_BUILDING_TREE).forEach((buildingId) => {
             const rawLevel = Number(cityData.buildings[buildingId] || 0);
-            cityData.buildings[buildingId] = Math.max(0, Math.floor(rawLevel));
+            const maxLevel = CITY_BUILDING_TREE[buildingId]?.maxLevel ?? Number.POSITIVE_INFINITY;
+            cityData.buildings[buildingId] = Math.min(maxLevel, Math.max(0, Math.floor(rawLevel)));
         });
         if (!cityData.construction || typeof cityData.construction !== 'object') {
             cityData.construction = null;
@@ -713,7 +757,7 @@ class GameState {
             }
             if (activeConstruction) {
                 available = false;
-                reasons.push(`Construction active: ${activeConstruction.name} (${activeConstruction.turnsRemaining} turns)`);
+                reasons.push(`Construction active: ${activeConstruction.name} (${activeConstruction.turnsRemaining} turns). Only one city project can run at a time.`);
             }
 
             const cost = nextLevel ? this.getCityBuildingUpgradeCost(buildingId, nextLevel) : null;
@@ -762,8 +806,10 @@ class GameState {
             infra.industry = Math.min(10, (infra.industry || 0) + 1);
             production.gold += 1;
         } else if (buildingId === 'temple') {
+            if (!cityData.monastery) {
+                this.player.resources.prestige += 2 + level;
+            }
             cityData.monastery = true;
-            this.player.resources.prestige += 2 + level;
             production.gold += 1;
         } else if (buildingId === 'walls') {
             cityData.fortLevel = (cityData.fortLevel || 0) + 1;
@@ -788,6 +834,7 @@ class GameState {
             return { success: false, message: 'No upgrade level available for that building.' };
         }
 
+        // Defensive re-check: costs were validated in options, but we validate again to avoid stale UI/race conditions.
         if (!this.spendResources(option.cost.gold, option.cost.manpower, option.cost.prestige || 0)) {
             return { success: false, message: `Need ${option.cost.gold}g/${option.cost.manpower}m/${option.cost.prestige || 0}p` };
         }
@@ -820,10 +867,14 @@ class GameState {
         cities.forEach((cityTile) => {
             const cityData = this.ensureCityBuildingState(cityTile);
             if (!cityData?.construction) return;
+            const project = cityData.construction;
+            const startedTurn = Number.isFinite(project.startedTurn) ? project.startedTurn : (this.turn - 1);
+            if (startedTurn >= this.turn) {
+                project.turnsRemaining = Math.max(1, project.turnsRemaining || project.totalTurns || 1);
+                return;
+            }
             cityData.construction.turnsRemaining = Math.max(0, (cityData.construction.turnsRemaining || 0) - 1);
             if (cityData.construction.turnsRemaining > 0) return;
-
-            const project = cityData.construction;
             cityData.buildings[project.id] = Math.max(cityData.buildings[project.id] || 0, project.targetLevel || 1);
             this.applyCityBuildingCompletion(cityTile, project.id, project.targetLevel || 1);
             cityData.construction = null;
@@ -849,8 +900,14 @@ class GameState {
         if (!unitType) return null;
         const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
         const workshopLevel = this.getCityBuildingLevel(cityTile, 'workshop');
-        const goldDiscount = Math.min(0.24, workshopLevel * 0.06);
-        const manpowerDiscount = Math.min(0.2, barracksLevel * 0.05);
+        const goldDiscount = Math.min(
+            CITY_BUILDING_BALANCE.workshopRecruitGoldDiscountCap,
+            workshopLevel * CITY_BUILDING_BALANCE.workshopRecruitGoldDiscountPerLevel
+        );
+        const manpowerDiscount = Math.min(
+            CITY_BUILDING_BALANCE.barracksRecruitManpowerDiscountCap,
+            barracksLevel * CITY_BUILDING_BALANCE.barracksRecruitManpowerDiscountPerLevel
+        );
         return {
             gold: Math.max(1, Math.floor((unitType.cost.gold || 0) * (1 - goldDiscount))),
             manpower: Math.max(1, Math.floor((unitType.cost.manpower || 0) * (1 - manpowerDiscount)))
@@ -2394,7 +2451,9 @@ class GameState {
             this.applyFactionUnitNaming(unit, this.player?.faction || this.selectedFaction || 'byzantine');
             const barracksLevel = this.getCityBuildingLevel(sourceCity, 'barracks');
             if (barracksLevel > 0) {
-                unit.experience = (unit.experience || 0) + (barracksLevel * 8);
+                // Each barracks level grants a fixed onboarding XP bonus (+8) so trained cities produce
+                // units with a meaningful, but not veteran-level, head start.
+                unit.experience = (unit.experience || 0) + (barracksLevel * CITY_BUILDING_BALANCE.barracksRecruitXpPerLevel);
             }
             this.units.push(unit);
             this.player.unitsOwned.push(unit.id);
@@ -2577,8 +2636,11 @@ class GameState {
             return { success: false, message: 'Prerequisites not met' };
         }
 
-        const templeDiscount = Math.min(0.18, this.getTotalCityBuildingLevel('temple') * 0.02);
-        const discount = Math.min(0.55, (this.player.techEffects.researchDiscount || 0) + templeDiscount);
+        const templeDiscount = Math.min(
+            CITY_BUILDING_BALANCE.templeResearchDiscountCap,
+            this.getTotalCityBuildingLevel('temple') * CITY_BUILDING_BALANCE.templeResearchDiscountPerLevel
+        );
+        const discount = Math.min(RESEARCH_DISCOUNT_CAP, (this.player.techEffects.researchDiscount || 0) + templeDiscount);
         const goldCost = Math.max(1, Math.floor(tech.cost.gold * (1 - discount)));
         const prestigeCost = Math.max(1, Math.floor(tech.cost.prestige * (1 - discount)));
         if (!this.spendResources(goldCost, 0, prestigeCost)) {
@@ -3094,27 +3156,57 @@ class GameState {
             const foodMultiplier = this.player.techEffects.foodMultiplier || 1;
             const goldMultiplier = this.player.techEffects.goldMultiplier || 1;
             const manpowerMultiplier = this.player.techEffects.manpowerMultiplier || 1;
-            const tradeBonus = tile.cityData?.caravanCamp ? 2 + (this.player.techEffects.tradePostBonus || 0) : 0;
-            const portBonus = tile.cityData?.port ? 2 : 0;
+            const tradeBonus = tile.cityData?.caravanCamp
+                ? CITY_PRODUCTION_BALANCE.caravanCampGoldBonusBase + (this.player.techEffects.tradePostBonus || 0)
+                : 0;
+            const portBonus = tile.cityData?.port ? CITY_PRODUCTION_BALANCE.portGoldBonus : 0;
             const terrainAccess = this.getCityTerrainAccess(tile);
             const terrainFoodBonus = terrainAccess.fertile ? 1 : 0;
             const terrainGoldBonus = terrainAccess.coast ? 1 : 0;
             const terrainManpowerBonus = terrainAccess.river ? 1 : 0;
 
-            const buildingFoodBonus = farmLevel * 2;
-            const buildingGoldBonus = (workshopLevel * 2) + templeLevel;
-            const buildingManpowerBonus = (barracksLevel * 2) + workshopLevel;
+            const buildingFoodBonus = farmLevel * CITY_PRODUCTION_BALANCE.farmFoodBonusPerLevel;
+            const buildingGoldBonus = (workshopLevel * CITY_PRODUCTION_BALANCE.workshopGoldBonusPerLevel)
+                + (templeLevel * CITY_PRODUCTION_BALANCE.templeGoldBonusPerLevel);
+            const buildingManpowerBonus = (barracksLevel * CITY_PRODUCTION_BALANCE.barracksManpowerBonusPerLevel)
+                + (workshopLevel * CITY_PRODUCTION_BALANCE.workshopManpowerBonusPerLevel);
             totals.food += Math.floor((p.food + terrainFoodBonus + buildingFoodBonus) * foodMultiplier);
-            totals.gold += Math.floor((p.gold + tradeBonus + portBonus + terrainGoldBonus + buildingGoldBonus + (infra?.roads || 0) * 0.8 + pop * 0.35) * goldMultiplier);
-            totals.manpower += Math.floor((((p.food + terrainManpowerBonus) * 0.35) + (p.industry * 0.7) + (infra?.industry || 0) * 0.6 + buildingManpowerBonus) * manpowerMultiplier);
+            totals.gold += Math.floor(
+                (
+                    p.gold
+                    + tradeBonus
+                    + portBonus
+                    + terrainGoldBonus
+                    + buildingGoldBonus
+                    + (infra?.roads || 0) * CITY_PRODUCTION_BALANCE.roadsGoldYield
+                    + pop * CITY_PRODUCTION_BALANCE.populationGoldYield
+                ) * goldMultiplier
+            );
+            totals.manpower += Math.floor(
+                (
+                    ((p.food + terrainManpowerBonus) * CITY_PRODUCTION_BALANCE.foodToManpowerYield)
+                    + (p.industry * CITY_PRODUCTION_BALANCE.industryToManpowerYield)
+                    + (infra?.industry || 0) * CITY_PRODUCTION_BALANCE.infrastructureIndustryManpowerYield
+                    + buildingManpowerBonus
+                ) * manpowerMultiplier
+            );
 
             const resourceReach = 2 + Math.min(1, Math.floor((infra?.roads || 0) / 4));
             const nearby = gameMap.getNearbyResourceYields(tile.x, tile.y, resourceReach);
-            totals.strategic.food += Math.floor((nearby.food || 0) * 0.6);
-            totals.strategic.wood += Math.floor((nearby.wood || 0) * (1 + ((infra?.industry || 0) >= 3 ? 0.25 : 0)));
-            totals.strategic.stone += Math.floor((nearby.stone || 0) * (1 + ((tile.cityData?.fortLevel || 0) > 0 ? 0.1 : 0) + (mineLevel * 0.12) + (wallsLevel * 0.05)));
-            totals.strategic.iron += Math.floor((nearby.iron || 0) * (1 + ((infra?.industry || 0) >= 4 ? 0.25 : 0) + (mineLevel * 0.12)));
-            totals.strategic.rare += Math.floor((nearby.rare || 0) * (1 + (tile.cityData?.caravanCamp ? 0.3 : 0)));
+            const woodMultiplier = 1 + ((infra?.industry || 0) >= 3 ? CITY_PRODUCTION_BALANCE.infrastructureTier3ExtractionBonus : 0);
+            const stoneMultiplier = 1
+                + ((tile.cityData?.fortLevel || 0) > 0 ? CITY_PRODUCTION_BALANCE.fortificationStoneExtractionBonus : 0)
+                + (mineLevel * CITY_PRODUCTION_BALANCE.mineStoneExtractionBonusPerLevel)
+                + (wallsLevel * CITY_PRODUCTION_BALANCE.wallStoneExtractionBonusPerLevel);
+            const ironMultiplier = 1
+                + ((infra?.industry || 0) >= 4 ? CITY_PRODUCTION_BALANCE.infrastructureTier3ExtractionBonus : 0)
+                + (mineLevel * CITY_PRODUCTION_BALANCE.mineIronExtractionBonusPerLevel);
+            const rareMultiplier = 1 + (tile.cityData?.caravanCamp ? CITY_PRODUCTION_BALANCE.caravanRareExtractionBonus : 0);
+            totals.strategic.food += extractStrategicYield(nearby.food || 0, CITY_PRODUCTION_BALANCE.strategicFoodExtractionMultiplier);
+            totals.strategic.wood += extractStrategicYield(nearby.wood || 0, woodMultiplier);
+            totals.strategic.stone += extractStrategicYield(nearby.stone || 0, stoneMultiplier);
+            totals.strategic.iron += extractStrategicYield(nearby.iron || 0, ironMultiplier);
+            totals.strategic.rare += extractStrategicYield(nearby.rare || 0, rareMultiplier);
         });
 
         return totals;

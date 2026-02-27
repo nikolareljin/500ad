@@ -678,7 +678,8 @@ class UIManager {
                         `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: Auto Build ${current.autoBuildEnabled ? 'ON' : 'OFF'}`,
                         'info'
                     );
-                    this.buildInSelectedCity();
+                    this.updateHUD();
+                    gameMap.requestRender();
                     return;
                 }
                 const isCityBuilding = choiceId.startsWith('city_building:');
