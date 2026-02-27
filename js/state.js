@@ -1334,9 +1334,6 @@ class GameState {
         }
 
         if (window.uiManager) {
-            const summary = `${battleType.toUpperCase()} battle: ${attacker.name} vs ${defender.name} `
-                + `(A-${result.attackerDamage} / D-${result.defenderDamage})`;
-            uiManager.showNotification(summary, 'info');
             uiManager.showCombatResult(result);
         }
 

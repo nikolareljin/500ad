@@ -1195,16 +1195,36 @@ class UIManager {
     }
 
     /**
-     * Show simplified combat result
+     * Show concise combat result with clear winner/loser and post-battle HP.
      */
     showCombatResult(result) {
-        const attacker = gameState.units.find(u => u.id === result.attacker.id);
-        const defender = gameState.units.find(u => u.id === result.defender.id);
+        const resolveCombatant = (side) => {
+            const payload = result?.[side] || {};
+            const live = gameState.units.find((u) => u.id === payload.id);
+            const maxHealth = Math.max(
+                1,
+                Number(live?.stats?.health ?? payload.maxHealth ?? 1)
+            );
+            const healthValue = Number.isFinite(live?.currentHealth)
+                ? live.currentHealth
+                : (Number.isFinite(payload.health) ? payload.health : 0);
+            return {
+                id: payload.id || live?.id || null,
+                name: live?.name || payload.name || (side === 'attacker' ? 'Attacker' : 'Defender'),
+                owner: live?.owner || payload.owner || null,
+                position: live?.position || null,
+                health: Math.max(0, Math.floor(healthValue)),
+                maxHealth
+            };
+        };
+
+        const attacker = resolveCombatant('attacker');
+        const defender = resolveCombatant('defender');
         if (gameMap) {
             gameMap.focusOnBattleUnits(attacker, defender);
             const highlighted = [];
-            if (attacker && attacker.currentHealth < attacker.stats.health) highlighted.push(attacker.id);
-            if (defender && defender.currentHealth < defender.stats.health) highlighted.push(defender.id);
+            if (attacker?.id && attacker.health < attacker.maxHealth) highlighted.push(attacker.id);
+            if (defender?.id && defender.health < defender.maxHealth) highlighted.push(defender.id);
             gameMap.setBattleHealthHighlights(highlighted, 3500);
         }
         const battlePosition = defender?.position || attacker?.position;
@@ -1225,8 +1245,40 @@ class UIManager {
             }
         }
 
-        const message = `${attacker?.name || 'Unit'} dealt ${result.attackerDamage} damage to ${defender?.name || 'Enemy'}${locationText}. Target health: ${result.defender.health}`;
-        this.showNotification(message, 'info');
+        const playerSide = attacker.owner === 'player'
+            ? 'attacker'
+            : (defender.owner === 'player' ? 'defender' : null);
+        const ourUnit = playerSide === 'attacker' ? attacker : (playerSide === 'defender' ? defender : null);
+        const enemyUnit = playerSide === 'attacker' ? defender : (playerSide === 'defender' ? attacker : null);
+
+        let outcome = 'Engagement';
+        let level = 'info';
+        if (result.attackerDied && result.defenderDied) {
+            outcome = 'Mutual Losses';
+            level = 'error';
+        } else if (playerSide === 'attacker' || playerSide === 'defender') {
+            const ourLost = playerSide === 'attacker' ? Boolean(result.attackerDied) : Boolean(result.defenderDied);
+            const enemyLost = playerSide === 'attacker' ? Boolean(result.defenderDied) : Boolean(result.attackerDied);
+            if (enemyLost && !ourLost) {
+                outcome = 'Victory';
+                level = 'success';
+            } else if (ourLost && !enemyLost) {
+                outcome = 'Defeat';
+                level = 'error';
+            } else {
+                outcome = 'Stalemate';
+                level = 'info';
+            }
+        } else if (result.defenderDied && !result.attackerDied) {
+            outcome = `${attacker.name} won`;
+        } else if (result.attackerDied && !result.defenderDied) {
+            outcome = `${defender.name} won`;
+        }
+
+        const message = ourUnit && enemyUnit
+            ? `${outcome}${locationText}: Our ${ourUnit.name} ${ourUnit.health}/${ourUnit.maxHealth} HP vs ${enemyUnit.name} ${enemyUnit.health}/${enemyUnit.maxHealth} HP`
+            : `${outcome}${locationText}: ${attacker.name} ${attacker.health}/${attacker.maxHealth} HP vs ${defender.name} ${defender.health}/${defender.maxHealth} HP`;
+        this.showNotification(message, level);
 
         // Flash the screen if player was attacked
         if (defender?.owner === 'player') {

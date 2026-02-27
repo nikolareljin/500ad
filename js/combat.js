@@ -175,6 +175,19 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
         return { success: false, message: 'Target out of range' };
     }
 
+    const attackerSnapshot = {
+        id: attackerId,
+        name: attacker.name || 'Attacker',
+        owner: attacker.owner || 'enemy',
+        maxHealth: Math.max(1, Number(attacker.stats?.health || 1))
+    };
+    const defenderSnapshot = {
+        id: defenderId,
+        name: defender.name || 'Defender',
+        owner: defender.owner || 'enemy',
+        maxHealth: Math.max(1, Number(defender.stats?.health || 1))
+    };
+
     const baseDamage = calculateCombatDamage(attacker, defender, terrain);
     const adjustedDamage = applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseDamage);
     let attackerDamage = adjustedDamage.attackerDamage;
@@ -196,6 +209,8 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
 
     const defenderDied = defender.currentHealth <= 0;
     const attackerDied = attacker.currentHealth <= 0;
+    const attackerHealthAfter = Math.max(0, Math.floor(attacker.currentHealth || 0));
+    const defenderHealthAfter = Math.max(0, Math.floor(defender.currentHealth || 0));
 
     if (!attackerDied) {
         attacker.experience += defenderDied ? 24 : 10;
@@ -234,13 +249,13 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
         attackerDied,
         retreat,
         attacker: {
-            id: attackerId,
-            health: attacker.currentHealth,
+            ...attackerSnapshot,
+            health: attackerHealthAfter,
             morale: attacker.morale
         },
         defender: {
-            id: defenderId,
-            health: defender.currentHealth,
+            ...defenderSnapshot,
+            health: defenderHealthAfter,
             morale: defender.morale
         }
     };
