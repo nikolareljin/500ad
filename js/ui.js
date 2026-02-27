@@ -645,6 +645,8 @@ class UIManager {
         const cityData = gameState.ensureCityBuildingState(tile);
         const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
         const hasCity = Boolean(tile?.cityData);
+        const cityName = tile.cityData?.name || `Tile ${tile.x},${tile.y}`;
+        const buildModeLabel = autoBuildEnabled ? 'AUTO' : 'MANUAL';
 
         const cityBuildingChoices = hasCity ? gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
@@ -658,8 +660,10 @@ class UIManager {
         const automationChoice = {
             id: 'city_auto_toggle',
             title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
-            subtitle: 'Defense if hostile-at-war enemies are near; otherwise growth',
-            detail: 'Applies per city each turn'
+            subtitle: `Current Build Mode: ${buildModeLabel}`,
+            detail: autoBuildEnabled
+                ? 'AUTO mode: city can start one building-tree upgrade each turn by priority'
+                : 'MANUAL mode: no auto-starts; you choose city projects yourself'
         };
         const infrastructureChoices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
             id: `infra:${actionId}`,
@@ -671,7 +675,7 @@ class UIManager {
             : infrastructureChoices;
 
         this.showChoiceModal(
-            `Build in ${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}`,
+            `Build in ${cityName} • Mode: ${buildModeLabel}`,
             choices,
             (choiceId) => {
                 if (choiceId === 'city_auto_toggle') {
@@ -682,11 +686,13 @@ class UIManager {
                     }
                     current.autoBuildEnabled = !current.autoBuildEnabled;
                     this.showNotification(
-                        `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: Auto Build ${current.autoBuildEnabled ? 'ON' : 'OFF'}`,
+                        `${cityName}: Build Mode ${current.autoBuildEnabled ? 'AUTO' : 'MANUAL'}`,
                         'info'
                     );
                     this.updateHUD();
                     gameMap.requestRender();
+                    // Re-open so the updated mode is visible immediately.
+                    setTimeout(() => this.buildInSelectedCity(), 0);
                     return;
                 }
                 const isCityBuilding = choiceId.startsWith('city_building:');
@@ -701,8 +707,8 @@ class UIManager {
                 this.updateHUD();
                 gameMap.requestRender();
                 const message = isCityBuilding
-                    ? `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.buildingName} upgrade to L${result.targetLevel} started (${result.turns} turns)`
-                    : `${tile.cityData?.name || `Tile ${tile.x},${tile.y}`}: ${result.actionName}`;
+                    ? `${cityName}: ${result.buildingName} upgrade to L${result.targetLevel} started (${result.turns} turns)`
+                    : `${cityName}: ${result.actionName}`;
                 this.showNotification(message, 'success');
             }
         );
