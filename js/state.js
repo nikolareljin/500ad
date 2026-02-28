@@ -3398,6 +3398,8 @@ class GameState {
         const isPlayerControlled = cityTile.owner === 'player' || gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player';
         if (!isPlayerControlled) reasons.push('Requires a player-owned tile');
         if (actionId === 'establish_town' && cityTile.terrain === 'water') reasons.push('Cannot establish a town on water');
+        if (actionId === 'establish_town' && cityTile.cityData) reasons.push('Tile already has a city');
+        if (actionId === 'establish_town' && cityTile.terrain === 'city') reasons.push('Tile is already urbanized');
 
         if (actionId !== 'establish_town' && !cityTile.cityData) {
             reasons.push('Select a city tile for this action');
