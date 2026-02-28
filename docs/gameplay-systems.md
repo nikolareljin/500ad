@@ -9,6 +9,18 @@
   - Red: critical health
 - Numeric HP values are not rendered directly on the map.
 
+## Unit Movement Input Modes
+
+- Unit movement now uses an explicit armed/disarmed move mode for clearer intent.
+- Toggle move mode by:
+  - `double-click` the selected player unit on desktop
+  - `double-tap` the selected player unit on touch devices
+- While move mode is ON, the next tile selection issues a move order.
+- Move mode can be cancelled by selecting/tapping the same unit again.
+- Selected unit visuals indicate mode state:
+  - default selected ring when move mode is OFF
+  - highlighted selected ring when move mode is ON
+
 ## Fog of War and Exploration
 
 - Fog now has two states:

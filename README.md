@@ -92,10 +92,11 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Dynamic Enemy Realms**: AI factions maintain territory pressure, diplomacy/threat memory (AI-side), and strategic reactions to player captures and frontier changes
 
 ### Mobile Optimized
-- **Touch Controls**: Tap to select, drag to move and pan
+- **Touch Controls**: Tap to select, drag to pan, and `double-tap` a selected unit to arm/disarm move mode
 - **Responsive Design**: Works on phones and tablets
 - **Performance Optimized**: Render queueing, fog alpha caching, and viewport-based drawing tuned for the 57,600-tile map
 - **Portrait & Landscape**: Supports both orientations
+- **Compact Mobile Unit Panel**: Unit details now appear in a reduced bottom panel so map interactions stay accessible during unit control
 
 ## How to Play
 
@@ -112,8 +113,10 @@ Note: the opening position and controlled towns depend on the selected era, lead
 - **Tap/Click**: Select units or tiles
 - **Drag Map**: Pan around the historic world map to explore
 - **Minimap Click/Drag**: Reposition the camera quickly to any world area
-- **Tap Unit**: View unit details
-- **Tap Empty Tile**: Move selected unit
+- **Tap/Click Unit**: View unit details
+- **Double-Click / Double-Tap Selected Unit**: Toggle `Move Mode` ON/OFF
+- **With Move Mode ON**: Tap/click a destination tile to issue the movement order
+- **Tap/Click the Selected Unit Again**: Cancel move mode quickly (Move Mode OFF)
 - **End Turn Button**: Complete your turn and generate resources
 - **Research Button**: Open the technology tree, inspect prerequisites/unlocks, and start new projects when no research is active
 
@@ -397,7 +400,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.12.0** - Adds layered fog-of-war visibility (unexplored vs explored shroud), vision-range-driven reconnaissance, hidden enemy movement outside current sight, and exploration discovery rewards for regions/landmarks.
+**Version 1.12.0** - Adds layered fog-of-war visibility (unexplored vs explored shroud), vision-range-driven reconnaissance, hidden enemy movement outside current sight, exploration discovery rewards for regions/landmarks, explicit unit move-mode toggling (`double-click`/`double-tap`), and a compact bottom unit panel on mobile for unobstructed movement input.
 
 ## License
 

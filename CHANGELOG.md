@@ -19,6 +19,9 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed information leakage where enemy movement/position could still be observed through explored fog.
 - Fixed save/load continuity for exploration by persisting fog exploration state and restoring it with the campaign.
+- Fixed unit-move UX by adding explicit move-mode toggling for selected units (`double-click` on desktop, `double-tap` on touch) with clear ON/OFF status feedback.
+- Fixed accidental map-tap movement by requiring intentional move-mode arming and allowing quick move-mode cancellation by tapping/clicking the selected unit again.
+- Fixed mobile unit control obstruction by converting the unit panel to a compact bottom layout so map movement orders remain usable on small screens.
 
 ## [1.11.0] - 2026-02-28
 
