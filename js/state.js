@@ -659,6 +659,25 @@ class GameState {
         return discovery;
     }
 
+    revealVisibilityFromUnitStep(unit, options = {}) {
+        if (!gameMap || !unit || unit.owner !== 'player') return null;
+        if (!Number.isFinite(unit.position?.x) || !Number.isFinite(unit.position?.y)) return null;
+        const radius = typeof gameMap.getUnitVisionRadius === 'function'
+            ? gameMap.getUnitVisionRadius(unit)
+            : 3;
+        const newlyExplored = (typeof gameMap.revealArea === 'function')
+            ? gameMap.revealArea(unit.position.x, unit.position.y, radius, { markVisible: true })
+            : [];
+        const discovery = this.processExplorationDiscoveries(newlyExplored, options);
+        if (!options.suppressRender) {
+            gameMap.requestRender();
+            if (typeof minimap !== 'undefined' && minimap && typeof minimap.render === 'function') {
+                minimap.render();
+            }
+        }
+        return discovery;
+    }
+
     /**
      * Initialize a new game with selected leader, century, faction, and scenario
      */
@@ -3926,8 +3945,13 @@ class GameState {
             unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
             // Reveal fog of war around new position for player units
-            if (unit.owner === 'player' && gameMap && !suppressVisibilityRefresh) {
-                this.refreshPlayerVisibility({ suppressRender });
+            if (unit.owner === 'player' && gameMap) {
+                if (suppressVisibilityRefresh) {
+                    // During batched movement, reveal incrementally but defer full-map recomputation.
+                    this.revealVisibilityFromUnitStep(unit, { suppressRender: true });
+                } else {
+                    this.refreshPlayerVisibility({ suppressRender });
+                }
             }
 
             // Check for territory capture
