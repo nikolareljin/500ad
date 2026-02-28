@@ -29,7 +29,10 @@ function stableSerializeForComparison(value) {
     return JSON.stringify(value);
 }
 
-function isUnsafeObjectKey(key) {
+function isUnsafeStateObjectKey(key) {
+    if (typeof isUnsafeObjectKey === 'function') {
+        return isUnsafeObjectKey(key);
+    }
     return key === '__proto__' || key === 'prototype' || key === 'constructor';
 }
 
@@ -1257,7 +1260,9 @@ class GameState {
         });
 
         this.dynamicNarrativeState.counter = Number.isFinite(state.counter) ? Math.max(0, state.counter) : 0;
-        this.dynamicNarrativeState.lastGeneratedTurn = Number.isFinite(state.lastGeneratedTurn) ? Math.max(0, state.lastGeneratedTurn) : 0;
+        this.dynamicNarrativeState.lastGeneratedTurn = Number.isFinite(state.lastGeneratedTurn)
+            ? Math.min(this.turn, Math.max(0, state.lastGeneratedTurn))
+            : 0;
         this.dynamicNarrativeState.active = Array.isArray(state.active)
             ? state.active.map(sanitizeEntry).filter((entry) => entry.id && entry.status === 'pending')
             : [];
@@ -1653,7 +1658,7 @@ class GameState {
 
         const trust = (effects && typeof effects.trust === 'object') ? effects.trust : {};
         Object.entries(trust).forEach(([factionId, delta]) => {
-            if (isUnsafeObjectKey(factionId)) return;
+            if (isUnsafeStateObjectKey(factionId)) return;
             if (!Number.isFinite(delta)) return;
             const state = this.ensureDiplomacyFactionState(factionId || 'tribal');
             state.trust = Math.max(0, Math.min(100, Math.floor((state.trust || 0) + delta)));
@@ -4022,6 +4027,7 @@ class GameState {
         this.selectedLeader = data.selectedLeader;
         this.selectedCentury = data.selectedCentury ?? this.selectedCentury ?? '6';
         this.player = data.player;
+        this.turn = Number.isFinite(data.turn) ? data.turn : (this.turn || 1);
         this.aiFactions = (data.aiFactions && typeof data.aiFactions === 'object') ? data.aiFactions : {};
         this.aiEvents = Array.isArray(data.aiEvents) ? data.aiEvents.slice(-40) : [];
         this.restoreDynamicNarrativeState(data.dynamicNarrativeState);
@@ -4046,7 +4052,6 @@ class GameState {
                 navalMovement: 0
             };
         }
-        this.turn = data.turn;
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;
         this.units = data.units;
