@@ -12,7 +12,7 @@
 ## Fog of War and Exploration
 
 - Fog now has two states:
-  - `unexplored`: fully hidden terrain
+  - `unexplored`: heavily obscured terrain (terrain is still rendered under dense fog)
   - `explored shroud`: previously discovered but not currently visible
 - Current visibility is recalculated from:
   - player unit vision ranges (scouts/intel classes have extended vision)

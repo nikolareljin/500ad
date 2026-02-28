@@ -652,6 +652,9 @@ class GameState {
         const discovery = this.processExplorationDiscoveries(newlyExplored, options);
         if (!options.suppressRender) {
             gameMap.requestRender();
+            if (typeof minimap !== 'undefined' && minimap && typeof minimap.render === 'function') {
+                minimap.render();
+            }
         }
         return discovery;
     }
@@ -2902,7 +2905,7 @@ class GameState {
 
     findNearestUnexploredTile(origin, maxRadius = 24, unit = null) {
         if (!origin || !gameMap) return null;
-        for (let r = 2; r <= maxRadius; r++) {
+        for (let r = 1; r <= maxRadius; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 const remaining = r - Math.abs(dy);
                 for (let dx = -remaining; dx <= remaining; dx++) {

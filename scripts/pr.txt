@@ -1,5 +1,8 @@
 Fix PR:
 
+Note:
+- This checklist is intentionally committed for maintainers/agents to follow a consistent PR-fix workflow.
+
 Steps:
 1. Read the PR review issues and conversations.
 2. Modify the code accordingly.
