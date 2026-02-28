@@ -4046,7 +4046,7 @@ class GameState {
         this.selectedLeader = data.selectedLeader;
         this.selectedCentury = data.selectedCentury ?? this.selectedCentury ?? '6';
         this.player = data.player;
-        this.turn = Number.isFinite(data.turn) ? data.turn : (this.turn || 1);
+        this.turn = Math.max(1, Math.floor(Number.isFinite(data.turn) ? data.turn : (this.turn || 1)));
         this.aiFactions = (data.aiFactions && typeof data.aiFactions === 'object') ? data.aiFactions : {};
         this.aiEvents = Array.isArray(data.aiEvents) ? data.aiEvents.slice(-40) : [];
         this.restoreDynamicNarrativeState(data.dynamicNarrativeState);
