@@ -524,6 +524,7 @@ class GameMap {
         this.panDistance = 0;
         this.suppressNextClick = false;
         this.awaitingMoveOrder = false;
+        this.lastTouchTap = { x: null, y: null, time: 0 };
 
         // Fog of war
         this.fogOfWar = [];
@@ -992,6 +993,7 @@ class GameMap {
 
         // Add event listeners
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
+        this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         this.canvas.addEventListener('touchstart', (e) => this.handleTouch(e));
     }
@@ -1748,6 +1750,20 @@ class GameMap {
         this.ctx.fillRect(182, 53, 12, 10);
         this.ctx.fillStyle = '#f3df95';
         this.ctx.fillText('Neutral', 198, 62);
+
+        const selected = gameState?.selectedUnit;
+        if (selected?.owner === 'player') {
+            const moveArmed = Boolean(this.awaitingMoveOrder);
+            const panelWidth = Math.min(500, Math.max(280, this.canvas.width - 320));
+            this.ctx.fillStyle = 'rgba(8, 11, 18, 0.72)';
+            this.ctx.fillRect(10, 74, panelWidth, 28);
+            this.ctx.fillStyle = moveArmed ? '#67f2ff' : '#f3df95';
+            this.ctx.fillText(
+                `${selected.name} | Move: ${moveArmed ? 'ON' : 'OFF'} | Double-click/double-tap unit to toggle`,
+                20,
+                93
+            );
+        }
     }
 
     /**
@@ -1856,6 +1872,16 @@ class GameMap {
 
         this.ctx.fillText(symbol, cx, cy);
 
+        const isSelected = gameState?.selectedUnit?.id === unit.id;
+        if (isSelected) {
+            const moveArmed = Boolean(this.awaitingMoveOrder);
+            this.ctx.strokeStyle = moveArmed ? '#67f2ff' : '#F4D03F';
+            this.ctx.lineWidth = Math.max(2, tileSize * 0.12);
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, tileSize * 0.48, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
         this.ctx.restore();
     }
 
@@ -1910,6 +1936,23 @@ class GameMap {
         }
     }
 
+    handleDoubleClick(event) {
+        if (this.suppressNextClick) {
+            this.suppressNextClick = false;
+            return;
+        }
+        const tile = this.screenToTile(event.clientX, event.clientY);
+        if (!tile) return;
+        const unit = gameState.units.find((u) =>
+            u.owner === 'player'
+            && !u.isCarried
+            && u.position?.x === tile.x
+            && u.position?.y === tile.y
+        );
+        if (!unit) return;
+        this.toggleMoveModeForUnit(unit, { activationHint: 'Click destination tile to move.' });
+    }
+
     /**
      * Handle mouse move event
      */
@@ -1929,10 +1972,47 @@ class GameMap {
     handleTouch(event) {
         event.preventDefault();
         const touch = event.touches[0];
+        if (!touch) return;
         const tile = this.screenToTile(touch.clientX, touch.clientY);
-        if (tile) {
-            this.selectTile(tile.x, tile.y);
+        if (!tile) return;
+
+        const now = Date.now();
+        const recentTapMs = now - (this.lastTouchTap.time || 0);
+        const sameTile = this.lastTouchTap.x === tile.x && this.lastTouchTap.y === tile.y;
+        const isDoubleTap = sameTile && recentTapMs > 0 && recentTapMs <= 340;
+
+        this.lastTouchTap = { x: tile.x, y: tile.y, time: now };
+
+        if (isDoubleTap) {
+            const unit = gameState.units.find((u) =>
+                u.owner === 'player'
+                && !u.isCarried
+                && u.position?.x === tile.x
+                && u.position?.y === tile.y
+            );
+            if (unit) {
+                this.toggleMoveModeForUnit(unit, { activationHint: 'Tap destination tile to move.' });
+                return;
+            }
         }
+
+        this.selectTile(tile.x, tile.y);
+    }
+
+    toggleMoveModeForUnit(unit, options = {}) {
+        if (!unit || unit.owner !== 'player') return;
+        gameState.selectUnit(unit.id);
+        this.awaitingMoveOrder = !this.awaitingMoveOrder;
+        if (window.uiManager) {
+            uiManager.showUnitPanel(unit);
+            uiManager.showNotification(
+                this.awaitingMoveOrder
+                    ? `Move mode ON. ${options.activationHint || 'Click destination tile to move.'}`
+                    : 'Move mode OFF.',
+                'info'
+            );
+        }
+        this.requestRender();
     }
 
     screenToTile(clientX, clientY) {
@@ -1961,8 +2041,21 @@ class GameMap {
         });
 
         if (unit && unit.owner === 'player') {
+            const selectedUnitId = gameState.selectedUnit?.id || null;
+            const clickedSelectedUnit = selectedUnitId === unit.id;
+            if (clickedSelectedUnit && this.awaitingMoveOrder) {
+                this.awaitingMoveOrder = false;
+                if (window.uiManager) {
+                    uiManager.showUnitPanel(unit);
+                    uiManager.showNotification('Move mode OFF.', 'info');
+                }
+                this.requestRender();
+                return;
+            }
             gameState.selectUnit(unit.id);
-            this.awaitingMoveOrder = false;
+            if (!clickedSelectedUnit) {
+                this.awaitingMoveOrder = false;
+            }
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }

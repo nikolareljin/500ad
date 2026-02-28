@@ -1182,7 +1182,9 @@ class UIManager {
                 const factionName = this.formatFactionName(unit.faction || unit.owner || 'enemy');
                 metaEl.textContent = `Enemy force: ${factionName}${estimatedView ? ' • Estimated strength' : ''}`;
             } else {
-                metaEl.textContent = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+                const factionText = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+                const moveModeText = this.getSelectedUnitMoveModeLabel(unit);
+                metaEl.textContent = moveModeText ? `${factionText} • ${moveModeText}` : factionText;
             }
         }
         const portrait = document.getElementById('selected-unit-portrait');
@@ -1248,6 +1250,13 @@ class UIManager {
 
     showEnemyUnitPanel(unit) {
         this.showUnitPanel(unit, { enemyView: true, estimatedView: true });
+    }
+
+    getSelectedUnitMoveModeLabel(unit) {
+        if (!unit || unit.owner !== 'player') return null;
+        const isSelected = gameState?.selectedUnit?.id === unit.id;
+        if (!isSelected) return null;
+        return Boolean(gameMap?.awaitingMoveOrder) ? 'Move Mode: ON' : 'Move Mode: OFF';
     }
 
     formatFactionName(factionId) {
@@ -1339,20 +1348,22 @@ class UIManager {
         moveBtn.className = 'action-btn';
         moveBtn.id = 'btn-move-unit';
         const moveArmed = Boolean(gameMap?.awaitingMoveOrder);
-        moveBtn.textContent = moveArmed ? 'Move: Armed' : 'Move';
+        moveBtn.textContent = moveArmed ? 'Move Mode: ON' : 'Move Mode: OFF';
         if (moveArmed) moveBtn.classList.add('active');
         moveBtn.onclick = withClickSound(() => {
             if (gameMap) gameMap.awaitingMoveOrder = !gameMap.awaitingMoveOrder;
             this.hideUnitPanelForMapTargeting();
             const armed = Boolean(gameMap?.awaitingMoveOrder);
-            moveBtn.textContent = armed ? 'Move: Armed' : 'Move';
+            moveBtn.textContent = armed ? 'Move Mode: ON' : 'Move Mode: OFF';
             moveBtn.classList.toggle('active', armed);
             this.showNotification(
                 armed
-                    ? 'Move armed: pan with minimap or drag map, then click destination tile.'
-                    : 'Move order cancelled.',
+                    ? 'Move mode ON: pan map if needed, then click destination tile.'
+                    : 'Move mode OFF.',
                 'info'
             );
+            this.showUnitPanel(unit);
+            gameMap?.requestRender();
         });
         container.appendChild(moveBtn);
 
