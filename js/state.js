@@ -250,64 +250,95 @@ const TECHNOLOGY_TREE = {
         name: 'Military Logistics',
         description: 'Improves supply and troop movement across roads.',
         cost: { gold: 220, prestige: 30 },
+        researchTurns: 2,
         requires: [],
-        effects: { movement: 1, manpowerMultiplier: 1.08 }
+        effects: { movement: 1, manpowerMultiplier: 1.08 },
+        unlocks: {
+            buildings: ['barracks'],
+            buildActions: ['build_fort']
+        }
     },
     siegecraft: {
         name: 'Siegecraft',
         description: 'Organized siege doctrine for city assaults.',
         cost: { gold: 280, prestige: 35 },
+        researchTurns: 3,
         requires: ['military_logistics'],
-        effects: { siegeAttackMultiplier: 1.2 }
+        effects: { siegeAttackMultiplier: 1.2 },
+        unlocks: {
+            buildings: ['walls']
+        }
     },
     naval_architecture: {
         name: 'Naval Architecture',
         description: 'Stronger hulls and faster naval movement.',
         cost: { gold: 260, prestige: 30 },
+        researchTurns: 2,
         requires: [],
-        effects: { navalAttackMultiplier: 1.15, navalMovement: 1 }
+        effects: { navalAttackMultiplier: 1.15, navalMovement: 1 },
+        unlocks: {
+            buildActions: ['build_port'],
+            units: ['dromon', 'dromon_greekfire', 'greekfire']
+        }
     },
     cavalry_tactics: {
         name: 'Cavalry Tactics',
         description: 'Improves flanking and shock momentum.',
         cost: { gold: 240, prestige: 28 },
+        researchTurns: 2,
         requires: [],
-        effects: { cavalryAttackMultiplier: 1.12 }
+        effects: { cavalryAttackMultiplier: 1.12 },
+        unlocks: {
+            units: ['war_elephants']
+        }
     },
     irrigation_systems: {
         name: 'Irrigation Systems',
         description: 'Advanced canal-fed irrigation for higher yields.',
         cost: { gold: 260, prestige: 28 },
+        researchTurns: 2,
         requires: [],
-        effects: { foodMultiplier: 1.15 }
+        effects: { foodMultiplier: 1.15 },
+        unlocks: {
+            buildActions: ['irrigate']
+        }
     },
     monastic_scholarship: {
         name: 'Monastic Scholarship',
         description: 'Libraries, scriptoria, and legal codification.',
         cost: { gold: 320, prestige: 40 },
+        researchTurns: 3,
         requires: ['irrigation_systems'],
-        effects: { researchDiscount: 0.1, prestigePerTurn: 2 }
+        effects: { researchDiscount: 0.1, prestigePerTurn: 2, diplomacyAcceptanceBonus: 0.05 },
+        unlocks: {
+            buildings: ['temple']
+        }
     },
     caravan_routes: {
         name: 'Caravan Routes',
         description: 'Formalized trade corridors across the continent.',
         cost: { gold: 300, prestige: 35 },
+        researchTurns: 3,
         requires: ['military_logistics'],
-        effects: { goldMultiplier: 1.12, tradePostBonus: 2 }
+        effects: { goldMultiplier: 1.12, tradePostBonus: 2, tradeIncomeMultiplier: 1.15 },
+        unlocks: {
+            buildings: ['workshop'],
+            buildActions: ['build_caravan_camp', 'build_canal']
+        }
     }
 };
 
 const BUILD_ACTIONS = {
     establish_town: { name: 'Establish Town', gold: 240, manpower: 120, prestige: 12 },
-    build_fort: { name: 'Build Fort', gold: 150, manpower: 90, prestige: 4 },
+    build_fort: { name: 'Build Fort', gold: 150, manpower: 90, prestige: 4, requiresTech: 'military_logistics' },
     build_road: { name: 'Build Road', gold: 70, manpower: 40, prestige: 0 },
     establish_monastery: { name: 'Establish Monastery / Mosque', gold: 180, manpower: 60, prestige: 8 },
-    build_caravan_camp: { name: 'Build Caravan Camp', gold: 130, manpower: 55, prestige: 2 },
-    build_port: { name: 'Build Port', gold: 170, manpower: 80, prestige: 3 },
+    build_caravan_camp: { name: 'Build Caravan Camp', gold: 130, manpower: 55, prestige: 2, requiresTech: 'caravan_routes' },
+    build_port: { name: 'Build Port', gold: 170, manpower: 80, prestige: 3, requiresTech: 'naval_architecture' },
     build_farm: { name: 'Build Farm', gold: 75, manpower: 45, prestige: 0 },
-    irrigate: { name: 'Irrigate', gold: 90, manpower: 50, prestige: 0 },
+    irrigate: { name: 'Irrigate', gold: 90, manpower: 50, prestige: 0, requiresTech: 'irrigation_systems' },
     plant_forest: { name: 'Plant Forest', gold: 60, manpower: 35, prestige: 0 },
-    build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6 }
+    build_canal: { name: 'Build Canal', gold: 210, manpower: 110, prestige: 6, requiresTech: 'caravan_routes' }
 };
 
 const CITY_BUILDING_TREE = {
@@ -411,6 +442,24 @@ const CITY_PRODUCTION_BALANCE = {
     caravanRareExtractionBonus: 0.3
 };
 
+function createDefaultTechnologyEffects() {
+    return {
+        movement: 0,
+        foodMultiplier: 1,
+        goldMultiplier: 1,
+        manpowerMultiplier: 1,
+        cavalryAttackMultiplier: 1,
+        navalAttackMultiplier: 1,
+        siegeAttackMultiplier: 1,
+        researchDiscount: 0,
+        prestigePerTurn: 0,
+        tradePostBonus: 0,
+        navalMovement: 0,
+        tradeIncomeMultiplier: 1,
+        diplomacyAcceptanceBonus: 0
+    };
+}
+
 function extractStrategicYield(base, multiplier) {
     const safeBase = Math.max(0, Math.floor(Number(base) || 0));
     if (safeBase <= 0) return 0;
@@ -506,19 +555,8 @@ class GameState {
             unitsOwned: [],
             buildingsOwned: [],
             techResearched: [],
-            techEffects: {
-                movement: 0,
-                foodMultiplier: 1,
-                goldMultiplier: 1,
-                manpowerMultiplier: 1,
-                cavalryAttackMultiplier: 1,
-                navalAttackMultiplier: 1,
-                siegeAttackMultiplier: 1,
-                researchDiscount: 0,
-                prestigePerTurn: 0,
-                tradePostBonus: 0,
-                navalMovement: 0
-            }
+            activeResearch: null,
+            techEffects: createDefaultTechnologyEffects()
         };
         this.ensureStrategicResourceStockpile();
 
@@ -1083,8 +1121,9 @@ class GameState {
         const aiState = this.ensureAIFactionState(id);
         const currentHostility = Math.max(-50, Math.min(100, aiState?.diplomacy?.player || 0));
         const reputation = this.diplomacyState.reputation || 0;
+        const diplomacyBonus = this.player?.techEffects?.diplomacyAcceptanceBonus || 0;
 
-        const acceptRoll = (threshold) => Math.random() < Math.max(0.05, Math.min(0.95, threshold));
+        const acceptRoll = (threshold) => Math.random() < Math.max(0.05, Math.min(0.95, threshold + diplomacyBonus));
         if (actionId === 'declare_war') {
             const result = this.setDiplomacyStatus(id, 'war', { source: 'player' });
             factionState.tradeAgreement = false;
@@ -1178,7 +1217,8 @@ class GameState {
                 this.recordAIWorldEvent('trade_route_raided', { routeId: route.id, factionId, lostGold: lost });
             } else {
                 const allianceBonus = factionState.status === 'alliance' ? 1.2 : (factionState.status === 'truce' ? 1.08 : 1);
-                const income = Math.max(2, Math.floor((route.value || 5) * allianceBonus));
+                const tradeTechMultiplier = this.player?.techEffects?.tradeIncomeMultiplier || 1;
+                const income = Math.max(2, Math.floor((route.value || 5) * allianceBonus * tradeTechMultiplier));
                 tradeGold += income;
                 tradePrestige += factionState.status === 'alliance' ? 1 : 0;
                 route.status = 'active';
@@ -2669,6 +2709,8 @@ class GameState {
             : ['build_farm', 'irrigate', 'plant_forest', 'build_caravan_camp', 'build_road', 'build_port', 'build_canal', 'establish_monastery', 'build_fort'];
         return actions.filter((actionId) => {
             if (!BUILD_ACTIONS[actionId]) return false;
+            const requiredTech = this.getTechnologyIdUnlockingBuildAction(actionId);
+            if (requiredTech && !this.player?.techResearched?.includes(requiredTech)) return false;
             if (actionId === 'build_port' && cityData.port) return false;
             if (actionId === 'build_caravan_camp' && cityData.caravanCamp) return false;
             if (actionId === 'build_canal' && cityData.canal) return false;
@@ -2754,6 +2796,11 @@ class GameState {
 
         const action = BUILD_ACTIONS[actionId];
         if (!action) return { success: false, message: 'Invalid action' };
+        const requiredTech = this.getTechnologyIdUnlockingBuildAction(actionId);
+        if (requiredTech && !this.player.techResearched.includes(requiredTech)) {
+            const techName = TECHNOLOGY_TREE[requiredTech]?.name || requiredTech;
+            return { success: false, message: `${action.name} requires ${techName}` };
+        }
 
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
             return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
@@ -3065,6 +3112,12 @@ class GameState {
         const infra = cityTile.cityData.infrastructure || {};
         const researched = new Set(this.player?.techResearched || []);
         const hasPort = Boolean(cityTile.cityData.port || cityTile.cityData.navalYard);
+        const technologyLock = this.getTechnologyIdUnlockingUnit(unitId);
+        const unitsWithAlternativeInfraOrTech = new Set(['mangonel', 'spy', 'caravan', 'priests']);
+        const shouldApplyTechnologyLock = !unitsWithAlternativeInfraOrTech.has(unitId);
+        if (shouldApplyTechnologyLock && technologyLock && !researched.has(technologyLock)) {
+            reasons.push(`Requires ${TECHNOLOGY_TREE[technologyLock]?.name || technologyLock}`);
+        }
         const requireTech = (techId, label) => {
             if (!researched.has(techId)) reasons.push(`Requires ${label}`);
         };
@@ -3159,14 +3212,67 @@ class GameState {
             .map((entry) => entry.unitId);
     }
 
-    getAvailableTechnologies() {
+    getTechnologyIdUnlockingUnit(unitId) {
+        for (const [techId, tech] of Object.entries(TECHNOLOGY_TREE)) {
+            if (tech?.unlocks?.units?.includes(unitId)) return techId;
+        }
+        return null;
+    }
+
+    getTechnologyIdUnlockingBuildAction(actionId) {
+        const directRequirement = BUILD_ACTIONS[actionId]?.requiresTech;
+        if (directRequirement) return directRequirement;
+        for (const [techId, tech] of Object.entries(TECHNOLOGY_TREE)) {
+            if (tech?.unlocks?.buildActions?.includes(actionId)) return techId;
+        }
+        return null;
+    }
+
+    getResearchCost(techId) {
+        const tech = TECHNOLOGY_TREE[techId];
+        if (!tech) return null;
+        const templeDiscount = Math.min(
+            CITY_BUILDING_BALANCE.templeResearchDiscountCap,
+            this.getTotalCityBuildingLevel('temple') * CITY_BUILDING_BALANCE.templeResearchDiscountPerLevel
+        );
+        const discount = Math.min(RESEARCH_DISCOUNT_CAP, (this.player?.techEffects?.researchDiscount || 0) + templeDiscount);
+        return {
+            discount,
+            gold: Math.max(1, Math.floor((tech.cost?.gold || 0) * (1 - discount))),
+            prestige: Math.max(1, Math.floor((tech.cost?.prestige || 0) * (1 - discount)))
+        };
+    }
+
+    getTechnologyStatus(techId) {
         const researched = new Set(this.player?.techResearched || []);
-        return Object.entries(TECHNOLOGY_TREE)
-            .filter(([techId, tech]) => {
-                if (researched.has(techId)) return false;
-                return (tech.requires || []).every(req => researched.has(req));
-            })
-            .map(([techId, tech]) => ({ id: techId, ...tech }));
+        if (researched.has(techId)) return 'researched';
+        if (this.player?.activeResearch?.techId === techId) return 'researching';
+        const tech = TECHNOLOGY_TREE[techId];
+        if (!tech) return 'locked';
+        const requirementsMet = (tech.requires || []).every((req) => researched.has(req));
+        return requirementsMet ? 'available' : 'locked';
+    }
+
+    getAvailableTechnologies() {
+        return this.getTechnologyTreeState().filter((entry) => entry.status === 'available');
+    }
+
+    getTechnologyTreeState() {
+        const researched = new Set(this.player?.techResearched || []);
+        return Object.entries(TECHNOLOGY_TREE).map(([techId, tech]) => {
+            const status = this.getTechnologyStatus(techId);
+            const cost = this.getResearchCost(techId);
+            return {
+                id: techId,
+                ...tech,
+                researchTurns: Math.max(1, Number.isFinite(tech.researchTurns) ? Math.floor(tech.researchTurns) : 1),
+                status,
+                cost,
+                missingRequirements: (tech.requires || [])
+                    .filter((req) => !researched.has(req))
+                    .map((req) => TECHNOLOGY_TREE[req]?.name || req)
+            };
+        });
     }
 
     applyTechnologyEffects(effects = {}) {
@@ -3182,11 +3288,51 @@ class GameState {
         if (effects.prestigePerTurn) current.prestigePerTurn += effects.prestigePerTurn;
         if (effects.tradePostBonus) current.tradePostBonus += effects.tradePostBonus;
         if (effects.navalMovement) current.navalMovement += effects.navalMovement;
+        if (effects.tradeIncomeMultiplier) current.tradeIncomeMultiplier *= effects.tradeIncomeMultiplier;
+        if (effects.diplomacyAcceptanceBonus) current.diplomacyAcceptanceBonus += effects.diplomacyAcceptanceBonus;
+    }
+
+    processResearchTurn() {
+        const active = this.player?.activeResearch;
+        if (!active) return { active: null, completed: null };
+        const tech = TECHNOLOGY_TREE[active.techId];
+        if (!tech) {
+            this.player.activeResearch = null;
+            return { active: null, completed: null };
+        }
+
+        active.turnsRemaining = Math.max(0, (active.turnsRemaining || 1) - 1);
+        const progress = {
+            techId: active.techId,
+            name: active.name || tech.name,
+            turnsRemaining: active.turnsRemaining,
+            totalTurns: active.totalTurns || 1
+        };
+        if (active.turnsRemaining > 0) {
+            return { active: progress, completed: null };
+        }
+
+        if (!this.player.techResearched.includes(active.techId)) {
+            this.player.techResearched.push(active.techId);
+            this.applyTechnologyEffects(tech.effects || {});
+        }
+        this.player.activeResearch = null;
+        return {
+            active: null,
+            completed: {
+                techId: active.techId,
+                name: tech.name
+            }
+        };
     }
 
     researchTechnology(techId) {
         const tech = TECHNOLOGY_TREE[techId];
         if (!tech) return { success: false, message: 'Unknown technology' };
+        if (this.player?.activeResearch?.techId) {
+            const activeName = TECHNOLOGY_TREE[this.player.activeResearch.techId]?.name || this.player.activeResearch.techId;
+            return { success: false, message: `Research already in progress: ${activeName}` };
+        }
 
         if (this.player.techResearched.includes(techId)) {
             return { success: false, message: `${tech.name} already researched` };
@@ -3198,44 +3344,117 @@ class GameState {
             return { success: false, message: 'Prerequisites not met' };
         }
 
-        const templeDiscount = Math.min(
-            CITY_BUILDING_BALANCE.templeResearchDiscountCap,
-            this.getTotalCityBuildingLevel('temple') * CITY_BUILDING_BALANCE.templeResearchDiscountPerLevel
-        );
-        const discount = Math.min(RESEARCH_DISCOUNT_CAP, (this.player.techEffects.researchDiscount || 0) + templeDiscount);
-        const goldCost = Math.max(1, Math.floor(tech.cost.gold * (1 - discount)));
-        const prestigeCost = Math.max(1, Math.floor(tech.cost.prestige * (1 - discount)));
+        const computedCost = this.getResearchCost(techId);
+        const goldCost = computedCost?.gold ?? 0;
+        const prestigeCost = computedCost?.prestige ?? 0;
         if (!this.spendResources(goldCost, 0, prestigeCost)) {
             return { success: false, message: `Need ${goldCost} gold and ${prestigeCost} prestige` };
         }
 
-        this.player.techResearched.push(techId);
-        this.applyTechnologyEffects(tech.effects || {});
+        const turns = Math.max(1, Number.isFinite(tech.researchTurns) ? Math.floor(tech.researchTurns) : 1);
+        this.player.activeResearch = {
+            techId,
+            name: tech.name,
+            totalTurns: turns,
+            turnsRemaining: turns,
+            startedTurn: this.turn,
+            goldCost,
+            prestigeCost
+        };
         return {
             success: true,
             techId,
             name: tech.name,
             goldCost,
-            prestigeCost
+            prestigeCost,
+            turns
         };
     }
 
-    applyCityBuildAction(cityTile, actionId) {
-        const isPlayerControlled = cityTile && (
-            cityTile.owner === 'player' ||
-            gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player'
-        );
-        if (!isPlayerControlled) {
-            return { success: false, message: 'Build actions require a player-owned tile' };
+    getBuildActionValidation(cityTile, actionId, options = {}) {
+        const includeResourceCheck = options.includeResourceCheck !== false;
+        const action = BUILD_ACTIONS[actionId];
+        if (!action) {
+            return { actionId, action: null, available: false, reasons: ['Unknown action'] };
         }
 
-        const action = BUILD_ACTIONS[actionId];
-        if (!action) return { success: false, message: 'Unknown build action' };
+        const reasons = [];
+        const researchGate = this.getTechnologyIdUnlockingBuildAction(actionId);
+        if (researchGate && !this.player?.techResearched?.includes(researchGate)) {
+            reasons.push(`Requires ${TECHNOLOGY_TREE[researchGate]?.name || researchGate}`);
+        }
+        if (includeResourceCheck) {
+            const resources = this.player?.resources || {};
+            if ((resources.gold || 0) < (action.gold || 0)) reasons.push(`Missing ${(action.gold || 0) - (resources.gold || 0)} gold`);
+            if ((resources.manpower || 0) < (action.manpower || 0)) reasons.push(`Missing ${(action.manpower || 0) - (resources.manpower || 0)} manpower`);
+            if ((resources.prestige || 0) < (action.prestige || 0)) reasons.push(`Missing ${(action.prestige || 0) - (resources.prestige || 0)} prestige`);
+        }
+
+        if (!cityTile) {
+            reasons.push('Select a map tile first');
+            return { actionId, action, available: false, reasons };
+        }
+
+        const isPlayerControlled = cityTile.owner === 'player' || gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player';
+        if (!isPlayerControlled) reasons.push('Requires a player-owned tile');
+        if (actionId === 'establish_town' && cityTile.terrain === 'water') reasons.push('Cannot establish a town on water');
+        if (actionId === 'establish_town' && cityTile.cityData) reasons.push('Tile already has a city');
+        if (actionId === 'establish_town' && cityTile.terrain === 'city') reasons.push('Tile is already urbanized');
+
+        if (actionId !== 'establish_town' && !cityTile.cityData) {
+            reasons.push('Select a city tile for this action');
+        }
+        const cityData = cityTile.cityData || null;
+        const infra = cityData?.infrastructure || {};
+        if (cityData) {
+            if (actionId === 'build_port' && (cityData.port || cityData.navalYard)) reasons.push('Port already built');
+            if (actionId === 'build_caravan_camp' && cityData.caravanCamp) reasons.push('Caravan Camp already built');
+            if (actionId === 'build_canal' && cityData.canal) reasons.push('Canal already built');
+            if (actionId === 'establish_monastery' && cityData.monastery) reasons.push('Monastery already established');
+            if (actionId === 'build_road' && (infra.roads || 0) >= 8) reasons.push('Road infrastructure already at maximum');
+            if (actionId === 'build_farm' && (infra.agriculture || 0) >= 8) reasons.push('Agriculture already at maximum');
+            if (actionId === 'build_fort' && (cityData.fortLevel || 0) >= 6) reasons.push('Fortification level already at maximum');
+            if (actionId === 'irrigate' && cityData.irrigated) reasons.push('Tile already irrigated');
+            if (actionId === 'plant_forest' && cityData.forestManaged) reasons.push('Forest management already established');
+        }
+
+        if (actionId === 'build_port') {
+            const nearWater = [
+                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
+            if (!nearWater) reasons.push('Requires adjacent water');
+        }
+
+        const terrainConstraint = gameMap?.terrainAllowsBuildAction?.(cityTile.x, cityTile.y, actionId);
+        if (terrainConstraint && !terrainConstraint.allowed) {
+            reasons.push(terrainConstraint.reason || 'Terrain does not support this action');
+        }
+
+        return {
+            actionId,
+            action,
+            available: reasons.length === 0,
+            reasons
+        };
+    }
+
+    getBuildActionOptionStatus(cityTile, actionId) {
+        return this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: true });
+    }
+
+    getBuildActionOptions(cityTile) {
+        return Object.entries(BUILD_ACTIONS).map(([actionId]) => this.getBuildActionOptionStatus(cityTile, actionId));
+    }
+
+    applyCityBuildAction(cityTile, actionId) {
+        const validation = this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: false });
+        if (!validation.available) {
+            return { success: false, message: validation.reasons[0] || 'Build action unavailable' };
+        }
+        const action = validation.action;
 
         if (actionId === 'establish_town' && !cityTile.cityData) {
-            if (cityTile.terrain === 'water') {
-                return { success: false, message: 'Cannot establish a town on water' };
-            }
             cityTile.terrain = 'city';
             cityTile.building = 'town';
             cityTile.cityData = {
@@ -3253,19 +3472,6 @@ class GameState {
 
         if (!cityTile.cityData) {
             return { success: false, message: 'Select a city tile for that build action' };
-        }
-
-        if (actionId === 'build_port') {
-            const nearWater = [
-                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
-            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
-        }
-
-        const terrainConstraint = gameMap?.terrainAllowsBuildAction?.(cityTile.x, cityTile.y, actionId);
-        if (terrainConstraint && !terrainConstraint.allowed) {
-            return { success: false, message: terrainConstraint.reason || 'Terrain does not support that build action' };
         }
 
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
@@ -3610,6 +3816,7 @@ class GameState {
         this.turn++;
         const completedConstruction = this.processCityConstructionTurn();
         const autoStartedConstruction = this.processCityAutoBuildTurn();
+        const researchProgress = this.processResearchTurn();
 
         // Generate resources
         const baseGold = 100;
@@ -3690,6 +3897,7 @@ class GameState {
             cityProduction,
             completedConstruction,
             autoStartedConstruction,
+            researchProgress,
             dynamicNarrative
         };
     }
@@ -4055,22 +4263,43 @@ class GameState {
             : { reputation: 0, factions: {}, tradeRoutes: [] };
         this.initializeDiplomacyState();
         this.ensureStrategicResourceStockpile();
-        if (!this.player.techResearched) this.player.techResearched = [];
-        if (!this.player.techEffects) {
-            this.player.techEffects = {
-                movement: 0,
-                foodMultiplier: 1,
-                goldMultiplier: 1,
-                manpowerMultiplier: 1,
-                cavalryAttackMultiplier: 1,
-                navalAttackMultiplier: 1,
-                siegeAttackMultiplier: 1,
-                researchDiscount: 0,
-                prestigePerTurn: 0,
-                tradePostBonus: 0,
-                navalMovement: 0
-            };
+        if (!Array.isArray(this.player.techResearched)) {
+            this.player.techResearched = [];
         }
+        this.player.techResearched = [...new Set(
+            this.player.techResearched
+                .map((techId) => String(techId || '').trim())
+                .filter((techId) => Boolean(techId && TECHNOLOGY_TREE[techId]))
+        )];
+        if (!this.player.activeResearch || typeof this.player.activeResearch !== 'object') {
+            this.player.activeResearch = null;
+        } else {
+            const activeId = String(this.player.activeResearch.techId || '').trim();
+            const knownTech = TECHNOLOGY_TREE[activeId];
+            if (!activeId || !knownTech || this.player.techResearched.includes(activeId)) {
+                this.player.activeResearch = null;
+            } else {
+                const totalTurns = Math.max(1, Number.isFinite(this.player.activeResearch.totalTurns)
+                    ? Math.floor(this.player.activeResearch.totalTurns)
+                    : (knownTech.researchTurns || 1));
+                const turnsRemaining = Math.max(1, Number.isFinite(this.player.activeResearch.turnsRemaining)
+                    ? Math.floor(this.player.activeResearch.turnsRemaining)
+                    : totalTurns);
+                this.player.activeResearch = {
+                    techId: activeId,
+                    name: knownTech.name,
+                    totalTurns,
+                    turnsRemaining: Math.min(totalTurns, turnsRemaining),
+                    startedTurn: Number.isFinite(this.player.activeResearch.startedTurn)
+                        ? Math.max(1, Math.floor(this.player.activeResearch.startedTurn))
+                        : this.turn
+                };
+            }
+        }
+        this.player.techEffects = createDefaultTechnologyEffects();
+        this.player.techResearched.forEach((techId) => {
+            this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+        });
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;
         this.units = data.units;

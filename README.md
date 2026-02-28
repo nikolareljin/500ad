@@ -64,7 +64,9 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Turn-Based Strategy**: Tactical combat with resource management
 - **Infrastructure System**: Recruit **Engineers** to build a permanent road network, improving travel speed between your cities.
 - **Naval Transport**: Embark land units onto **Transports** and **Merchant Ships** to cross the Mediterranean.
-- **Technology Tree**: Unlock powerful civic and military upgrades like *Siegecraft*, *Naval Architecture*, and *Military Logistics*.
+- **Technology Tree**: Open a tiered research tree with prerequisites, multi-turn research time, and explicit lock/available/researching/researched states.
+- **Research Progression**: Run one active research project at a time; costs are paid when started and completion happens over subsequent turns.
+- **Tech Unlock Integration**: Technologies now unlock specific units, city buildings, and infrastructure actions while also feeding combat, economy, and diplomacy bonuses.
 - **City Building Tree**: Develop each city through upgradeable `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`, each with tech requirements and build times.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
@@ -109,6 +111,7 @@ Note: the opening position and controlled towns depend on the selected era, lead
 - **Tap Unit**: View unit details
 - **Tap Empty Tile**: Move selected unit
 - **End Turn Button**: Complete your turn and generate resources
+- **Research Button**: Open the technology tree, inspect prerequisites/unlocks, and start new projects when no research is active
 
 ### Map Navigation
 - **Pan**: Click and drag anywhere on the map to move your view
@@ -289,7 +292,7 @@ This starts a local server, opens the browser automatically, and runs `scripts/u
 - `VERSION` is the canonical release version used for checks and tagging.
 - Set/sync a new version:
 ```bash
-./scripts/version_set.sh 1.9.0
+./scripts/version_set.sh 1.11.0
 ```
 - Verify version consistency:
 ```bash
@@ -390,7 +393,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.10.0** - Introduces the quest and dynamic event system with branching outcomes, persistent event history, and new in-game quest log access (see changelog for full details)
+**Version 1.11.0** - Adds a full research/technology-tree progression system with timed research, clear status visualization, and integrated tech unlock gating across units, city building, infrastructure, and diplomacy/trade outcomes.
 
 ## License
 

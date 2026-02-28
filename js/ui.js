@@ -569,6 +569,15 @@ class UIManager {
                 const names = generatedNarratives.map((entry) => entry.title).join(', ');
                 this.showNotification(`New quest/event: ${names}`, 'info');
             }
+            if (result.researchProgress?.completed) {
+                this.showNotification(`Research completed: ${result.researchProgress.completed.name}`, 'success');
+            } else if (result.researchProgress?.active) {
+                const active = result.researchProgress.active;
+                this.showNotification(
+                    `Research in progress: ${active.name} (${active.turnsRemaining}/${active.totalTurns} turns left)`,
+                    'info'
+                );
+            }
         } finally {
             this.showTurnProcessing(false);
         }
@@ -675,10 +684,12 @@ class UIManager {
                 ? 'AUTO mode: city can start one building-tree upgrade each turn by priority'
                 : 'MANUAL mode: no auto-starts; you choose city projects yourself'
         };
-        const infrastructureChoices = Object.entries(BUILD_ACTIONS).map(([actionId, action]) => ({
-            id: `infra:${actionId}`,
-            title: `${action.name} [Infrastructure]`,
-            subtitle: `${action.gold}g / ${action.manpower}m / ${action.prestige || 0}p`
+        const infrastructureChoices = gameState.getBuildActionOptions(tile).map((entry) => ({
+            id: `infra:${entry.actionId}`,
+            title: `${entry.action?.name || entry.actionId} [Infrastructure]`,
+            subtitle: `${entry.action?.gold || 0}g / ${entry.action?.manpower || 0}m / ${entry.action?.prestige || 0}p`,
+            detail: entry.available ? 'Available' : entry.reasons.join(' • '),
+            disabled: !entry.available
         }));
         const choices = hasCity
             ? [automationChoice, ...cityBuildingChoices, ...infrastructureChoices]
@@ -706,7 +717,10 @@ class UIManager {
                     return;
                 }
                 const isCityBuilding = choiceId.startsWith('city_building:');
-                const id = isCityBuilding ? choiceId.substring('city_building:'.length) : choiceId;
+                const isInfrastructure = choiceId.startsWith('infra:');
+                const id = isCityBuilding
+                    ? choiceId.substring('city_building:'.length)
+                    : (isInfrastructure ? choiceId.substring('infra:'.length) : choiceId);
                 const result = isCityBuilding
                     ? gameState.startCityBuildingProject(tile, id)
                     : gameState.applyCityBuildAction(tile, id);
@@ -725,22 +739,127 @@ class UIManager {
     }
 
     researchTechnology() {
-        const available = gameState.getAvailableTechnologies();
-        if (available.length === 0) {
-            this.showNotification('No technologies currently available', 'info');
+        if (!gameState?.initialized) {
+            this.showNotification('Start a campaign before opening research.', 'error');
+            return;
+        }
+        const techState = gameState.getTechnologyTreeState();
+        if (techState.length === 0) {
+            this.showNotification('No technologies defined', 'info');
             return;
         }
 
-        const choices = available.map((tech) => ({
-            id: tech.id,
-            title: tech.name,
-            subtitle: `${tech.cost.gold}g / ${tech.cost.prestige}p`
-        }));
+        const escapeHtml = this.escapeHtml.bind(this);
+        const activeResearch = gameState.player?.activeResearch || null;
+        const techById = new Map(techState.map((tech) => [tech.id, tech]));
+        const tierById = {};
+        const getTier = (techId, stack = new Set()) => {
+            if (Number.isFinite(tierById[techId])) return tierById[techId];
+            if (stack.has(techId)) return 1;
+            stack.add(techId);
+            const tech = techById.get(techId);
+            const requires = Array.isArray(tech?.requires) ? tech.requires : [];
+            if (requires.length === 0) {
+                tierById[techId] = 1;
+            } else {
+                const depth = requires.reduce((max, reqId) => Math.max(max, getTier(reqId, stack)), 1);
+                tierById[techId] = depth + 1;
+            }
+            stack.delete(techId);
+            return tierById[techId];
+        };
+        techState.forEach((tech) => getTier(tech.id));
 
-        this.showChoiceModal(
-            'Research Technology',
-            choices,
-            (techId) => {
+        const unlockSummary = (tech) => {
+            const unlocks = tech.unlocks || {};
+            const parts = [];
+            const labelList = (ids, resolver) => (ids || []).map((id) => resolver(id)).filter(Boolean);
+            const unitLabels = labelList(unlocks.units, (id) => getUnitById(id)?.name || id);
+            const buildingLabels = labelList(unlocks.buildings, (id) => CITY_BUILDING_TREE[id]?.name || id);
+            const actionLabels = labelList(unlocks.buildActions, (id) => BUILD_ACTIONS[id]?.name || id);
+            if (unitLabels.length > 0) parts.push(`Units: ${unitLabels.join(', ')}`);
+            if (buildingLabels.length > 0) parts.push(`Buildings: ${buildingLabels.join(', ')}`);
+            if (actionLabels.length > 0) parts.push(`City actions: ${actionLabels.join(', ')}`);
+            return parts.length > 0 ? parts.join(' | ') : 'Unlocks strategic bonuses';
+        };
+
+        const tiers = {};
+        techState.forEach((tech) => {
+            const tier = tierById[tech.id] || 1;
+            if (!tiers[tier]) tiers[tier] = [];
+            tiers[tier].push(tech);
+        });
+
+        const statusLabel = {
+            researched: 'Researched',
+            researching: 'Researching',
+            available: 'Available',
+            locked: 'Locked'
+        };
+        const tierHtml = Object.keys(tiers)
+            .map((tierStr) => Number.parseInt(tierStr, 10))
+            .sort((a, b) => a - b)
+            .map((tier) => {
+                const cards = tiers[tier]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((tech) => {
+                        const status = tech.status || 'locked';
+                        const requirements = (tech.requires || []).map((reqId) => techById.get(reqId)?.name || reqId);
+                        const requiresLabel = requirements.length > 0 ? requirements.join(', ') : 'None';
+                        const unlocks = unlockSummary(tech);
+                        const showStartButton = status === 'available' && !activeResearch;
+                        const progressText = activeResearch && activeResearch.techId === tech.id
+                            ? `Progress: ${Math.max(0, activeResearch.totalTurns - activeResearch.turnsRemaining)}/${activeResearch.totalTurns} turns`
+                            : '';
+                        return `
+                            <article class="tech-node tech-node-${status}">
+                                <div class="tech-node-header">
+                                    <h3>${escapeHtml(tech.name)}</h3>
+                                    <span class="tech-status-chip tech-status-${status}">${statusLabel[status] || 'Locked'}</span>
+                                </div>
+                                <p class="tech-node-description">${escapeHtml(tech.description || '')}</p>
+                                <p class="tech-node-meta"><strong>Cost:</strong> ${tech.cost?.gold || 0}g / ${tech.cost?.prestige || 0}p | <strong>Time:</strong> ${tech.researchTurns || 1} turns</p>
+                                <p class="tech-node-meta"><strong>Requires:</strong> ${escapeHtml(requiresLabel)}</p>
+                                <p class="tech-node-meta"><strong>Unlocks:</strong> ${escapeHtml(unlocks)}</p>
+                                ${progressText ? `<p class="tech-node-progress">${escapeHtml(progressText)}</p>` : ''}
+                                ${showStartButton ? `<button class="menu-btn tech-start-btn" data-tech-start="${escapeHtml(tech.id)}">Start Research</button>` : ''}
+                                ${status === 'locked' && tech.missingRequirements?.length ? `<p class="tech-node-blocked">Missing: ${escapeHtml(tech.missingRequirements.join(', '))}</p>` : ''}
+                            </article>
+                        `;
+                    })
+                    .join('');
+                return `
+                    <section class="tech-tier-section">
+                        <h3>Tier ${tier}</h3>
+                        <div class="tech-tier-grid">${cards}</div>
+                    </section>
+                `;
+            })
+            .join('');
+
+        const activeBanner = activeResearch
+            ? `<p class="tech-active-banner"><strong>Current Research:</strong> ${escapeHtml(activeResearch.name || activeResearch.techId)} (${activeResearch.turnsRemaining}/${activeResearch.totalTurns} turns remaining)</p>`
+            : '<p class="tech-active-banner"><strong>Current Research:</strong> None</p>';
+        const content = `
+            <h2>Research & Technology Tree</h2>
+            ${activeBanner}
+            <p class="tech-tree-legend">
+                <span class="tech-status-chip tech-status-available">Available</span>
+                <span class="tech-status-chip tech-status-researching">Researching</span>
+                <span class="tech-status-chip tech-status-researched">Researched</span>
+                <span class="tech-status-chip tech-status-locked">Locked</span>
+            </p>
+            <div class="tech-tree-container">${tierHtml}</div>
+            <div style="margin-top:1rem;">
+                <button class="menu-btn" id="btn-close-tech-tree">Close</button>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.modalContent?.querySelector('#btn-close-tech-tree')?.addEventListener('click', () => this.closeModal());
+        this.modalContent?.querySelectorAll('[data-tech-start]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const techId = button.getAttribute('data-tech-start');
                 const result = gameState.researchTechnology(techId);
                 if (!result.success) {
                     this.showNotification(result.message || 'Research failed', 'error');
@@ -748,9 +867,10 @@ class UIManager {
                 }
                 this.updateHUD();
                 gameMap?.requestRender();
-                this.showNotification(`Technology researched: ${result.name}`, 'success');
-            }
-        );
+                this.showNotification(`Research started: ${result.name} (${result.turns} turns)`, 'success');
+                this.researchTechnology();
+            });
+        });
     }
 
     manageDiplomacy() {
