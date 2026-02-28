@@ -88,6 +88,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Exploration**: Fog of war reveals as units move and cities are founded
 - **Vision & Recon Rules**: Unit classes and city status determine sight radius (scouts/intel see farther; capitals/fortified cities project wider vision)
 - **Exploration Discoveries**: Finding new macro-regions and landmark cities triggers discovery events with gold/manpower/prestige rewards
+- **Auto Explore Units**: `Explorer` and `Merchant Galley` support automated exploration to continuously uncover map fog
 - **Dynamic Enemy Realms**: AI factions maintain territory pressure, diplomacy/threat memory (AI-side), and strategic reactions to player captures and frontier changes
 
 ### Mobile Optimized

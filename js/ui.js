@@ -1373,15 +1373,22 @@ class UIManager {
                 }
             });
             container.appendChild(buildRoadBtn);
+        }
 
+        if (unit.typeId === 'civil_engineers' || unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
             const automateBtn = document.createElement('button');
             automateBtn.className = `action-btn ${unit.automated ? 'active' : ''}`;
-            automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+            const autoLabel = (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') ? 'Auto Explore' : 'Automated';
+            automateBtn.textContent = unit.automated ? `${autoLabel}: ON` : autoLabel;
             automateBtn.onclick = withClickSound(() => {
                 unit.automated = !unit.automated;
-                automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+                automateBtn.textContent = unit.automated ? `${autoLabel}: ON` : autoLabel;
                 automateBtn.classList.toggle('active', unit.automated);
-                this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
+                if (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
+                    this.showNotification(unit.automated ? `${unit.name} auto-explore enabled` : `${unit.name} auto-explore disabled`, 'info');
+                } else {
+                    this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
+                }
             });
             container.appendChild(automateBtn);
         }

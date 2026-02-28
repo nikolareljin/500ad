@@ -18,6 +18,7 @@
   - player unit vision ranges (scouts/intel classes have extended vision)
   - player city vision ranges (capitals and developed walls increase city sight)
 - Enemy units are only rendered/inspectable while inside currently visible tiles.
+- `Explorer` and `Merchant Galley` units can run auto-explore automation to reveal fog continuously without manual waypointing.
 - Exploration discoveries now trigger on first reveal:
   - region discovery events for new macro map sectors
   - landmark discovery events for major cities/capitals/wonders

@@ -2794,7 +2794,108 @@ class GameState {
                     }
                 }
             }
+        } else if (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
+            this.processAutoScoutAutomation(unit);
         }
+    }
+
+    processAutoScoutAutomation(unit) {
+        if (!unit || !gameMap) return;
+        if (unit.typeId !== 'explorer' && unit.typeId !== 'merchant_ship') return;
+        if (!Number.isFinite(unit.position?.x) || !Number.isFinite(unit.position?.y)) return;
+
+        let safety = 0;
+        while (unit.currentMovement > 0.3 && safety < 8) {
+            safety++;
+            const nextStep = this.pickExplorerAutoStep(unit);
+            if (!nextStep) break;
+            const moved = this.moveUnit(unit.id, nextStep);
+            if (!moved) break;
+        }
+
+        if (unit.currentMovement <= 0.3 || unit.destination) return;
+        const fallbackTarget = this.findNearestUnexploredTile(unit.position, 28, unit);
+        if (fallbackTarget) {
+            unit.destination = fallbackTarget;
+            this.processUnitDestination(unit);
+        }
+    }
+
+    pickExplorerAutoStep(unit) {
+        if (!unit || !gameMap) return null;
+        const fromTile = gameMap.getTile(unit.position.x, unit.position.y);
+        if (!fromTile) return null;
+        const visionRadius = typeof gameMap.getUnitVisionRadius === 'function'
+            ? gameMap.getUnitVisionRadius(unit)
+            : 3;
+
+        const offsets = [
+            { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 },
+            { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 }
+        ];
+
+        const scored = offsets
+            .map((offset) => {
+                const nx = unit.position.x + offset.x;
+                const ny = unit.position.y + offset.y;
+                const toTile = gameMap.getTile(nx, ny);
+                if (!toTile) return null;
+                if (toTile.terrain === 'water' && !this.isWaterCapable(unit)) return null;
+                if (toTile.terrain !== 'water' && this.isWaterOnlyUnit(unit)) return null;
+                if (toTile.fort && toTile.fort.owner !== unit.owner) return null;
+                const occupiedByEnemy = this.units.some((other) =>
+                    other?.id !== unit.id
+                    && other?.owner === 'enemy'
+                    && other.position?.x === nx
+                    && other.position?.y === ny
+                );
+                if (occupiedByEnemy) return null;
+                const travelCost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                if (!Number.isFinite(travelCost) || travelCost > unit.currentMovement || travelCost >= 99) return null;
+
+                let fogScore = 0;
+                for (let dy = -visionRadius; dy <= visionRadius; dy++) {
+                    for (let dx = -visionRadius; dx <= visionRadius; dx++) {
+                        const tx = nx + dx;
+                        const ty = ny + dy;
+                        if (tx < 0 || tx >= gameMap.width || ty < 0 || ty >= gameMap.height) continue;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > visionRadius) continue;
+                        if (gameMap.isFoggedTile(tx, ty)) fogScore += 3;
+                        else if (!gameMap.isTileVisible(tx, ty)) fogScore += 1;
+                    }
+                }
+
+                return {
+                    x: nx,
+                    y: ny,
+                    score: fogScore - (travelCost * 0.4) + (Math.random() * 0.05)
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score);
+
+        if (scored.length === 0) return null;
+        return { x: scored[0].x, y: scored[0].y };
+    }
+
+    findNearestUnexploredTile(origin, maxRadius = 24, unit = null) {
+        if (!origin || !gameMap) return null;
+        for (let r = 2; r <= maxRadius; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const remaining = r - Math.abs(dy);
+                for (let dx = -remaining; dx <= remaining; dx++) {
+                    const x = origin.x + dx;
+                    const y = origin.y + dy;
+                    const tile = gameMap.getTile(x, y);
+                    if (!tile || !gameMap.isFoggedTile(x, y)) continue;
+                    if (unit && tile.terrain === 'water' && !this.isWaterCapable(unit)) continue;
+                    if (unit && tile.terrain !== 'water' && this.isWaterOnlyUnit(unit)) continue;
+                    return { x, y };
+                }
+            }
+        }
+        return null;
     }
 
     getHostileEnemyUnitsNearPlayerCities(maxDistance = 7) {

@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file.
 - Added a true two-layer fog-of-war model with `unexplored` and `explored-but-not-currently-visible` states.
 - Added unit and city vision-range rules to drive real-time visibility updates (including extended scout/intel and fortified-capital sight ranges).
 - Added exploration discovery mechanics for macro-regions and landmark cities, including resource/prestige rewards and player-facing discovery notifications.
+- Added auto-explore automation for `Explorer` and `Merchant Galley` units to reveal fog without constant manual input.
 
 ### Changed
 - Changed map and minimap rendering to apply visibility-aware fog/shroud overlays instead of a single fog mask.
