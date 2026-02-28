@@ -29,6 +29,10 @@ function stableSerializeForComparison(value) {
     return JSON.stringify(value);
 }
 
+function isUnsafeObjectKey(key) {
+    return key === '__proto__' || key === 'prototype' || key === 'constructor';
+}
+
 const HISTORICAL_TOWN_CONTROL = {
     constantinople: { tribe: 'Byzantine Romans', civilization: 'byzantine', stance: 'core' },
     thessalonica: { tribe: 'Byzantine Greeks', civilization: 'byzantine', stance: 'core' },
@@ -1595,6 +1599,27 @@ class GameState {
         const manpowerDelta = signed('manpower');
         const prestigeDelta = signed('prestige');
         const strategicKeys = ['food', 'wood', 'stone', 'iron', 'rare'];
+        const costGold = Math.max(0, -goldDelta);
+        const costManpower = Math.max(0, -manpowerDelta);
+        const costPrestige = Math.max(0, -prestigeDelta);
+        const strategicCosts = {};
+
+        strategicKeys.forEach((key) => {
+            const delta = signed(key);
+            if (delta < 0) strategicCosts[key] = -delta;
+        });
+
+        if ((costGold || costManpower || costPrestige) && !this.canAfford(costGold, costManpower, costPrestige)) {
+            return { success: false, message: 'Not enough gold, manpower, or prestige for this choice.', summary };
+        }
+        const missingStrategic = Object.entries(strategicCosts).find(([key, cost]) => {
+            const current = Number.isFinite(this.player?.resources?.[key]) ? this.player.resources[key] : 0;
+            return current < cost;
+        });
+        if (missingStrategic) {
+            const [missingKey] = missingStrategic;
+            return { success: false, message: `Not enough ${missingKey} for this choice.`, summary };
+        }
 
         if (goldDelta >= 0 && manpowerDelta >= 0 && prestigeDelta >= 0) {
             if (goldDelta || manpowerDelta || prestigeDelta) {
@@ -1607,11 +1632,10 @@ class GameState {
             if (positiveGold || positiveManpower || positivePrestige) {
                 this.addResources(positiveGold, positiveManpower, positivePrestige);
             }
-            const costGold = Math.max(0, -goldDelta);
-            const costManpower = Math.max(0, -manpowerDelta);
-            const costPrestige = Math.max(0, -prestigeDelta);
             if (costGold || costManpower || costPrestige) {
-                this.spendResources(costGold, costManpower, costPrestige);
+                if (!this.spendResources(costGold, costManpower, costPrestige)) {
+                    return { success: false, message: 'Not enough gold, manpower, or prestige for this choice.', summary };
+                }
             }
         }
 
@@ -1622,12 +1646,14 @@ class GameState {
                 this.addStrategicResources({ [key]: delta });
             } else {
                 const current = Number.isFinite(this.player?.resources?.[key]) ? this.player.resources[key] : 0;
-                this.player.resources[key] = Math.max(0, current + delta);
+                const cost = -delta;
+                this.player.resources[key] = Math.max(0, current - cost);
             }
         });
 
         const trust = (effects && typeof effects.trust === 'object') ? effects.trust : {};
         Object.entries(trust).forEach(([factionId, delta]) => {
+            if (isUnsafeObjectKey(factionId)) return;
             if (!Number.isFinite(delta)) return;
             const state = this.ensureDiplomacyFactionState(factionId || 'tribal');
             state.trust = Math.max(0, Math.min(100, Math.floor((state.trust || 0) + delta)));
@@ -1653,7 +1679,7 @@ class GameState {
             templateId: entry?.templateId || null,
             choiceEffects: effects
         });
-        return summary;
+        return { success: true, summary };
     }
 
     resolveDynamicNarrativeChoice(entryId, choiceId) {
@@ -1668,7 +1694,14 @@ class GameState {
             return { success: false, message: 'Invalid choice.' };
         }
 
-        const outcomeSummary = this.applyDynamicNarrativeChoiceEffects(choice.effects, entry);
+        const effectResult = this.applyDynamicNarrativeChoiceEffects(choice.effects, entry);
+        if (!effectResult?.success) {
+            return {
+                success: false,
+                message: effectResult?.message || 'Cannot resolve this choice right now.'
+            };
+        }
+        const outcomeSummary = effectResult.summary || [];
         entry.status = 'resolved';
         entry.resolvedTurn = this.turn;
         entry.selectedChoiceId = choice.id;

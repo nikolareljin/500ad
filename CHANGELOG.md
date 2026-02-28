@@ -16,6 +16,10 @@ All notable changes to this project are documented in this file.
 - Updated end-turn flow to generate narrative opportunities during turn simulation and notify players when new items become available.
 - Updated biome-event README notes to document active usage by the new dynamic event pipeline.
 
+### Fixed
+- Fixed quest/event choice resolution to validate affordability before applying costs, so choices now fail gracefully when required resources are insufficient.
+- Fixed dynamic narrative trust-effect handling to ignore unsafe object keys from tampered data during choice application.
+
 ## [1.9.1] - 2026-02-27
 
 ### Fixed

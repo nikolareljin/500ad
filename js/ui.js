@@ -759,12 +759,7 @@ class UIManager {
             return;
         }
 
-        const escapeHtml = (value) => String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        const escapeHtml = this.escapeHtml.bind(this);
 
         const renderDiplomacyModal = () => {
             const overview = (typeof gameState.getDiplomacyOverview === 'function') ? gameState.getDiplomacyOverview() : [];
