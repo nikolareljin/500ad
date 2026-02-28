@@ -525,6 +525,16 @@ class GameMap {
         this.suppressNextClick = false;
         this.awaitingMoveOrder = false;
         this.lastTouchTap = { x: null, y: null, time: 0 };
+        this.touchGesture = {
+            active: false,
+            moved: false,
+            distance: 0,
+            startX: 0,
+            startY: 0,
+            lastX: 0,
+            lastY: 0,
+            startTile: null
+        };
 
         // Fog of war
         this.fogOfWar = [];
@@ -995,7 +1005,10 @@ class GameMap {
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
         this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('touchstart', (e) => this.handleTouch(e));
+        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleTouchCancel(e), { passive: false });
     }
 
     /**
@@ -1969,11 +1982,65 @@ class GameMap {
     /**
      * Handle touch event
      */
-    handleTouch(event) {
+    handleTouchStart(event) {
+        if (!event.touches || event.touches.length !== 1) return;
         event.preventDefault();
         const touch = event.touches[0];
         if (!touch) return;
-        const tile = this.screenToTile(touch.clientX, touch.clientY);
+        this.touchGesture.active = true;
+        this.touchGesture.moved = false;
+        this.touchGesture.distance = 0;
+        this.touchGesture.startX = touch.clientX;
+        this.touchGesture.startY = touch.clientY;
+        this.touchGesture.lastX = touch.clientX;
+        this.touchGesture.lastY = touch.clientY;
+        this.touchGesture.startTile = this.screenToTile(touch.clientX, touch.clientY);
+    }
+
+    handleTouchMove(event) {
+        if (!this.touchGesture.active || !event.touches || event.touches.length !== 1) return;
+        event.preventDefault();
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        const dx = touch.clientX - this.touchGesture.lastX;
+        const dy = touch.clientY - this.touchGesture.lastY;
+        this.camera.x -= dx;
+        this.camera.y -= dy;
+        this.touchGesture.distance += Math.sqrt((dx * dx) + (dy * dy));
+        if (this.touchGesture.distance >= 4) {
+            this.touchGesture.moved = true;
+        }
+
+        const maxX = (this.width * MAP_CONFIG.tileSize) - this.canvas.width;
+        const maxY = (this.height * MAP_CONFIG.tileSize) - this.canvas.height;
+        this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
+
+        this.touchGesture.lastX = touch.clientX;
+        this.touchGesture.lastY = touch.clientY;
+        this.requestRender();
+    }
+
+    handleTouchEnd(event) {
+        if (!this.touchGesture.active) return;
+        event.preventDefault();
+
+        const changedTouch = event.changedTouches?.[0] || null;
+        const endTile = changedTouch
+            ? this.screenToTile(changedTouch.clientX, changedTouch.clientY)
+            : null;
+        const tile = this.touchGesture.startTile || endTile;
+
+        if (this.touchGesture.moved) {
+            this.suppressNextClick = true;
+            this.touchGesture.active = false;
+            this.touchGesture.startTile = null;
+            return;
+        }
+
+        this.touchGesture.active = false;
+        this.touchGesture.startTile = null;
         if (!tile) return;
 
         const now = Date.now();
@@ -1997,6 +2064,14 @@ class GameMap {
         }
 
         this.selectTile(tile.x, tile.y);
+    }
+
+    handleTouchCancel(event) {
+        event.preventDefault();
+        this.touchGesture.active = false;
+        this.touchGesture.moved = false;
+        this.touchGesture.distance = 0;
+        this.touchGesture.startTile = null;
     }
 
     toggleMoveModeForUnit(unit, options = {}) {
@@ -2139,6 +2214,33 @@ class GameMap {
     }
 
     exportFogState() {
+        const totalTiles = this.width * this.height;
+        const byteLength = Math.ceil(totalTiles / 8);
+        const bytes = new Uint8Array(byteLength);
+
+        let index = 0;
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!this.fogOfWar[y]?.[x]) {
+                    const byteIndex = index >> 3;
+                    const bitOffset = index & 7;
+                    bytes[byteIndex] |= (1 << bitOffset);
+                }
+                index++;
+            }
+        }
+
+        const encoded = this.encodeBytesToBase64(bytes);
+        if (typeof encoded === 'string' && encoded.length > 0) {
+            return {
+                exploredTiles: encoded,
+                encoding: 'bitset-base64',
+                width: this.width,
+                height: this.height
+            };
+        }
+
+        // Fallback for environments without base64 helpers.
         const exploredTiles = [];
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
@@ -2150,6 +2252,28 @@ class GameMap {
 
     importFogState(data) {
         this.initializeFogOfWar();
+        if (data?.encoding === 'bitset-base64' && typeof data?.exploredTiles === 'string') {
+            const bytes = this.decodeBase64ToBytes(data.exploredTiles);
+            const savedWidth = Number.isInteger(data.width) ? data.width : this.width;
+            const savedHeight = Number.isInteger(data.height) ? data.height : this.height;
+            if (bytes && savedWidth > 0 && savedHeight > 0) {
+                const totalTiles = savedWidth * savedHeight;
+                for (let index = 0; index < totalTiles; index++) {
+                    const byteIndex = index >> 3;
+                    const bitOffset = index & 7;
+                    if (byteIndex >= bytes.length) break;
+                    const explored = (bytes[byteIndex] & (1 << bitOffset)) !== 0;
+                    if (!explored) continue;
+                    const y = Math.floor(index / savedWidth);
+                    const x = index % savedWidth;
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+                    this.fogOfWar[y][x] = false;
+                    this.fogAlphaCache[y][x] = -1;
+                }
+                return;
+            }
+        }
+
         const exploredTiles = Array.isArray(data?.exploredTiles) ? data.exploredTiles : [];
         exploredTiles.forEach((entry) => {
             if (!Array.isArray(entry) || entry.length < 2) return;
@@ -2159,6 +2283,48 @@ class GameMap {
             this.fogOfWar[y][x] = false;
             this.fogAlphaCache[y][x] = -1;
         });
+    }
+
+    encodeBytesToBase64(bytes) {
+        if (!(bytes instanceof Uint8Array)) return null;
+        if (typeof btoa === 'function') {
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const slice = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+                binary += String.fromCharCode(...slice);
+            }
+            return btoa(binary);
+        }
+        if (typeof Buffer !== 'undefined') {
+            return Buffer.from(bytes).toString('base64');
+        }
+        return null;
+    }
+
+    decodeBase64ToBytes(encoded) {
+        if (typeof encoded !== 'string' || encoded.length === 0) return null;
+        if (typeof atob === 'function') {
+            try {
+                const binary = atob(encoded);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i) & 0xFF;
+                }
+                return bytes;
+            } catch (error) {
+                return null;
+            }
+        }
+        if (typeof Buffer !== 'undefined') {
+            try {
+                const buffer = Buffer.from(encoded, 'base64');
+                return new Uint8Array(buffer);
+            } catch (error) {
+                return null;
+            }
+        }
+        return null;
     }
 
     tileToGeo(x, y) {
