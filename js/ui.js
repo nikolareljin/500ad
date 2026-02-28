@@ -887,7 +887,7 @@ class UIManager {
             ? history.map((entry) => `
                 <div class="dipl-row">
                     <h3>${this.escapeHtml(entry.title || 'Untitled')}</h3>
-                    <p>${this.escapeHtml(entry.choiceTitle || entry.selectedChoiceId || entry.status || 'Logged')} • turn ${this.escapeHtml(entry.resolvedTurn || entry.createdTurn || gameState.turn)}</p>
+                    <p>${this.escapeHtml(entry.choiceTitle || entry.selectedChoiceId || entry.status || 'Logged')} • turn ${this.escapeHtml(entry.resolvedTurn ?? entry.createdTurn ?? gameState.turn)}</p>
                 </div>
             `).join('')
             : '<p>No history entries yet.</p>';

@@ -1569,7 +1569,8 @@ class GameState {
         const expired = [];
         const stillActive = [];
         this.dynamicNarrativeState.active.forEach((entry) => {
-            const age = this.turn - (entry.createdTurn || this.turn);
+            const createdTurn = Number.isFinite(entry?.createdTurn) ? entry.createdTurn : this.turn;
+            const age = this.turn - createdTurn;
             if (entry.status === 'pending' && age >= 8) {
                 entry.status = 'expired';
                 entry.resolvedTurn = this.turn;
@@ -1677,9 +1678,10 @@ class GameState {
         Object.entries(trust).forEach(([factionId, delta]) => {
             if (isUnsafeStateObjectKey(factionId)) return;
             if (!Number.isFinite(delta)) return;
-            const state = this.ensureDiplomacyFactionState(factionId || 'tribal');
+            const resolvedFactionId = factionId || 'tribal';
+            const state = this.ensureDiplomacyFactionState(resolvedFactionId);
             state.trust = Math.max(0, Math.min(100, Math.floor((state.trust || 0) + delta)));
-            summary.push(`${this.getFactionDisplayName(factionId)} trust ${delta > 0 ? '+' : ''}${Math.floor(delta)}`);
+            summary.push(`${this.getFactionDisplayName(resolvedFactionId)} trust ${delta > 0 ? '+' : ''}${Math.floor(delta)}`);
         });
 
         const repDelta = Number.isFinite(effects?.reputation) ? Math.floor(effects.reputation) : 0;
