@@ -9,6 +9,7 @@ class Minimap {
         this.canvas = null;
         this.ctx = null;
         this.viewportIndicator = null;
+        this.activeUnitIndicator = null;
         this.scaleX = 0;
         this.scaleY = 0;
         this.width = 0;
@@ -30,6 +31,7 @@ class Minimap {
         }
 
         this.ctx = this.canvas.getContext('2d');
+        this.ensureIndicators();
 
         this.resize();
 
@@ -38,6 +40,27 @@ class Minimap {
 
         // Initial render
         this.render();
+    }
+
+    ensureIndicators() {
+        if (!this.canvas) return;
+        const container = this.canvas.parentElement;
+        if (!container) return;
+
+        if (!this.viewportIndicator) {
+            this.viewportIndicator = document.createElement('div');
+            this.viewportIndicator.id = 'minimap-viewport';
+            this.viewportIndicator.className = 'minimap-viewport';
+            container.appendChild(this.viewportIndicator);
+        }
+
+        this.activeUnitIndicator = document.getElementById('minimap-active-unit');
+        if (!this.activeUnitIndicator) {
+            this.activeUnitIndicator = document.createElement('div');
+            this.activeUnitIndicator.id = 'minimap-active-unit';
+            this.activeUnitIndicator.className = 'minimap-active-unit';
+            container.appendChild(this.activeUnitIndicator);
+        }
     }
 
     /**
@@ -157,6 +180,8 @@ class Minimap {
             for (let x = 0; x < this.gameMap.width; x++) {
                 const tile = this.gameMap.tiles[y][x];
                 if (!tile) continue;
+                const explored = !this.gameMap.isFoggedTile(x, y);
+                const currentlyVisible = this.gameMap.isTileVisible(x, y);
 
                 // Get color from heightmap or terrain
                 let color = '#888';
@@ -176,14 +201,24 @@ class Minimap {
 
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(px, py, sizeX, sizeY);
+                if (!explored) {
+                    this.ctx.fillStyle = 'rgba(92, 96, 108, 0.34)';
+                    this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
 
                 // Territory ownership / realm tint overlay for easier border reading.
-                const controlOwner = tile.owner || this.gameMap.getTerritoryOwnerAt(x, y);
-                const realmKey = (tile.faction && tile.terrain !== 'water') ? tile.faction : controlOwner;
+                const controlOwner = explored ? (tile.owner || this.gameMap.getTerritoryOwnerAt(x, y)) : null;
+                const realmKey = explored && tile.terrain !== 'water'
+                    ? ((tile.faction && tile.terrain !== 'water') ? tile.faction : controlOwner)
+                    : null;
                 realmGrid[y][x] = tile.terrain === 'water' ? null : (realmKey || null);
                 const realmStyle = getRealmStyle(realmGrid[y][x]);
                 if (realmStyle && tile.terrain !== 'water') {
                     this.ctx.fillStyle = realmStyle.fill;
+                    this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
+                if (explored && !currentlyVisible) {
+                    this.ctx.fillStyle = 'rgba(78, 82, 92, 0.16)';
                     this.ctx.fillRect(px, py, sizeX, sizeY);
                 }
             }
@@ -228,6 +263,7 @@ class Minimap {
             HISTORIC_TOWNS.forEach(town => {
                 const px = town.x * MAP_CONFIG.tileSize * this.scaleX;
                 const py = town.y * MAP_CONFIG.tileSize * this.scaleY;
+                if (this.gameMap.isFoggedTile(town.x, town.y)) return;
 
                 const tile = this.gameMap.getTile(town.x, town.y);
                 if (tile?.owner === 'player') this.ctx.fillStyle = '#f4d03f';
@@ -257,6 +293,28 @@ class Minimap {
         this.viewportIndicator.style.top = `${vpY}px`;
         this.viewportIndicator.style.width = `${vpWidth}px`;
         this.viewportIndicator.style.height = `${vpHeight}px`;
+        this.updateActiveUnitIndicator();
+    }
+
+    updateActiveUnitIndicator() {
+        if (!this.activeUnitIndicator) return;
+        const selectedUnit = (typeof gameState !== 'undefined' && gameState)
+            ? gameState.selectedUnit
+            : null;
+
+        if (!selectedUnit
+            || selectedUnit.owner !== 'player'
+            || !Number.isFinite(selectedUnit.position?.x)
+            || !Number.isFinite(selectedUnit.position?.y)) {
+            this.activeUnitIndicator.style.display = 'none';
+            return;
+        }
+
+        const centerX = ((selectedUnit.position.x * MAP_CONFIG.tileSize) + (MAP_CONFIG.tileSize / 2)) * this.scaleX;
+        const centerY = ((selectedUnit.position.y * MAP_CONFIG.tileSize) + (MAP_CONFIG.tileSize / 2)) * this.scaleY;
+        this.activeUnitIndicator.style.display = 'block';
+        this.activeUnitIndicator.style.left = `${centerX}px`;
+        this.activeUnitIndicator.style.top = `${centerY}px`;
     }
 }
 

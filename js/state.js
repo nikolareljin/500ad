@@ -244,6 +244,12 @@ function resolveAppVersion() {
 }
 
 const SAVE_VERSION = resolveAppVersion();
+const EXPLORATION_REGION_IDS = {
+    northwest: 'Anatolian-Balkan Frontier',
+    northeast: 'Pontic-Caucasus Marches',
+    southwest: 'Mediterranean-Africa Littoral',
+    southeast: 'Levant-Persian Corridor'
+};
 
 const TECHNOLOGY_TREE = {
     military_logistics: {
@@ -522,7 +528,151 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = this.createDefaultExplorationState();
         this.initializeDynamicNarrativeState();
+    }
+
+    createDefaultExplorationState() {
+        return {
+            totalTilesDiscovered: 0,
+            discoveredRegions: {},
+            discoveredLandmarks: {}
+        };
+    }
+
+    ensureExplorationState() {
+        if (!this.exploration || typeof this.exploration !== 'object') {
+            this.exploration = this.createDefaultExplorationState();
+        }
+        if (!Number.isFinite(this.exploration.totalTilesDiscovered)) this.exploration.totalTilesDiscovered = 0;
+        if (!this.exploration.discoveredRegions || typeof this.exploration.discoveredRegions !== 'object') {
+            this.exploration.discoveredRegions = {};
+        }
+        if (!this.exploration.discoveredLandmarks || typeof this.exploration.discoveredLandmarks !== 'object') {
+            this.exploration.discoveredLandmarks = {};
+        }
+        return this.exploration;
+    }
+
+    getRegionIdForTile(tile) {
+        if (!tile || !gameMap) return null;
+        const xBand = tile.x < gameMap.width / 2 ? 'west' : 'east';
+        const yBand = tile.y < gameMap.height / 2 ? 'north' : 'south';
+        if (xBand === 'west' && yBand === 'north') return 'northwest';
+        if (xBand === 'east' && yBand === 'north') return 'northeast';
+        if (xBand === 'west' && yBand === 'south') return 'southwest';
+        return 'southeast';
+    }
+
+    processExplorationDiscoveries(newlyExploredTiles = [], options = {}) {
+        const grantRewards = options.grantRewards !== false;
+        if (!Array.isArray(newlyExploredTiles) || newlyExploredTiles.length === 0) return null;
+        if (!gameMap) return null;
+
+        const exploration = this.ensureExplorationState();
+        const uniqueKeys = new Set();
+        const uniqueTiles = [];
+        newlyExploredTiles.forEach((entry) => {
+            if (!Number.isInteger(entry?.x) || !Number.isInteger(entry?.y)) return;
+            const key = `${entry.x}_${entry.y}`;
+            if (uniqueKeys.has(key)) return;
+            uniqueKeys.add(key);
+            uniqueTiles.push(entry);
+        });
+        if (uniqueTiles.length === 0) return null;
+
+        exploration.totalTilesDiscovered += uniqueTiles.length;
+        const discoveredRegions = [];
+        const discoveredLandmarks = [];
+
+        uniqueTiles.forEach(({ x, y }) => {
+            const tile = gameMap.getTile(x, y);
+            if (!tile) return;
+
+            const regionId = this.getRegionIdForTile(tile);
+            if (regionId && !exploration.discoveredRegions[regionId]) {
+                exploration.discoveredRegions[regionId] = true;
+                discoveredRegions.push(regionId);
+            }
+
+            if (tile.cityData && (tile.cityData.kind === 'capital' || (tile.importance || 0) >= 8 || Boolean(tile.cityData.wonder))) {
+                const landmarkId = tile.cityData.id || `${x}_${y}`;
+                if (!exploration.discoveredLandmarks[landmarkId]) {
+                    exploration.discoveredLandmarks[landmarkId] = true;
+                    discoveredLandmarks.push({
+                        id: landmarkId,
+                        name: tile.cityData.name || `Landmark ${x},${y}`
+                    });
+                }
+            }
+        });
+
+        if (!grantRewards) {
+            return {
+                tiles: uniqueTiles.length,
+                regions: discoveredRegions,
+                landmarks: discoveredLandmarks
+            };
+        }
+
+        const goldReward = (discoveredRegions.length * 40) + (discoveredLandmarks.length * 120);
+        const manpowerReward = (discoveredRegions.length * 20) + (discoveredLandmarks.length * 50);
+        const prestigeReward = (discoveredRegions.length * 2) + (discoveredLandmarks.length * 7);
+        if (goldReward > 0 || manpowerReward > 0 || prestigeReward > 0) {
+            this.addResources(goldReward, manpowerReward, prestigeReward);
+        }
+
+        if (window.uiManager) {
+            discoveredRegions.forEach((regionId) => {
+                const label = EXPLORATION_REGION_IDS[regionId] || regionId;
+                uiManager.showNotification(`Discovered region: ${label}`, 'info');
+            });
+            discoveredLandmarks.forEach((landmark) => {
+                uiManager.showNotification(`Landmark discovered: ${landmark.name}`, 'success');
+            });
+            if (goldReward > 0 || manpowerReward > 0 || prestigeReward > 0) {
+                uiManager.showNotification(
+                    `Exploration rewards: +${goldReward} gold, +${manpowerReward} manpower, +${prestigeReward} prestige`,
+                    'success'
+                );
+            }
+        }
+
+        return {
+            tiles: uniqueTiles.length,
+            regions: discoveredRegions,
+            landmarks: discoveredLandmarks,
+            rewards: { gold: goldReward, manpower: manpowerReward, prestige: prestigeReward }
+        };
+    }
+
+    refreshPlayerVisibility(options = {}) {
+        if (!gameMap || typeof gameMap.recalculatePlayerVision !== 'function') return null;
+        const newlyExplored = gameMap.recalculatePlayerVision(this);
+        const discovery = this.processExplorationDiscoveries(newlyExplored, options);
+        if (!options.suppressRender) {
+            gameMap.requestRender();
+        }
+        return discovery;
+    }
+
+    revealVisibilityFromUnitStep(unit, options = {}) {
+        if (!gameMap || !unit || unit.owner !== 'player') return null;
+        if (!Number.isFinite(unit.position?.x) || !Number.isFinite(unit.position?.y)) return null;
+        const radius = typeof gameMap.getUnitVisionRadius === 'function'
+            ? gameMap.getUnitVisionRadius(unit)
+            : 3;
+        const newlyExplored = (typeof gameMap.revealArea === 'function')
+            ? gameMap.revealArea(unit.position.x, unit.position.y, radius, { markVisible: true })
+            : [];
+        const discovery = this.processExplorationDiscoveries(newlyExplored, options);
+        if (!options.suppressRender) {
+            gameMap.requestRender();
+            if (typeof minimap !== 'undefined' && minimap && typeof minimap.render === 'function') {
+                minimap.render();
+            }
+        }
+        return discovery;
     }
 
     /**
@@ -566,6 +716,7 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = this.createDefaultExplorationState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
@@ -587,6 +738,7 @@ class GameState {
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(scenario);
         this.refreshAIFactionState();
+        this.refreshPlayerVisibility({ grantRewards: false });
         gameMap.markTerritoryDirty();
         gameMap.requestRender();
 
@@ -2591,10 +2743,13 @@ class GameState {
         });
     }
 
-    processUnitDestination(unit) {
+    processUnitDestination(unit, options = {}) {
         if (!unit.destination) return;
+        const suppressVisibilityRefresh = options?.suppressVisibilityRefresh === true;
+        const suppressRender = options?.suppressRender === true;
 
         let safety = 0;
+        let movedAny = false;
         // Keep moving as long as we have movement and haven't reached destination
         while (unit.currentMovement > 0.3 && unit.destination && safety < 12) {
             safety++;
@@ -2625,15 +2780,23 @@ class GameState {
             if (ranked.length > 0) {
                 const next = ranked[0];
                 const prevPos = { ...unit.position };
-                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y });
+                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y }, {
+                    suppressVisibilityRefresh: true,
+                    suppressRender: true
+                });
                 if (!moved || (unit.position.x === prevPos.x && unit.position.y === prevPos.y)) {
                     // Blocked by enemy or something
                     break;
                 }
+                movedAny = true;
             } else {
                 // Not enough movement left for any step
                 break;
             }
+        }
+
+        if (movedAny && unit.owner === 'player' && !suppressVisibilityRefresh) {
+            this.refreshPlayerVisibility({ suppressRender });
         }
     }
 
@@ -2663,7 +2826,117 @@ class GameState {
                     }
                 }
             }
+        } else if (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
+            this.processAutoScoutAutomation(unit);
         }
+    }
+
+    processAutoScoutAutomation(unit) {
+        if (!unit || !gameMap) return;
+        if (unit.typeId !== 'explorer' && unit.typeId !== 'merchant_ship') return;
+        if (!Number.isFinite(unit.position?.x) || !Number.isFinite(unit.position?.y)) return;
+
+        let safety = 0;
+        let movedAny = false;
+        while (unit.currentMovement > 0.3 && safety < 8) {
+            safety++;
+            const nextStep = this.pickExplorerAutoStep(unit);
+            if (!nextStep) break;
+            const moved = this.moveUnit(unit.id, nextStep, {
+                suppressVisibilityRefresh: true,
+                suppressRender: true
+            });
+            if (!moved) break;
+            movedAny = true;
+        }
+
+        if (movedAny && unit.owner === 'player') {
+            this.refreshPlayerVisibility();
+        }
+
+        if (unit.currentMovement <= 0.3 || unit.destination) return;
+        const fallbackTarget = this.findNearestUnexploredTile(unit.position, 28, unit);
+        if (fallbackTarget) {
+            unit.destination = fallbackTarget;
+            this.processUnitDestination(unit, { suppressVisibilityRefresh: false });
+        }
+    }
+
+    pickExplorerAutoStep(unit) {
+        if (!unit || !gameMap) return null;
+        const fromTile = gameMap.getTile(unit.position.x, unit.position.y);
+        if (!fromTile) return null;
+        const visionRadius = typeof gameMap.getUnitVisionRadius === 'function'
+            ? gameMap.getUnitVisionRadius(unit)
+            : 3;
+
+        const offsets = [
+            { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 },
+            { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 }
+        ];
+
+        const scored = offsets
+            .map((offset) => {
+                const nx = unit.position.x + offset.x;
+                const ny = unit.position.y + offset.y;
+                const toTile = gameMap.getTile(nx, ny);
+                if (!toTile) return null;
+                if (toTile.terrain === 'water' && !this.isWaterCapable(unit)) return null;
+                if (toTile.terrain !== 'water' && this.isWaterOnlyUnit(unit)) return null;
+                if (toTile.fort && toTile.fort.owner !== unit.owner) return null;
+                const occupiedByEnemy = this.units.some((other) =>
+                    other?.id !== unit.id
+                    && other?.owner === 'enemy'
+                    && other.position?.x === nx
+                    && other.position?.y === ny
+                );
+                if (occupiedByEnemy) return null;
+                const travelCost = this.getTerrainMoveCost(unit, fromTile, toTile);
+                if (!Number.isFinite(travelCost) || travelCost > unit.currentMovement || travelCost >= 99) return null;
+
+                let fogScore = 0;
+                for (let dy = -visionRadius; dy <= visionRadius; dy++) {
+                    for (let dx = -visionRadius; dx <= visionRadius; dx++) {
+                        const tx = nx + dx;
+                        const ty = ny + dy;
+                        if (tx < 0 || tx >= gameMap.width || ty < 0 || ty >= gameMap.height) continue;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist > visionRadius) continue;
+                        if (gameMap.isFoggedTile(tx, ty)) fogScore += 3;
+                        else if (!gameMap.isTileVisible(tx, ty)) fogScore += 1;
+                    }
+                }
+
+                return {
+                    x: nx,
+                    y: ny,
+                    score: fogScore - (travelCost * 0.4) + (Math.random() * 0.05)
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score);
+
+        if (scored.length === 0) return null;
+        return { x: scored[0].x, y: scored[0].y };
+    }
+
+    findNearestUnexploredTile(origin, maxRadius = 24, unit = null) {
+        if (!origin || !gameMap) return null;
+        for (let r = 1; r <= maxRadius; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const remaining = r - Math.abs(dy);
+                for (let dx = -remaining; dx <= remaining; dx++) {
+                    const x = origin.x + dx;
+                    const y = origin.y + dy;
+                    const tile = gameMap.getTile(x, y);
+                    if (!tile || !gameMap.isFoggedTile(x, y)) continue;
+                    if (unit && tile.terrain === 'water' && !this.isWaterCapable(unit)) continue;
+                    if (unit && tile.terrain !== 'water' && this.isWaterOnlyUnit(unit)) continue;
+                    return { x, y };
+                }
+            }
+        }
+        return null;
     }
 
     getHostileEnemyUnitsNearPlayerCities(maxDistance = 7) {
@@ -3396,7 +3669,12 @@ class GameState {
         }
 
         const isPlayerControlled = cityTile.owner === 'player' || gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player';
-        if (!isPlayerControlled) reasons.push('Requires a player-owned tile');
+        if (actionId === 'establish_town') {
+            const colonizer = this.getColonizationUnitOnTile(cityTile);
+            if (!colonizer) reasons.push('Requires a player land unit stationed on this tile');
+        } else if (!isPlayerControlled) {
+            reasons.push('Requires a player-owned tile');
+        }
         if (actionId === 'establish_town' && cityTile.terrain === 'water') reasons.push('Cannot establish a town on water');
         if (actionId === 'establish_town' && cityTile.cityData) reasons.push('Tile already has a city');
         if (actionId === 'establish_town' && cityTile.terrain === 'city') reasons.push('Tile is already urbanized');
@@ -3447,6 +3725,19 @@ class GameState {
         return Object.entries(BUILD_ACTIONS).map(([actionId]) => this.getBuildActionOptionStatus(cityTile, actionId));
     }
 
+    getColonizationUnitOnTile(tile) {
+        if (!tile) return null;
+        const occupant = this.units.find((unit) =>
+            unit?.owner === 'player'
+            && !unit.isCarried
+            && unit.position?.x === tile.x
+            && unit.position?.y === tile.y
+        );
+        if (!occupant) return null;
+        if (occupant.type === 'naval' || occupant.category === 'transport') return null;
+        return occupant;
+    }
+
     applyCityBuildAction(cityTile, actionId) {
         const validation = this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: false });
         if (!validation.available) {
@@ -3455,8 +3746,13 @@ class GameState {
         const action = validation.action;
 
         if (actionId === 'establish_town' && !cityTile.cityData) {
+            const colonizer = this.getColonizationUnitOnTile(cityTile);
+            if (!colonizer) {
+                return { success: false, message: 'Requires a player land unit stationed on this tile' };
+            }
             cityTile.terrain = 'city';
             cityTile.building = 'town';
+            cityTile.owner = 'player';
             cityTile.cityData = {
                 id: `founded_${cityTile.x}_${cityTile.y}_${this.turn}`,
                 name: `New Settlement ${this.turn}`,
@@ -3465,6 +3761,8 @@ class GameState {
                 production: { food: 2, industry: 1, gold: 1 },
                 infrastructure: { roads: 1, agriculture: 1, industry: 1 }
             };
+            colonizer.currentMovement = 0;
+            colonizer.fortified = false;
             if (!this.player.territories.includes(cityTile.cityData.id)) {
                 this.player.territories.push(cityTile.cityData.id);
             }
@@ -3567,9 +3865,11 @@ class GameState {
     /**
      * Move selected unit
      */
-    moveUnit(unitId, newPosition) {
+    moveUnit(unitId, newPosition, options = {}) {
         const unit = this.units.find(u => u.id === unitId);
         if (!unit) return false;
+        const suppressVisibilityRefresh = options?.suppressVisibilityRefresh === true;
+        const suppressRender = options?.suppressRender === true;
 
         // Check if unit has movement remaining
         if (unit.currentMovement <= 0) return false;
@@ -3644,7 +3944,12 @@ class GameState {
 
             // Reveal fog of war around new position for player units
             if (unit.owner === 'player' && gameMap) {
-                gameMap.revealArea(newPosition.x, newPosition.y, 3);
+                if (suppressVisibilityRefresh) {
+                    // During batched movement, reveal incrementally but defer full-map recomputation.
+                    this.revealVisibilityFromUnitStep(unit, { suppressRender: true });
+                } else {
+                    this.refreshPlayerVisibility({ suppressRender });
+                }
             }
 
             // Check for territory capture
@@ -3658,7 +3963,7 @@ class GameState {
                 uiManager.showNotification(`${unit.name} destination set to ${newPosition.x},${newPosition.y}`, 'info');
             }
             // Move as much as possible towards destination this turn
-            this.processUnitDestination(unit);
+            this.processUnitDestination(unit, { suppressVisibilityRefresh, suppressRender });
             return true;
         }
 
@@ -3698,8 +4003,8 @@ class GameState {
 
         if (window.uiManager) {
             uiManager.showNotification(`${unit.name} disembarked at ${spawnPos.x},${spawnPos.y}`, 'success');
-            gameMap?.requestRender();
         }
+        this.refreshPlayerVisibility();
         return { success: true };
     }
 
@@ -3785,6 +4090,7 @@ class GameState {
         });
 
         gameMap.markTerritoryDirty();
+        this.refreshPlayerVisibility({ grantRewards: false });
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
         this.checkWinLossConditions();
     }
@@ -3860,7 +4166,7 @@ class GameState {
 
         // Process units with destination or automation
         this.processAutomatedUnits();
-        this.revealCarriedUnitVision();
+        this.refreshPlayerVisibility();
 
         // Healing phase: towns, fortified positions, and nearby support units.
         this.processUnitHealing();
@@ -4037,6 +4343,7 @@ class GameState {
             aiEvents: this.aiEvents,
             dynamicNarrativeState: this.dynamicNarrativeState,
             diplomacyState: this.diplomacyState,
+            exploration: this.exploration,
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -4047,7 +4354,8 @@ class GameState {
             buildings: this.buildings,
             territories: this.territories,
             cityOwnership: this.captureCityOwnership(),
-            fortifications: this.captureFortifications()
+            fortifications: this.captureFortifications(),
+            fogOfWar: gameMap?.exportFogState?.() || null
         };
     }
 
@@ -4218,11 +4526,6 @@ class GameState {
 
         (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
 
-        gameMap.getCityTiles('player').forEach(tile => gameMap.revealArea(tile.x, tile.y, 4));
-        this.units
-            .filter(unit => unit.owner === 'player')
-            .forEach(unit => gameMap.revealArea(unit.position.x, unit.position.y, 3));
-
         gameMap.markTerritoryDirty();
     }
 
@@ -4261,7 +4564,11 @@ class GameState {
         this.diplomacyState = (data.diplomacyState && typeof data.diplomacyState === 'object')
             ? data.diplomacyState
             : { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = (data.exploration && typeof data.exploration === 'object')
+            ? data.exploration
+            : this.createDefaultExplorationState();
         this.initializeDiplomacyState();
+        this.ensureExplorationState();
         this.ensureStrategicResourceStockpile();
         if (!Array.isArray(this.player.techResearched)) {
             this.player.techResearched = [];
@@ -4308,8 +4615,14 @@ class GameState {
         this.territories = data.territories;
         this.restoreCityOwnership(data.cityOwnership || []);
         this.restoreFortifications(data.fortifications || []);
+        if (data.fogOfWar && typeof gameMap.importFogState === 'function') {
+            gameMap.importFogState(data.fogOfWar);
+        } else if (typeof gameMap.initializeFogOfWar === 'function') {
+            gameMap.initializeFogOfWar();
+        }
         this.refreshAIFactionState();
         this.updateAIFactionIntelFromWorldState();
+        this.refreshPlayerVisibility({ grantRewards: false });
         this.initialized = true;
 
         return true;

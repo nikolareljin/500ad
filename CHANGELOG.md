@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.12.0] - 2026-02-28
+
+### Added
+- Added a true two-layer fog-of-war model with `unexplored` and `explored-but-not-currently-visible` states.
+- Added unit and city vision-range rules to drive real-time visibility updates (including extended scout/intel and fortified-capital sight ranges).
+- Added exploration discovery mechanics for macro-regions and landmark cities, including resource/prestige rewards and player-facing discovery notifications.
+- Added auto-explore automation for `Explorer` and `Merchant Galley` units to reveal fog without constant manual input.
+
+### Changed
+- Changed map and minimap rendering to apply visibility-aware fog/shroud overlays instead of a single fog mask.
+- Changed enemy visibility behavior so hostile units are only rendered and inspectable when they are in currently visible tiles.
+
+### Fixed
+- Fixed information leakage where enemy movement/position could still be observed through explored fog.
+- Fixed save/load continuity for exploration by persisting fog exploration state and restoring it with the campaign.
+- Fixed unit-move UX by adding explicit move-mode toggling for selected units (`double-click` on desktop, `double-tap` on touch) with clear ON/OFF status feedback.
+- Fixed accidental map-tap movement by requiring intentional move-mode arming and allowing quick move-mode cancellation by tapping/clicking the selected unit again.
+- Fixed mobile unit control obstruction by converting the unit panel to a compact bottom layout so map movement orders remain usable on small screens.
+
 ## [1.11.0] - 2026-02-28
 
 ### Added

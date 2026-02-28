@@ -9,6 +9,33 @@
   - Red: critical health
 - Numeric HP values are not rendered directly on the map.
 
+## Unit Movement Input Modes
+
+- Unit movement now uses an explicit armed/disarmed move mode for clearer intent.
+- Toggle move mode by:
+  - `double-click` the selected player unit on desktop
+  - `double-tap` the selected player unit on touch devices
+- While move mode is ON, the next tile selection issues a move order.
+- Move mode can be cancelled by selecting/tapping the same unit again.
+- Selected unit visuals indicate mode state:
+  - default selected ring when move mode is OFF
+  - highlighted selected ring when move mode is ON
+
+## Fog of War and Exploration
+
+- Fog now has two states:
+  - `unexplored`: heavily obscured terrain (terrain is still rendered under dense fog)
+  - `explored shroud`: previously discovered but not currently visible
+- Current visibility is recalculated from:
+  - player unit vision ranges (scouts/intel classes have extended vision)
+  - player city vision ranges (capitals and developed walls increase city sight)
+- Enemy units are only rendered/inspectable while inside currently visible tiles.
+- `Explorer` and `Merchant Galley` units can run auto-explore automation to reveal fog continuously without manual waypointing.
+- Exploration discoveries now trigger on first reveal:
+  - region discovery events for new macro map sectors
+  - landmark discovery events for major cities/capitals/wonders
+- Discovery events grant immediate bonus resources (`gold`, `manpower`, `prestige`) and are persisted through save/load.
+
 ## Tactical Combat Layer
 
 - Battles now run through a tactical combat layer when opposing armies engage.

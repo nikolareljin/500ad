@@ -657,8 +657,9 @@ class UIManager {
 
         const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
         const isPlayerControlled = tile && (tile.owner === 'player' || gameMap.getTerritoryOwnerAt(tile.x, tile.y) === 'player');
-        if (!isPlayerControlled) {
-            this.showNotification('Build actions require a player-owned tile', 'error');
+        const hasColonizationUnit = Boolean(gameState.getColonizationUnitOnTile?.(tile));
+        if (!isPlayerControlled && !hasColonizationUnit) {
+            this.showNotification('Build here requires either a player-owned tile or a stationed land unit for colonization', 'error');
             return;
         }
         const cityData = gameState.ensureCityBuildingState(tile);
@@ -1181,7 +1182,9 @@ class UIManager {
                 const factionName = this.formatFactionName(unit.faction || unit.owner || 'enemy');
                 metaEl.textContent = `Enemy force: ${factionName}${estimatedView ? ' • Estimated strength' : ''}`;
             } else {
-                metaEl.textContent = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+                const factionText = unit.faction ? `Faction: ${this.formatFactionName(unit.faction)}` : 'Your unit';
+                const moveModeText = this.getSelectedUnitMoveModeLabel(unit);
+                metaEl.textContent = moveModeText ? `${factionText} • ${moveModeText}` : factionText;
             }
         }
         const portrait = document.getElementById('selected-unit-portrait');
@@ -1247,6 +1250,13 @@ class UIManager {
 
     showEnemyUnitPanel(unit) {
         this.showUnitPanel(unit, { enemyView: true, estimatedView: true });
+    }
+
+    getSelectedUnitMoveModeLabel(unit) {
+        if (!unit || unit.owner !== 'player') return null;
+        const isSelected = gameState?.selectedUnit?.id === unit.id;
+        if (!isSelected) return null;
+        return Boolean(gameMap?.awaitingMoveOrder) ? 'Move Mode: ON' : 'Move Mode: OFF';
     }
 
     formatFactionName(factionId) {
@@ -1337,10 +1347,25 @@ class UIManager {
         const moveBtn = document.createElement('button');
         moveBtn.className = 'action-btn';
         moveBtn.id = 'btn-move-unit';
-        moveBtn.textContent = 'Move';
+        const moveArmed = Boolean(gameMap?.awaitingMoveOrder);
+        moveBtn.textContent = moveArmed ? 'Move Mode: ON' : 'Move Mode: OFF';
+        if (moveArmed) moveBtn.classList.add('active');
         moveBtn.onclick = withClickSound(() => {
+            if (gameMap) gameMap.awaitingMoveOrder = !gameMap.awaitingMoveOrder;
             this.hideUnitPanelForMapTargeting();
-            this.showNotification('Select a destination tile to move this unit.', 'info');
+            const armed = Boolean(gameMap?.awaitingMoveOrder);
+            moveBtn.textContent = armed ? 'Move Mode: ON' : 'Move Mode: OFF';
+            moveBtn.classList.toggle('active', armed);
+            this.showNotification(
+                armed
+                    ? 'Move mode ON: pan map if needed, then click destination tile.'
+                    : 'Move mode OFF.',
+                'info'
+            );
+            if (!armed) {
+                this.showUnitPanel(unit);
+            }
+            gameMap?.requestRender();
         });
         container.appendChild(moveBtn);
 
@@ -1373,15 +1398,22 @@ class UIManager {
                 }
             });
             container.appendChild(buildRoadBtn);
+        }
 
+        if (unit.typeId === 'civil_engineers' || unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
             const automateBtn = document.createElement('button');
             automateBtn.className = `action-btn ${unit.automated ? 'active' : ''}`;
-            automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+            const autoLabel = (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') ? 'Auto Explore' : 'Automated';
+            automateBtn.textContent = unit.automated ? `${autoLabel}: ON` : autoLabel;
             automateBtn.onclick = withClickSound(() => {
                 unit.automated = !unit.automated;
-                automateBtn.textContent = unit.automated ? 'Automated: ON' : 'Automate';
+                automateBtn.textContent = unit.automated ? `${autoLabel}: ON` : autoLabel;
                 automateBtn.classList.toggle('active', unit.automated);
-                this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
+                if (unit.typeId === 'explorer' || unit.typeId === 'merchant_ship') {
+                    this.showNotification(unit.automated ? `${unit.name} auto-explore enabled` : `${unit.name} auto-explore disabled`, 'info');
+                } else {
+                    this.showNotification(unit.automated ? 'Engineer automation enabled' : 'Engineer automation disabled', 'info');
+                }
             });
             container.appendChild(automateBtn);
         }
@@ -1770,6 +1802,7 @@ class UIManager {
         const panel = document.getElementById('unit-panel');
         panel?.classList.remove('active', 'enemy-panel');
         gameState.selectedUnit = null;
+        if (gameMap) gameMap.awaitingMoveOrder = false;
         gameMap?.requestRender();
     }
 

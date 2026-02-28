@@ -520,9 +520,26 @@ class GameMap {
         this.isPanning = false;
         this.lastPanX = 0;
         this.lastPanY = 0;
+        this.panMoved = false;
+        this.panDistance = 0;
+        this.suppressNextClick = false;
+        this.awaitingMoveOrder = false;
+        this.lastTouchTap = { x: null, y: null, time: 0 };
+        this.pendingTileSelectionTimer = null;
+        this.touchGesture = {
+            active: false,
+            moved: false,
+            distance: 0,
+            startX: 0,
+            startY: 0,
+            lastX: 0,
+            lastY: 0,
+            startTile: null
+        };
 
         // Fog of war
         this.fogOfWar = [];
+        this.visibilityMap = [];
 
         this.selectedTile = null;
         this.hoveredTile = null;
@@ -987,8 +1004,12 @@ class GameMap {
 
         // Add event listeners
         this.canvas.addEventListener('click', (e) => this.handleClick(e));
+        this.canvas.addEventListener('dblclick', (e) => this.handleDoubleClick(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        this.canvas.addEventListener('touchstart', (e) => this.handleTouch(e));
+        this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+        this.canvas.addEventListener('touchcancel', (e) => this.handleTouchCancel(e), { passive: false });
     }
 
     /**
@@ -996,13 +1017,16 @@ class GameMap {
      */
     initializeFogOfWar() {
         this.fogOfWar = [];
+        this.visibilityMap = [];
         this.fogAlphaCache = [];
         for (let y = 0; y < this.height; y++) {
             this.fogOfWar[y] = [];
+            this.visibilityMap[y] = [];
             this.fogAlphaCache[y] = [];
             for (let x = 0; x < this.width; x++) {
                 // Start with everything fogged
                 this.fogOfWar[y][x] = true;
+                this.visibilityMap[y][x] = false;
                 this.fogAlphaCache[y][x] = -1;
             }
         }
@@ -1011,7 +1035,9 @@ class GameMap {
     /**
      * Reveal area around a position (for units/cities)
      */
-    revealArea(x, y, radius = 3) {
+    revealArea(x, y, radius = 3, options = {}) {
+        const markVisible = options?.markVisible !== false;
+        const newlyExplored = [];
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const nx = x + dx;
@@ -1019,7 +1045,13 @@ class GameMap {
                 if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist <= radius) {
-                        this.fogOfWar[ny][nx] = false;
+                        if (markVisible && this.visibilityMap[ny]) {
+                            this.visibilityMap[ny][nx] = true;
+                        }
+                        if (this.fogOfWar[ny][nx]) {
+                            this.fogOfWar[ny][nx] = false;
+                            newlyExplored.push({ x: nx, y: ny });
+                        }
                         for (let cdy = -1; cdy <= 1; cdy++) {
                             for (let cdx = -1; cdx <= 1; cdx++) {
                                 const cx = nx + cdx;
@@ -1032,6 +1064,59 @@ class GameMap {
                 }
             }
         }
+        return newlyExplored;
+    }
+
+    clearVisibilityMap() {
+        for (let y = 0; y < this.height; y++) {
+            const row = this.visibilityMap[y];
+            if (!row) continue;
+            row.fill(false);
+        }
+    }
+
+    getUnitVisionRadius(unit) {
+        if (!unit) return 2;
+        const bonusVision = Number.isFinite(unit.bonuses?.vision) ? Math.floor(unit.bonuses.vision) : 0;
+        let radius = 2 + bonusVision;
+        if (unit.category === 'scout' || unit.category === 'intel') radius += 1;
+        if (unit.type === 'naval') radius += 1;
+        return Math.max(1, Math.min(7, radius));
+    }
+
+    getCityVisionRadius(cityTile) {
+        if (!cityTile?.cityData) return 3;
+        let radius = cityTile.cityData.kind === 'capital' ? 5 : 4;
+        const wallsLevel = Number(cityTile.cityData.buildings?.walls || 0);
+        if (wallsLevel >= 2) radius += 1;
+        return Math.max(3, Math.min(7, radius));
+    }
+
+    recalculatePlayerVision(state) {
+        if (!state) return [];
+        this.clearVisibilityMap();
+        const newlyExplored = [];
+
+        const playerCities = this.getCityTiles('player') || [];
+        playerCities.forEach((tile) => {
+            const radius = this.getCityVisionRadius(tile);
+            const discovered = this.revealArea(tile.x, tile.y, radius, { markVisible: true });
+            if (discovered.length > 0) newlyExplored.push(...discovered);
+        });
+
+        const playerUnits = (state.units || []).filter((unit) =>
+            unit?.owner === 'player'
+            && !unit.isCarried
+            && Number.isFinite(unit.position?.x)
+            && Number.isFinite(unit.position?.y)
+        );
+        playerUnits.forEach((unit) => {
+            const radius = this.getUnitVisionRadius(unit);
+            const discovered = this.revealArea(unit.position.x, unit.position.y, radius, { markVisible: true });
+            if (discovered.length > 0) newlyExplored.push(...discovered);
+        });
+
+        return newlyExplored;
     }
 
     /**
@@ -1040,6 +1125,11 @@ class GameMap {
     isFoggedTile(x, y) {
         if (!this.fogOfWar[y] || this.fogOfWar[y][x] === undefined) return false;
         return this.fogOfWar[y][x];
+    }
+
+    isTileVisible(x, y) {
+        if (!this.visibilityMap[y] || this.visibilityMap[y][x] === undefined) return false;
+        return this.visibilityMap[y][x];
     }
 
     /**
@@ -1067,8 +1157,8 @@ class GameMap {
         }
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
-        // Edge tiles stay lighter, deep unknown gets denser.
-        const alpha = 0.3 + (1 - edgeFactor) * 0.35;
+        // Keep terrain readable but make unexplored areas clearly grayed-out.
+        const alpha = 0.36 + (1 - edgeFactor) * 0.22;
         if (this.fogAlphaCache?.[y]) {
             this.fogAlphaCache[y][x] = alpha;
         }
@@ -1089,6 +1179,7 @@ class GameMap {
             for (let x = startX; x < endX; x++) {
                 const height = MEDITERRANEAN_HEIGHTMAP[y]?.[x];
                 if (height === undefined || height > 50) continue;
+                if (this.isFoggedTile(x, y)) continue;
 
                 // Draw river strokes only for inland water, not broad oceans.
                 if (height < 40) continue;
@@ -1307,6 +1398,7 @@ class GameMap {
 
                 const px = x * tileSize;
                 const py = y * tileSize;
+                const isFogged = this.isFoggedTile(x, y);
 
                 const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
 
@@ -1315,7 +1407,7 @@ class GameMap {
                 this.ctx.fillRect(px, py, tileSize, tileSize);
 
                 // Draw subtle grid only on explored tiles to avoid "square earth" look in fog.
-                if (!this.isFoggedTile(x, y)) {
+                if (!isFogged) {
                     this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
                     this.ctx.lineWidth = 1;
                     this.ctx.strokeRect(px, py, tileSize, tileSize);
@@ -1323,7 +1415,7 @@ class GameMap {
 
                 // Draw territory control overlay.
                 const controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y);
-                if (controlOwner && tile.terrain !== 'water') {
+                if (!isFogged && controlOwner && tile.terrain !== 'water') {
                     if (controlOwner === 'player') {
                         this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
                     } else if (controlOwner === 'enemy') {
@@ -1335,7 +1427,7 @@ class GameMap {
                 }
 
                 // Draw city/building icons
-                if (tile.building) {
+                if (!isFogged && tile.building) {
                     const cx = px + tileSize / 2;
                     const cy = py + tileSize / 2;
                     const size = tileSize * 0.22;
@@ -1356,7 +1448,7 @@ class GameMap {
                     }
                 }
 
-                if (tile.fort && tile.terrain !== 'water') {
+                if (!isFogged && tile.fort && tile.terrain !== 'water') {
                     const cx = px + tileSize / 2;
                     const cy = py + tileSize / 2;
                     const size = tileSize * 0.25;
@@ -1376,19 +1468,28 @@ class GameMap {
                     this.ctx.stroke();
                 }
 
-                if (tile.road && tile.terrain !== 'water') {
+                if (!isFogged && tile.road && tile.terrain !== 'water') {
                     this.drawRoad(tile, px, py, tileSize);
                 }
 
-                if (tile.resourceNode && tile.terrain !== 'water' && !this.isFoggedTile(x, y)) {
+                if (tile.resourceNode && tile.terrain !== 'water' && !isFogged) {
                     this.drawResourceNode(tile, px, py, tileSize);
                 }
 
                 // Gray fog of war for undiscovered areas with softened boundaries.
-                const fogAlpha = this.getFogAlpha(x, y);
-                if (fogAlpha > 0) {
-                    this.ctx.fillStyle = `rgba(120, 124, 132, ${fogAlpha})`;
-                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                const tileVisible = this.isTileVisible(x, y);
+                if (!tileVisible) {
+                    if (isFogged) {
+                        const fogAlpha = this.getFogAlpha(x, y);
+                        if (fogAlpha > 0) {
+                            this.ctx.fillStyle = `rgba(122, 126, 136, ${fogAlpha})`;
+                            this.ctx.fillRect(px, py, tileSize, tileSize);
+                        }
+                    } else {
+                        // Explored-but-not-currently-visible shroud.
+                        this.ctx.fillStyle = 'rgba(88, 92, 102, 0.14)';
+                        this.ctx.fillRect(px, py, tileSize, tileSize);
+                    }
                 }
             }
         }
@@ -1401,6 +1502,7 @@ class GameMap {
             gameState.units.forEach(unit => {
                 if (unit.position.x >= startX && unit.position.x < endX &&
                     unit.position.y >= startY && unit.position.y < endY) {
+                    if (unit.owner !== 'player' && !this.isTileVisible(unit.position.x, unit.position.y)) return;
                     this.drawUnit(unit);
                 }
             });
@@ -1521,6 +1623,8 @@ class GameMap {
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
+            this.panMoved = false;
+            this.panDistance = 0;
             this.canvas.style.cursor = 'grabbing';
         });
 
@@ -1531,6 +1635,10 @@ class GameMap {
 
                 this.camera.x -= dx;
                 this.camera.y -= dy;
+                this.panDistance += Math.sqrt((dx * dx) + (dy * dy));
+                if (this.panDistance >= 4) {
+                    this.panMoved = true;
+                }
 
                 // Clamp camera to map bounds
                 const maxX = (this.width * MAP_CONFIG.tileSize) - this.canvas.width;
@@ -1546,6 +1654,10 @@ class GameMap {
         });
 
         this.canvas.addEventListener('mouseup', () => {
+            if (this.isPanning && this.panMoved) {
+                // Ignore only the drag-release click; keep move mode armed for the next intentional click.
+                this.suppressNextClick = true;
+            }
             this.isPanning = false;
             this.canvas.style.cursor = 'default';
         });
@@ -1652,6 +1764,20 @@ class GameMap {
         this.ctx.fillRect(182, 53, 12, 10);
         this.ctx.fillStyle = '#f3df95';
         this.ctx.fillText('Neutral', 198, 62);
+
+        const selected = gameState?.selectedUnit;
+        if (selected?.owner === 'player') {
+            const moveArmed = Boolean(this.awaitingMoveOrder);
+            const panelWidth = Math.min(500, Math.max(280, this.canvas.width - 320));
+            this.ctx.fillStyle = 'rgba(8, 11, 18, 0.72)';
+            this.ctx.fillRect(10, 74, panelWidth, 28);
+            this.ctx.fillStyle = moveArmed ? '#67f2ff' : '#f3df95';
+            this.ctx.fillText(
+                `${selected.name} | Move: ${moveArmed ? 'ON' : 'OFF'} | Double-click/double-tap unit to toggle`,
+                20,
+                93
+            );
+        }
     }
 
     /**
@@ -1760,6 +1886,16 @@ class GameMap {
 
         this.ctx.fillText(symbol, cx, cy);
 
+        const isSelected = gameState?.selectedUnit?.id === unit.id;
+        if (isSelected) {
+            const moveArmed = Boolean(this.awaitingMoveOrder);
+            this.ctx.strokeStyle = moveArmed ? '#67f2ff' : '#F4D03F';
+            this.ctx.lineWidth = Math.max(2, tileSize * 0.12);
+            this.ctx.beginPath();
+            this.ctx.arc(cx, cy, tileSize * 0.48, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+
         this.ctx.restore();
     }
 
@@ -1804,10 +1940,47 @@ class GameMap {
      * Handle click event
      */
     handleClick(event) {
-        const tile = this.screenToTile(event.clientX, event.clientY);
-        if (tile) {
-            this.selectTile(tile.x, tile.y);
+        if (this.suppressNextClick) {
+            this.suppressNextClick = false;
+            return;
         }
+        const tile = this.screenToTile(event.clientX, event.clientY);
+        if (!tile) return;
+
+        const unit = this.getSelectableUnitAt(tile.x, tile.y);
+        const selectedUnitId = gameState?.selectedUnit?.id || null;
+        const clickedSelectedPlayerUnit = Boolean(
+            unit
+            && unit.owner === 'player'
+            && selectedUnitId === unit.id
+            && this.awaitingMoveOrder
+        );
+
+        if (event.detail === 1 && clickedSelectedPlayerUnit) {
+            this.scheduleTileSelection(tile, 260);
+            return;
+        }
+
+        this.clearPendingTileSelection();
+        this.selectTile(tile.x, tile.y);
+    }
+
+    handleDoubleClick(event) {
+        if (this.suppressNextClick) {
+            this.suppressNextClick = false;
+            return;
+        }
+        this.clearPendingTileSelection();
+        const tile = this.screenToTile(event.clientX, event.clientY);
+        if (!tile) return;
+        const unit = gameState.units.find((u) =>
+            u.owner === 'player'
+            && !u.isCarried
+            && u.position?.x === tile.x
+            && u.position?.y === tile.y
+        );
+        if (!unit) return;
+        this.toggleMoveModeForUnit(unit, { activationHint: 'Click destination tile to move.' });
     }
 
     /**
@@ -1826,13 +1999,155 @@ class GameMap {
     /**
      * Handle touch event
      */
-    handleTouch(event) {
+    handleTouchStart(event) {
+        if (!event.touches || event.touches.length !== 1) return;
         event.preventDefault();
         const touch = event.touches[0];
-        const tile = this.screenToTile(touch.clientX, touch.clientY);
-        if (tile) {
-            this.selectTile(tile.x, tile.y);
+        if (!touch) return;
+        this.touchGesture.active = true;
+        this.touchGesture.moved = false;
+        this.touchGesture.distance = 0;
+        this.touchGesture.startX = touch.clientX;
+        this.touchGesture.startY = touch.clientY;
+        this.touchGesture.lastX = touch.clientX;
+        this.touchGesture.lastY = touch.clientY;
+        this.touchGesture.startTile = this.screenToTile(touch.clientX, touch.clientY);
+    }
+
+    handleTouchMove(event) {
+        if (!this.touchGesture.active || !event.touches || event.touches.length !== 1) return;
+        event.preventDefault();
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        const dx = touch.clientX - this.touchGesture.lastX;
+        const dy = touch.clientY - this.touchGesture.lastY;
+        this.camera.x -= dx;
+        this.camera.y -= dy;
+        this.touchGesture.distance += Math.sqrt((dx * dx) + (dy * dy));
+        if (this.touchGesture.distance >= 4) {
+            this.touchGesture.moved = true;
         }
+
+        const maxX = (this.width * MAP_CONFIG.tileSize) - this.canvas.width;
+        const maxY = (this.height * MAP_CONFIG.tileSize) - this.canvas.height;
+        this.camera.x = Math.max(0, Math.min(maxX, this.camera.x));
+        this.camera.y = Math.max(0, Math.min(maxY, this.camera.y));
+
+        this.touchGesture.lastX = touch.clientX;
+        this.touchGesture.lastY = touch.clientY;
+        this.requestRender();
+    }
+
+    handleTouchEnd(event) {
+        if (!this.touchGesture.active) return;
+        event.preventDefault();
+
+        const changedTouch = event.changedTouches?.[0] || null;
+        const endTile = changedTouch
+            ? this.screenToTile(changedTouch.clientX, changedTouch.clientY)
+            : null;
+        const tile = this.touchGesture.startTile || endTile;
+
+        if (this.touchGesture.moved) {
+            this.suppressNextClick = true;
+            this.touchGesture.active = false;
+            this.touchGesture.startTile = null;
+            this.lastTouchTap = { x: null, y: null, time: 0 };
+            return;
+        }
+
+        this.touchGesture.active = false;
+        this.touchGesture.startTile = null;
+        if (!tile) return;
+
+        const now = Date.now();
+        const recentTapMs = now - (this.lastTouchTap.time || 0);
+        const sameTile = this.lastTouchTap.x === tile.x && this.lastTouchTap.y === tile.y;
+        const isDoubleTap = sameTile && recentTapMs > 0 && recentTapMs <= 340;
+
+        this.lastTouchTap = { x: tile.x, y: tile.y, time: now };
+
+        if (isDoubleTap) {
+            this.clearPendingTileSelection();
+            const unit = gameState.units.find((u) =>
+                u.owner === 'player'
+                && !u.isCarried
+                && u.position?.x === tile.x
+                && u.position?.y === tile.y
+            );
+            if (unit) {
+                this.toggleMoveModeForUnit(unit, { activationHint: 'Tap destination tile to move.' });
+                return;
+            }
+        }
+
+        const tappedUnit = this.getSelectableUnitAt(tile.x, tile.y);
+        const selectedUnitId = gameState?.selectedUnit?.id || null;
+        const tappedSelectedPlayerUnit = Boolean(
+            tappedUnit
+            && tappedUnit.owner === 'player'
+            && selectedUnitId === tappedUnit.id
+            && this.awaitingMoveOrder
+        );
+        if (tappedSelectedPlayerUnit) {
+            this.scheduleTileSelection(tile, 360);
+            return;
+        }
+
+        this.clearPendingTileSelection();
+        this.selectTile(tile.x, tile.y);
+    }
+
+    handleTouchCancel(event) {
+        event.preventDefault();
+        this.touchGesture.active = false;
+        this.touchGesture.moved = false;
+        this.touchGesture.distance = 0;
+        this.touchGesture.startTile = null;
+    }
+
+    toggleMoveModeForUnit(unit, options = {}) {
+        if (!unit || unit.owner !== 'player') return;
+        gameState.selectUnit(unit.id);
+        const desiredState = (typeof options.desiredState === 'boolean')
+            ? options.desiredState
+            : !this.awaitingMoveOrder;
+        this.awaitingMoveOrder = desiredState;
+        if (window.uiManager) {
+            uiManager.showUnitPanel(unit);
+            uiManager.showNotification(
+                this.awaitingMoveOrder
+                    ? `Move mode ON. ${options.activationHint || 'Click destination tile to move.'}`
+                    : 'Move mode OFF.',
+                'info'
+            );
+        }
+        this.requestRender();
+    }
+
+    clearPendingTileSelection() {
+        if (this.pendingTileSelectionTimer) {
+            clearTimeout(this.pendingTileSelectionTimer);
+            this.pendingTileSelectionTimer = null;
+        }
+    }
+
+    scheduleTileSelection(tile, delayMs = 260) {
+        this.clearPendingTileSelection();
+        this.pendingTileSelectionTimer = setTimeout(() => {
+            this.pendingTileSelectionTimer = null;
+            if (!tile || !Number.isFinite(tile.x) || !Number.isFinite(tile.y)) return;
+            this.selectTile(tile.x, tile.y);
+        }, Math.max(0, delayMs));
+    }
+
+    getSelectableUnitAt(x, y) {
+        return gameState.units.find((u) => {
+            if (u.position.x !== x || u.position.y !== y) return false;
+            if (u.owner === 'player') return true;
+            return this.isTileVisible(x, y);
+        }) || null;
     }
 
     screenToTile(clientX, clientY) {
@@ -1854,24 +2169,40 @@ class GameMap {
         const tile = this.getTile(x, y);
 
         // Check if there's a unit on this tile
-        const unit = gameState.units.find(u => u.position.x === x && u.position.y === y);
+        const unit = this.getSelectableUnitAt(x, y);
 
         if (unit && unit.owner === 'player') {
+            const selectedUnitId = gameState.selectedUnit?.id || null;
+            const clickedSelectedUnit = selectedUnitId === unit.id;
+            if (clickedSelectedUnit && this.awaitingMoveOrder) {
+                this.awaitingMoveOrder = false;
+                if (window.uiManager) {
+                    uiManager.showUnitPanel(unit);
+                    uiManager.showNotification('Move mode OFF.', 'info');
+                }
+                this.requestRender();
+                return;
+            }
             gameState.selectUnit(unit.id);
+            if (!clickedSelectedUnit) {
+                this.awaitingMoveOrder = false;
+            }
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }
-        } else if (unit && unit.owner !== 'player' && !gameState.selectedUnit) {
+        } else if (unit && unit.owner !== 'player' && !this.awaitingMoveOrder) {
             if (window.uiManager) {
                 window.uiManager.showEnemyUnitPanel(unit);
             }
-        } else if (gameState.selectedUnit) {
+        } else if (gameState.selectedUnit && this.awaitingMoveOrder) {
             // Try to move selected unit
             const moved = gameState.moveUnit(gameState.selectedUnit.id, { x, y });
             if (!moved && window.uiManager) {
                 window.uiManager.showNotification('Unit cannot move to that tile', 'error');
+            } else if (moved) {
+                this.awaitingMoveOrder = false;
             }
-        } else if (tile?.cityData && window.uiManager) {
+        } else if (tile?.cityData && window.uiManager && !this.isFoggedTile(x, y)) {
             const p = tile.cityData.production;
             const wonderText = tile.cityData.wonder ? ` | Wonder: ${tile.cityData.wonder}` : '';
             const tribeText = tile.cityData.tribe ? ` | Tribe: ${tile.cityData.tribe}` : '';
@@ -1934,6 +2265,120 @@ class GameMap {
     getTile(x, y) {
         if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
             return this.tiles[y][x];
+        }
+        return null;
+    }
+
+    exportFogState() {
+        const totalTiles = this.width * this.height;
+        const byteLength = Math.ceil(totalTiles / 8);
+        const bytes = new Uint8Array(byteLength);
+
+        let index = 0;
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!this.fogOfWar[y]?.[x]) {
+                    const byteIndex = index >> 3;
+                    const bitOffset = index & 7;
+                    bytes[byteIndex] |= (1 << bitOffset);
+                }
+                index++;
+            }
+        }
+
+        const encoded = this.encodeBytesToBase64(bytes);
+        if (typeof encoded === 'string' && encoded.length > 0) {
+            return {
+                exploredTiles: encoded,
+                encoding: 'bitset-base64',
+                width: this.width,
+                height: this.height
+            };
+        }
+
+        // Fallback for environments without base64 helpers.
+        const exploredTiles = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!this.fogOfWar[y]?.[x]) exploredTiles.push([x, y]);
+            }
+        }
+        return { exploredTiles };
+    }
+
+    importFogState(data) {
+        this.initializeFogOfWar();
+        if (data?.encoding === 'bitset-base64' && typeof data?.exploredTiles === 'string') {
+            const bytes = this.decodeBase64ToBytes(data.exploredTiles);
+            const savedWidth = Number.isInteger(data.width) ? data.width : this.width;
+            const savedHeight = Number.isInteger(data.height) ? data.height : this.height;
+            if (bytes && savedWidth > 0 && savedHeight > 0) {
+                const totalTiles = savedWidth * savedHeight;
+                for (let index = 0; index < totalTiles; index++) {
+                    const byteIndex = index >> 3;
+                    const bitOffset = index & 7;
+                    if (byteIndex >= bytes.length) break;
+                    const explored = (bytes[byteIndex] & (1 << bitOffset)) !== 0;
+                    if (!explored) continue;
+                    const y = Math.floor(index / savedWidth);
+                    const x = index % savedWidth;
+                    if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+                    this.fogOfWar[y][x] = false;
+                    this.fogAlphaCache[y][x] = -1;
+                }
+                return;
+            }
+        }
+
+        const exploredTiles = Array.isArray(data?.exploredTiles) ? data.exploredTiles : [];
+        exploredTiles.forEach((entry) => {
+            if (!Array.isArray(entry) || entry.length < 2) return;
+            const [x, y] = entry;
+            if (!Number.isInteger(x) || !Number.isInteger(y)) return;
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
+            this.fogOfWar[y][x] = false;
+            this.fogAlphaCache[y][x] = -1;
+        });
+    }
+
+    encodeBytesToBase64(bytes) {
+        if (!(bytes instanceof Uint8Array)) return null;
+        if (typeof btoa === 'function') {
+            let binary = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+                const slice = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+                binary += String.fromCharCode(...slice);
+            }
+            return btoa(binary);
+        }
+        if (typeof Buffer !== 'undefined') {
+            return Buffer.from(bytes).toString('base64');
+        }
+        return null;
+    }
+
+    decodeBase64ToBytes(encoded) {
+        if (typeof encoded !== 'string' || encoded.length === 0) return null;
+        if (typeof atob === 'function') {
+            try {
+                const binary = atob(encoded);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i) & 0xFF;
+                }
+                return bytes;
+            } catch (error) {
+                return null;
+            }
+        }
+        if (typeof Buffer !== 'undefined') {
+            try {
+                const buffer = Buffer.from(encoded, 'base64');
+                return new Uint8Array(buffer);
+            } catch (error) {
+                return null;
+            }
         }
         return null;
     }
