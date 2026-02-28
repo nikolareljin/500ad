@@ -1241,23 +1241,39 @@ class GameState {
             summary: String(choice?.summary || '').trim(),
             effects: (choice?.effects && typeof choice.effects === 'object') ? choice.effects : {}
         });
-        const sanitizeEntry = (entry) => ({
-            id: String(entry?.id || '').trim(),
-            templateId: String(entry?.templateId || '').trim(),
-            type: entry?.type === 'event' ? 'event' : 'quest',
-            status: ['pending', 'resolved', 'expired'].includes(entry?.status) ? entry.status : 'pending',
-            title: String(entry?.title || 'Untitled').trim(),
-            description: String(entry?.description || '').trim(),
-            createdTurn: Number.isFinite(entry?.createdTurn) ? entry.createdTurn : this.turn,
-            resolvedTurn: Number.isFinite(entry?.resolvedTurn) ? entry.resolvedTurn : null,
-            selectedChoiceId: entry?.selectedChoiceId ? String(entry.selectedChoiceId) : null,
-            triggerTags: Array.isArray(entry?.triggerTags)
-                ? entry.triggerTags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8)
-                : [],
-            choices: Array.isArray(entry?.choices)
-                ? entry.choices.map(sanitizeChoice).filter((choice) => choice.id && choice.title)
-                : []
-        });
+        const sanitizeEntry = (entry) => {
+            const status = ['pending', 'resolved', 'expired'].includes(entry?.status) ? entry.status : 'pending';
+            let createdTurn = Number.isFinite(entry?.createdTurn) ? Math.floor(entry.createdTurn) : this.turn;
+            createdTurn = Math.min(this.turn, Math.max(0, createdTurn));
+
+            let resolvedTurn = Number.isFinite(entry?.resolvedTurn) ? Math.floor(entry.resolvedTurn) : null;
+            if (Number.isFinite(resolvedTurn)) {
+                resolvedTurn = Math.min(this.turn, Math.max(0, resolvedTurn));
+                if ((status === 'resolved' || status === 'expired') && resolvedTurn < createdTurn) {
+                    resolvedTurn = createdTurn;
+                }
+            } else {
+                resolvedTurn = null;
+            }
+
+            return {
+                id: String(entry?.id || '').trim(),
+                templateId: String(entry?.templateId || '').trim(),
+                type: entry?.type === 'event' ? 'event' : 'quest',
+                status,
+                title: String(entry?.title || 'Untitled').trim(),
+                description: String(entry?.description || '').trim(),
+                createdTurn,
+                resolvedTurn,
+                selectedChoiceId: entry?.selectedChoiceId ? String(entry.selectedChoiceId) : null,
+                triggerTags: Array.isArray(entry?.triggerTags)
+                    ? entry.triggerTags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8)
+                    : [],
+                choices: Array.isArray(entry?.choices)
+                    ? entry.choices.map(sanitizeChoice).filter((choice) => choice.id && choice.title)
+                    : []
+            };
+        };
 
         this.dynamicNarrativeState.counter = Number.isFinite(state.counter) ? Math.max(0, state.counter) : 0;
         this.dynamicNarrativeState.lastGeneratedTurn = Number.isFinite(state.lastGeneratedTurn)
@@ -1286,8 +1302,11 @@ class GameState {
         return { active, history };
     }
 
-    isCityOnDynamicFrontline(tile) {
+    isCityOnDynamicFrontline(tile, enemyUnitPositions = null) {
         if (!tile || !gameMap) return false;
+        const enemyPositions = enemyUnitPositions || new Set(this.units
+            .filter((unit) => unit?.owner === 'enemy')
+            .map((unit) => `${unit.position?.x}_${unit.position?.y}`));
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 if (dx === 0 && dy === 0) continue;
@@ -1296,12 +1315,7 @@ class GameState {
                 const nearby = gameMap.getTile(nx, ny);
                 if (!nearby) continue;
                 if (nearby.cityData && nearby.owner === 'enemy') return true;
-                const enemyUnitNearby = this.units.some((unit) =>
-                    unit?.owner === 'enemy'
-                    && unit.position?.x === nx
-                    && unit.position?.y === ny
-                );
-                if (enemyUnitNearby) return true;
+                if (enemyPositions.has(`${nx}_${ny}`)) return true;
             }
         }
         return false;
@@ -1310,7 +1324,10 @@ class GameState {
     buildDynamicNarrativeContext() {
         const resources = this.player?.resources || {};
         const playerCities = gameMap?.getCityTiles('player') || [];
-        const frontierCities = playerCities.filter((tile) => this.isCityOnDynamicFrontline(tile));
+        const enemyUnitPositions = new Set(this.units
+            .filter((unit) => unit?.owner === 'enemy')
+            .map((unit) => `${unit.position?.x}_${unit.position?.y}`));
+        const frontierCities = playerCities.filter((tile) => this.isCityOnDynamicFrontline(tile, enemyUnitPositions));
         const lowResources = [];
         if ((resources.gold || 0) < 220) lowResources.push('gold');
         if ((resources.manpower || 0) < 130) lowResources.push('manpower');
