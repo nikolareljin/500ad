@@ -1341,11 +1341,17 @@ class UIManager {
         moveBtn.textContent = moveArmed ? 'Move: Armed' : 'Move';
         if (moveArmed) moveBtn.classList.add('active');
         moveBtn.onclick = withClickSound(() => {
-            if (gameMap) gameMap.awaitingMoveOrder = true;
+            if (gameMap) gameMap.awaitingMoveOrder = !gameMap.awaitingMoveOrder;
             this.hideUnitPanelForMapTargeting();
-            moveBtn.textContent = 'Move: Armed';
-            moveBtn.classList.add('active');
-            this.showNotification('Move armed: tap a destination tile to move the selected unit.', 'info');
+            const armed = Boolean(gameMap?.awaitingMoveOrder);
+            moveBtn.textContent = armed ? 'Move: Armed' : 'Move';
+            moveBtn.classList.toggle('active', armed);
+            this.showNotification(
+                armed
+                    ? 'Move armed: pan with minimap or drag map, then click destination tile.'
+                    : 'Move order cancelled.',
+                'info'
+            );
         });
         container.appendChild(moveBtn);
 

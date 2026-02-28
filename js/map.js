@@ -522,7 +522,7 @@ class GameMap {
         this.lastPanY = 0;
         this.panMoved = false;
         this.panDistance = 0;
-        this.suppressClickUntil = 0;
+        this.suppressNextClick = false;
         this.awaitingMoveOrder = false;
 
         // Fog of war
@@ -1638,8 +1638,8 @@ class GameMap {
 
         this.canvas.addEventListener('mouseup', () => {
             if (this.isPanning && this.panMoved) {
-                // Prevent drag-release from being interpreted as a click-to-move.
-                this.suppressClickUntil = Date.now() + 180;
+                // Ignore only the drag-release click; keep move mode armed for the next intentional click.
+                this.suppressNextClick = true;
             }
             this.isPanning = false;
             this.canvas.style.cursor = 'default';
@@ -1899,7 +1899,10 @@ class GameMap {
      * Handle click event
      */
     handleClick(event) {
-        if (Date.now() < this.suppressClickUntil) return;
+        if (this.suppressNextClick) {
+            this.suppressNextClick = false;
+            return;
+        }
         const tile = this.screenToTile(event.clientX, event.clientY);
         if (tile) {
             this.selectTile(tile.x, tile.y);
