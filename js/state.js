@@ -650,7 +650,9 @@ class GameState {
         if (!gameMap || typeof gameMap.recalculatePlayerVision !== 'function') return null;
         const newlyExplored = gameMap.recalculatePlayerVision(this);
         const discovery = this.processExplorationDiscoveries(newlyExplored, options);
-        gameMap.requestRender();
+        if (!options.suppressRender) {
+            gameMap.requestRender();
+        }
         return discovery;
     }
 
@@ -2722,10 +2724,12 @@ class GameState {
         });
     }
 
-    processUnitDestination(unit) {
+    processUnitDestination(unit, options = {}) {
         if (!unit.destination) return;
+        const suppressVisibilityRefresh = options?.suppressVisibilityRefresh === true;
 
         let safety = 0;
+        let movedAny = false;
         // Keep moving as long as we have movement and haven't reached destination
         while (unit.currentMovement > 0.3 && unit.destination && safety < 12) {
             safety++;
@@ -2756,15 +2760,23 @@ class GameState {
             if (ranked.length > 0) {
                 const next = ranked[0];
                 const prevPos = { ...unit.position };
-                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y });
+                const moved = this.moveUnit(unit.id, { x: next.x, y: next.y }, {
+                    suppressVisibilityRefresh: true,
+                    suppressRender: true
+                });
                 if (!moved || (unit.position.x === prevPos.x && unit.position.y === prevPos.y)) {
                     // Blocked by enemy or something
                     break;
                 }
+                movedAny = true;
             } else {
                 // Not enough movement left for any step
                 break;
             }
+        }
+
+        if (movedAny && unit.owner === 'player' && !suppressVisibilityRefresh) {
+            this.refreshPlayerVisibility();
         }
     }
 
@@ -2805,19 +2817,28 @@ class GameState {
         if (!Number.isFinite(unit.position?.x) || !Number.isFinite(unit.position?.y)) return;
 
         let safety = 0;
+        let movedAny = false;
         while (unit.currentMovement > 0.3 && safety < 8) {
             safety++;
             const nextStep = this.pickExplorerAutoStep(unit);
             if (!nextStep) break;
-            const moved = this.moveUnit(unit.id, nextStep);
+            const moved = this.moveUnit(unit.id, nextStep, {
+                suppressVisibilityRefresh: true,
+                suppressRender: true
+            });
             if (!moved) break;
+            movedAny = true;
+        }
+
+        if (movedAny && unit.owner === 'player') {
+            this.refreshPlayerVisibility();
         }
 
         if (unit.currentMovement <= 0.3 || unit.destination) return;
         const fallbackTarget = this.findNearestUnexploredTile(unit.position, 28, unit);
         if (fallbackTarget) {
             unit.destination = fallbackTarget;
-            this.processUnitDestination(unit);
+            this.processUnitDestination(unit, { suppressVisibilityRefresh: false });
         }
     }
 
@@ -3799,9 +3820,11 @@ class GameState {
     /**
      * Move selected unit
      */
-    moveUnit(unitId, newPosition) {
+    moveUnit(unitId, newPosition, options = {}) {
         const unit = this.units.find(u => u.id === unitId);
         if (!unit) return false;
+        const suppressVisibilityRefresh = options?.suppressVisibilityRefresh === true;
+        const suppressRender = options?.suppressRender === true;
 
         // Check if unit has movement remaining
         if (unit.currentMovement <= 0) return false;
@@ -3875,8 +3898,8 @@ class GameState {
             unit.currentMovement = Math.max(0, unit.currentMovement - travelCost);
 
             // Reveal fog of war around new position for player units
-            if (unit.owner === 'player' && gameMap) {
-                this.refreshPlayerVisibility();
+            if (unit.owner === 'player' && gameMap && !suppressVisibilityRefresh) {
+                this.refreshPlayerVisibility({ suppressRender });
             }
 
             // Check for territory capture
@@ -3890,7 +3913,7 @@ class GameState {
                 uiManager.showNotification(`${unit.name} destination set to ${newPosition.x},${newPosition.y}`, 'info');
             }
             // Move as much as possible towards destination this turn
-            this.processUnitDestination(unit);
+            this.processUnitDestination(unit, { suppressVisibilityRefresh, suppressRender });
             return true;
         }
 
