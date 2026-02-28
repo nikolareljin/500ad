@@ -525,6 +525,7 @@ class GameMap {
         this.suppressNextClick = false;
         this.awaitingMoveOrder = false;
         this.lastTouchTap = { x: null, y: null, time: 0 };
+        this.pendingTileSelectionTimer = null;
         this.touchGesture = {
             active: false,
             moved: false,
@@ -1944,9 +1945,24 @@ class GameMap {
             return;
         }
         const tile = this.screenToTile(event.clientX, event.clientY);
-        if (tile) {
-            this.selectTile(tile.x, tile.y);
+        if (!tile) return;
+
+        const unit = this.getSelectableUnitAt(tile.x, tile.y);
+        const selectedUnitId = gameState?.selectedUnit?.id || null;
+        const clickedSelectedPlayerUnit = Boolean(
+            unit
+            && unit.owner === 'player'
+            && selectedUnitId === unit.id
+            && this.awaitingMoveOrder
+        );
+
+        if (event.detail === 1 && clickedSelectedPlayerUnit) {
+            this.scheduleTileSelection(tile, 260);
+            return;
         }
+
+        this.clearPendingTileSelection();
+        this.selectTile(tile.x, tile.y);
     }
 
     handleDoubleClick(event) {
@@ -1954,6 +1970,7 @@ class GameMap {
             this.suppressNextClick = false;
             return;
         }
+        this.clearPendingTileSelection();
         const tile = this.screenToTile(event.clientX, event.clientY);
         if (!tile) return;
         const unit = gameState.units.find((u) =>
@@ -2051,6 +2068,7 @@ class GameMap {
         this.lastTouchTap = { x: tile.x, y: tile.y, time: now };
 
         if (isDoubleTap) {
+            this.clearPendingTileSelection();
             const unit = gameState.units.find((u) =>
                 u.owner === 'player'
                 && !u.isCarried
@@ -2063,6 +2081,20 @@ class GameMap {
             }
         }
 
+        const tappedUnit = this.getSelectableUnitAt(tile.x, tile.y);
+        const selectedUnitId = gameState?.selectedUnit?.id || null;
+        const tappedSelectedPlayerUnit = Boolean(
+            tappedUnit
+            && tappedUnit.owner === 'player'
+            && selectedUnitId === tappedUnit.id
+            && this.awaitingMoveOrder
+        );
+        if (tappedSelectedPlayerUnit) {
+            this.scheduleTileSelection(tile, 360);
+            return;
+        }
+
+        this.clearPendingTileSelection();
         this.selectTile(tile.x, tile.y);
     }
 
@@ -2077,7 +2109,10 @@ class GameMap {
     toggleMoveModeForUnit(unit, options = {}) {
         if (!unit || unit.owner !== 'player') return;
         gameState.selectUnit(unit.id);
-        this.awaitingMoveOrder = !this.awaitingMoveOrder;
+        const desiredState = (typeof options.desiredState === 'boolean')
+            ? options.desiredState
+            : !this.awaitingMoveOrder;
+        this.awaitingMoveOrder = desiredState;
         if (window.uiManager) {
             uiManager.showUnitPanel(unit);
             uiManager.showNotification(
@@ -2088,6 +2123,30 @@ class GameMap {
             );
         }
         this.requestRender();
+    }
+
+    clearPendingTileSelection() {
+        if (this.pendingTileSelectionTimer) {
+            clearTimeout(this.pendingTileSelectionTimer);
+            this.pendingTileSelectionTimer = null;
+        }
+    }
+
+    scheduleTileSelection(tile, delayMs = 260) {
+        this.clearPendingTileSelection();
+        this.pendingTileSelectionTimer = setTimeout(() => {
+            this.pendingTileSelectionTimer = null;
+            if (!tile || !Number.isFinite(tile.x) || !Number.isFinite(tile.y)) return;
+            this.selectTile(tile.x, tile.y);
+        }, Math.max(0, delayMs));
+    }
+
+    getSelectableUnitAt(x, y) {
+        return gameState.units.find((u) => {
+            if (u.position.x !== x || u.position.y !== y) return false;
+            if (u.owner === 'player') return true;
+            return this.isTileVisible(x, y);
+        }) || null;
     }
 
     screenToTile(clientX, clientY) {
@@ -2109,11 +2168,7 @@ class GameMap {
         const tile = this.getTile(x, y);
 
         // Check if there's a unit on this tile
-        const unit = gameState.units.find((u) => {
-            if (u.position.x !== x || u.position.y !== y) return false;
-            if (u.owner === 'player') return true;
-            return this.isTileVisible(x, y);
-        });
+        const unit = this.getSelectableUnitAt(x, y);
 
         if (unit && unit.owner === 'player') {
             const selectedUnitId = gameState.selectedUnit?.id || null;
@@ -2134,7 +2189,7 @@ class GameMap {
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }
-        } else if (unit && unit.owner !== 'player' && !gameState.selectedUnit) {
+        } else if (unit && unit.owner !== 'player' && !this.awaitingMoveOrder) {
             if (window.uiManager) {
                 window.uiManager.showEnemyUnitPanel(unit);
             }
