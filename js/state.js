@@ -4261,7 +4261,14 @@ class GameState {
             : { reputation: 0, factions: {}, tradeRoutes: [] };
         this.initializeDiplomacyState();
         this.ensureStrategicResourceStockpile();
-        if (!this.player.techResearched) this.player.techResearched = [];
+        if (!Array.isArray(this.player.techResearched)) {
+            this.player.techResearched = [];
+        }
+        this.player.techResearched = [...new Set(
+            this.player.techResearched
+                .map((techId) => String(techId || '').trim())
+                .filter((techId) => Boolean(techId && TECHNOLOGY_TREE[techId]))
+        )];
         if (!this.player.activeResearch || typeof this.player.activeResearch !== 'object') {
             this.player.activeResearch = null;
         } else {
@@ -4287,7 +4294,10 @@ class GameState {
                 };
             }
         }
-        this.player.techEffects = { ...createDefaultTechnologyEffects(), ...(this.player.techEffects || {}) };
+        this.player.techEffects = createDefaultTechnologyEffects();
+        this.player.techResearched.forEach((techId) => {
+            this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+        });
         this.gameMode = data.gameMode;
         this.selectedScenario = data.selectedScenario || SCENARIOS.building;
         this.units = data.units;
