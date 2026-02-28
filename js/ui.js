@@ -133,6 +133,11 @@ class UIManager {
             this.manageDiplomacy();
         });
 
+        document.getElementById('btn-quests')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.showQuestLogModal();
+        });
+
         document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.attackWithSelectedUnit();
@@ -559,6 +564,11 @@ class UIManager {
                 `Turn ${result.turn} - Income: ${result.income.gold} gold, ${result.income.manpower} manpower, ${result.income.food || 0} food (cities: ${result.cityProduction?.gold || 0}g/${result.cityProduction?.manpower || 0}m, upkeep ${result.upkeep || 0})`,
                 'success'
             );
+            const generatedNarratives = result.dynamicNarrative?.generated || [];
+            if (generatedNarratives.length > 0) {
+                const names = generatedNarratives.map((entry) => entry.title).join(', ');
+                this.showNotification(`New quest/event: ${names}`, 'info');
+            }
         } finally {
             this.showTurnProcessing(false);
         }
@@ -835,6 +845,92 @@ class UIManager {
                 disabled: status === 'war'
             }
         ];
+    }
+
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    showQuestLogModal() {
+        if (!gameState?.initialized) {
+            this.showNotification('Start a campaign before opening quests.', 'error');
+            return;
+        }
+        const overview = typeof gameState.getDynamicNarrativeOverview === 'function'
+            ? gameState.getDynamicNarrativeOverview()
+            : { active: [], history: [] };
+        const active = Array.isArray(overview.active) ? overview.active : [];
+        const history = Array.isArray(overview.history) ? overview.history : [];
+
+        const activeHtml = active.length > 0
+            ? active.map((entry) => {
+                const tags = (entry.triggerTags || []).map((tag) => `<span style="display:inline-block;padding:0.2rem 0.45rem;border:1px solid rgba(212,175,55,0.45);border-radius:999px;font-size:0.75rem;opacity:0.9;">${this.escapeHtml(tag)}</span>`).join(' ');
+                const choices = (entry.choices || []).map((choice) => `
+                    <button class="menu-btn quest-choice-btn" data-quest-id="${this.escapeHtml(entry.id)}" data-choice-id="${this.escapeHtml(choice.id)}">
+                        <span class="btn-text">${this.escapeHtml(choice.title)}</span>
+                        <small class="choice-btn-subtitle">${this.escapeHtml(choice.subtitle || '')}</small>
+                    </button>
+                `).join('');
+                return `
+                    <article class="dipl-row">
+                        <h3>${this.escapeHtml(entry.title)}</h3>
+                        <p>Type: <strong>${this.escapeHtml(entry.type)}</strong> | Started turn ${this.escapeHtml(entry.createdTurn)}</p>
+                        ${tags ? `<div class="dipl-actions">${tags}</div>` : ''}
+                        <p>${this.escapeHtml(entry.description || '')}</p>
+                        <div class="dipl-actions" style="flex-direction:column;align-items:stretch;">${choices}</div>
+                    </article>
+                `;
+            }).join('')
+            : '<p>No active quests/events.</p>';
+
+        const historyHtml = history.length > 0
+            ? history.map((entry) => `
+                <div class="dipl-row">
+                    <h3>${this.escapeHtml(entry.title || 'Untitled')}</h3>
+                    <p>${this.escapeHtml(entry.choiceTitle || entry.selectedChoiceId || entry.status || 'Logged')} • turn ${this.escapeHtml(entry.resolvedTurn || entry.createdTurn || gameState.turn)}</p>
+                </div>
+            `).join('')
+            : '<p>No history entries yet.</p>';
+
+        const content = `
+            <h2>Quests & Events</h2>
+            <div class="dipl-list" style="display:flex;flex-direction:column;gap:0.75rem;max-height:68vh;overflow:auto;">
+                <section>
+                    <h3>Active</h3>
+                    <div style="display:flex;flex-direction:column;gap:0.65rem;">${activeHtml}</div>
+                </section>
+                <section>
+                    <h3>History</h3>
+                    <div style="display:flex;flex-direction:column;gap:0.45rem;">${historyHtml}</div>
+                </section>
+            </div>
+            <div style="margin-top:1rem;">
+                <button class="menu-btn" id="btn-close-quest-log">Close</button>
+            </div>
+        `;
+        this.showModal(content);
+
+        this.modalContent?.querySelector('#btn-close-quest-log')?.addEventListener('click', () => this.closeModal());
+        this.modalContent?.querySelectorAll('.quest-choice-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                const questId = button.getAttribute('data-quest-id');
+                const choiceId = button.getAttribute('data-choice-id');
+                const result = gameState.resolveDynamicNarrativeChoice(questId, choiceId);
+                if (!result?.success) {
+                    this.showNotification(result?.message || 'Could not apply choice.', 'error');
+                    return;
+                }
+                this.updateHUD();
+                gameMap?.requestRender();
+                this.showNotification(result.message || 'Choice applied', 'success');
+                this.showQuestLogModal();
+            });
+        });
     }
 
     showChoiceModal(title, options, onSelect) {

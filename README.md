@@ -73,13 +73,14 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
 - **Diplomacy & Trade System**: Negotiate truces, alliances, trade agreements, and declarations of war with per-faction trust/hostility and reputation impacts
 - **Trade Routes**: Active agreements create income routes that can be raided/disrupted by hostile pressure and war outcomes
+- **Quest & Dynamic Events**: Turn-based narrative system that triggers quests/events from time, location pressure, diplomacy status, resources, and player progress; each event has branching choices with lasting consequences
 - **Unit Vitality UI**: Recently damaged units show a map health ring (green -> red) to highlight their current health
 - **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
 - **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
 - **Resource Management**: Gold, manpower, prestige, and strategic stockpiles (food, wood, stone, iron, rare materials)
 - **Strategic Resource Distribution**: Terrain/biome-based deposits are placed across the map and contribute to nearby city output
 - **Terrain Effects**: Terrain now affects movement, combat effectiveness, and city build suitability (farms, irrigation, canals, forest management)
-- **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata for future event systems
+- **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata used by dynamic events
 - **Save/Load System**: Multiple save slots with auto-save
 - **Exploration**: Fog of war reveals as units move and cities are founded
 - **Dynamic Enemy Realms**: AI factions maintain territory pressure, diplomacy/threat memory (AI-side), and strategic reactions to player captures and frontier changes
@@ -349,7 +350,18 @@ window.setWorldGenerationConfig({
 - Procedural regeneration can take noticeable time on slower devices because terrain/biome noise is recomputed across the full map.
 - Save/load compatibility for procedural worlds assumes compatible generation rules; changing generation code between versions can alter regenerated terrain/resource layouts for the same seed.
 - These APIs are intended for trusted local modding/testing scripts only. Do not run untrusted browser-console snippets.
-- Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` for future event systems.
+- Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` and is consumed by the dynamic event pipeline.
+
+### Quests & Dynamic Events
+- Open the `Quests` action from the bottom action bar to review active quests/events and history.
+- New quest/event opportunities are generated during turn processing from:
+  - time progression milestones
+  - frontier/location pressure
+  - faction relations and diplomacy status
+  - resource shortages/surpluses
+  - recent player progress (for example city captures)
+- Each quest/event has branching choices with resource/diplomacy consequences.
+- Resolved and expired entries are stored in a persistent history log and saved with the campaign.
 
 ### AI Faction Behavior (Current Scope)
 - Enemy forces are still represented as `owner: enemy`, but now coordinate by `unit.faction` / city faction identity.
@@ -378,7 +390,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.9.1** - Introduces tactical combat formations and terrain-aware battle modifiers, plus latest city-building/diplomacy stability fixes (see changelog for full details)
+**Version 1.10.0** - Introduces the quest and dynamic event system with branching outcomes, persistent event history, and new in-game quest log access (see changelog for full details)
 
 ## License
 

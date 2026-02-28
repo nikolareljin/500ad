@@ -466,6 +466,7 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.initializeDynamicNarrativeState();
     }
 
     /**
@@ -520,6 +521,7 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
         if (scenario === SCENARIOS.empire) {
@@ -1211,6 +1213,485 @@ class GameState {
 
     getRecentAIWorldEvents(limit = 12) {
         return this.aiEvents.slice(Math.max(0, this.aiEvents.length - limit));
+    }
+
+    initializeDynamicNarrativeState() {
+        this.dynamicNarrativeState = {
+            counter: 0,
+            lastGeneratedTurn: 0,
+            active: [],
+            history: []
+        };
+    }
+
+    restoreDynamicNarrativeState(state) {
+        this.initializeDynamicNarrativeState();
+        if (!state || typeof state !== 'object') return;
+        const sanitizeChoice = (choice) => ({
+            id: String(choice?.id || '').trim() || 'choice_unknown',
+            title: String(choice?.title || 'Choose').trim(),
+            subtitle: String(choice?.subtitle || '').trim(),
+            summary: String(choice?.summary || '').trim(),
+            effects: (choice?.effects && typeof choice.effects === 'object') ? choice.effects : {}
+        });
+        const sanitizeEntry = (entry) => ({
+            id: String(entry?.id || '').trim(),
+            templateId: String(entry?.templateId || '').trim(),
+            type: entry?.type === 'event' ? 'event' : 'quest',
+            status: ['pending', 'resolved', 'expired'].includes(entry?.status) ? entry.status : 'pending',
+            title: String(entry?.title || 'Untitled').trim(),
+            description: String(entry?.description || '').trim(),
+            createdTurn: Number.isFinite(entry?.createdTurn) ? entry.createdTurn : this.turn,
+            resolvedTurn: Number.isFinite(entry?.resolvedTurn) ? entry.resolvedTurn : null,
+            selectedChoiceId: entry?.selectedChoiceId ? String(entry.selectedChoiceId) : null,
+            triggerTags: Array.isArray(entry?.triggerTags)
+                ? entry.triggerTags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8)
+                : [],
+            choices: Array.isArray(entry?.choices)
+                ? entry.choices.map(sanitizeChoice).filter((choice) => choice.id && choice.title)
+                : []
+        });
+
+        this.dynamicNarrativeState.counter = Number.isFinite(state.counter) ? Math.max(0, state.counter) : 0;
+        this.dynamicNarrativeState.lastGeneratedTurn = Number.isFinite(state.lastGeneratedTurn) ? Math.max(0, state.lastGeneratedTurn) : 0;
+        this.dynamicNarrativeState.active = Array.isArray(state.active)
+            ? state.active.map(sanitizeEntry).filter((entry) => entry.id && entry.status === 'pending')
+            : [];
+        this.dynamicNarrativeState.history = Array.isArray(state.history)
+            ? state.history
+                .map((entry) => sanitizeEntry(entry))
+                .filter((entry) => entry.id && entry.status !== 'pending')
+                .slice(-120)
+            : [];
+    }
+
+    getDynamicNarrativeOverview() {
+        if (!this.dynamicNarrativeState) this.initializeDynamicNarrativeState();
+        const active = this.dynamicNarrativeState.active
+            .filter((entry) => entry.status === 'pending')
+            .sort((a, b) => b.createdTurn - a.createdTurn);
+        const history = this.dynamicNarrativeState.history
+            .filter((entry) => entry.status !== 'pending')
+            .slice(-24)
+            .sort((a, b) => (b.resolvedTurn || b.createdTurn) - (a.resolvedTurn || a.createdTurn));
+        return { active, history };
+    }
+
+    isCityOnDynamicFrontline(tile) {
+        if (!tile || !gameMap) return false;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = tile.x + dx;
+                const ny = tile.y + dy;
+                const nearby = gameMap.getTile(nx, ny);
+                if (!nearby) continue;
+                if (nearby.cityData && nearby.owner === 'enemy') return true;
+                const enemyUnitNearby = this.units.some((unit) =>
+                    unit?.owner === 'enemy'
+                    && unit.position?.x === nx
+                    && unit.position?.y === ny
+                );
+                if (enemyUnitNearby) return true;
+            }
+        }
+        return false;
+    }
+
+    buildDynamicNarrativeContext() {
+        const resources = this.player?.resources || {};
+        const playerCities = gameMap?.getCityTiles('player') || [];
+        const frontierCities = playerCities.filter((tile) => this.isCityOnDynamicFrontline(tile));
+        const lowResources = [];
+        if ((resources.gold || 0) < 220) lowResources.push('gold');
+        if ((resources.manpower || 0) < 130) lowResources.push('manpower');
+        if ((resources.food || 0) < 40) lowResources.push('food');
+        const knownFactions = this.getKnownAIFactions();
+        const hostileFactions = knownFactions
+            .filter((factionId) => this.getFactionDiplomacyStatus(factionId) === 'war');
+        const recentCaptures = this.getRecentAIWorldEvents(14)
+            .filter((entry) => entry?.type === 'city_captured' && entry?.capturer === 'player')
+            .filter((entry) => Number.isFinite(entry.turn) && entry.turn >= this.turn - 3);
+
+        return {
+            resources,
+            playerCities,
+            frontierCities,
+            lowResources,
+            knownFactions,
+            hostileFactions,
+            primaryHostileFaction: hostileFactions[0] || knownFactions[0] || 'tribal',
+            progress: {
+                turn: this.turn,
+                cities: playerCities.length,
+                territories: Array.isArray(this.player?.territories) ? this.player.territories.length : 0,
+                technologies: Array.isArray(this.player?.techResearched) ? this.player.techResearched.length : 0,
+                militaryUnits: this.units.filter((unit) => unit?.owner === 'player').length
+            },
+            recentCaptures,
+            reputation: this.diplomacyState?.reputation || 0
+        };
+    }
+
+    isDynamicTemplateOnCooldown(templateId, cooldownTurns = 6) {
+        if (!this.dynamicNarrativeState || !Array.isArray(this.dynamicNarrativeState.history)) return false;
+        const activeHasTemplate = Array.isArray(this.dynamicNarrativeState.active)
+            && this.dynamicNarrativeState.active.some((entry) => entry?.templateId === templateId && entry?.status === 'pending');
+        if (activeHasTemplate) return true;
+        for (let i = this.dynamicNarrativeState.history.length - 1; i >= 0; i--) {
+            const entry = this.dynamicNarrativeState.history[i];
+            if (entry?.templateId !== templateId) continue;
+            const turn = Number.isFinite(entry?.resolvedTurn) ? entry.resolvedTurn : entry?.createdTurn;
+            if (!Number.isFinite(turn)) return false;
+            return (this.turn - turn) < cooldownTurns;
+        }
+        return false;
+    }
+
+    createDynamicNarrativeEntry(template) {
+        if (!this.dynamicNarrativeState) this.initializeDynamicNarrativeState();
+        this.dynamicNarrativeState.counter += 1;
+        return {
+            id: `dyn_${this.turn}_${this.dynamicNarrativeState.counter}`,
+            templateId: template.id,
+            type: template.type === 'event' ? 'event' : 'quest',
+            status: 'pending',
+            title: template.title,
+            description: template.description,
+            createdTurn: this.turn,
+            resolvedTurn: null,
+            selectedChoiceId: null,
+            triggerTags: Array.isArray(template.triggerTags) ? template.triggerTags.slice(0, 8) : [],
+            choices: Array.isArray(template.choices) ? template.choices.map((choice) => ({
+                id: String(choice.id || ''),
+                title: String(choice.title || 'Choose'),
+                subtitle: String(choice.subtitle || ''),
+                summary: String(choice.summary || ''),
+                effects: (choice.effects && typeof choice.effects === 'object') ? choice.effects : {}
+            })) : []
+        };
+    }
+
+    selectDynamicNarrativeCandidates(context) {
+        const candidates = [];
+        const frontierName = context.frontierCities[0]?.cityData?.name || 'frontier provinces';
+        const primaryFactionLabel = this.getFactionDisplayName(context.primaryHostileFaction || 'tribal');
+        const primaryFactionKey = context.primaryHostileFaction || 'tribal';
+
+        if (this.turn >= 3 && this.turn % 5 === 0 && !this.isDynamicTemplateOnCooldown('imperial_reforms', 7)) {
+            candidates.push({
+                priority: 30,
+                id: 'imperial_reforms',
+                type: 'quest',
+                triggerTags: ['time', 'player_progress'],
+                title: 'Imperial Reform Debate',
+                description: 'Court officials demand a long-term policy direction for the next phase of expansion.',
+                choices: [
+                    {
+                        id: 'reform_civil',
+                        title: 'Fund civil administration',
+                        subtitle: '-120 gold, +2 prestige, +15 food',
+                        summary: 'Your treasury is strained, but logistics and prestige improve.',
+                        effects: { resources: { gold: -120, prestige: 2, food: 15 } }
+                    },
+                    {
+                        id: 'reform_military',
+                        title: 'Prioritize military drill',
+                        subtitle: '-90 gold, +80 manpower, -4 trust with hostile factions',
+                        summary: 'Army readiness rises while rival factions distrust your intentions.',
+                        effects: { resources: { gold: -90, manpower: 80 }, trust: { [primaryFactionKey]: -4 } }
+                    },
+                    {
+                        id: 'reform_balance',
+                        title: 'Compromise package',
+                        subtitle: '-70 gold, +1 prestige, +35 manpower',
+                        summary: 'Balanced reforms offer moderate gains with lower risk.',
+                        effects: { resources: { gold: -70, prestige: 1, manpower: 35 } }
+                    }
+                ]
+            });
+        }
+
+        if (context.frontierCities.length > 0 && context.hostileFactions.length > 0 && !this.isDynamicTemplateOnCooldown('frontier_flashpoint', 4)) {
+            candidates.push({
+                priority: 50,
+                id: 'frontier_flashpoint',
+                type: 'event',
+                triggerTags: ['location', 'faction_relations'],
+                title: `Frontier Flashpoint Near ${frontierName}`,
+                description: `${primaryFactionLabel} scouts are probing routes near ${frontierName}. Commanders request immediate orders.`,
+                choices: [
+                    {
+                        id: 'flashpoint_fortify',
+                        title: 'Fortify and hold',
+                        subtitle: '-40 stone, +40 manpower, +2 trust pressure on enemy',
+                        summary: 'Defenses are reinforced and reserves mobilized.',
+                        effects: { resources: { stone: -40, manpower: 40 }, trust: { [primaryFactionKey]: -2 } }
+                    },
+                    {
+                        id: 'flashpoint_patrol',
+                        title: 'Send mobile patrols',
+                        subtitle: '-55 gold, +20 manpower, +1 reputation',
+                        summary: 'Flexible response secures roads and reassures local governors.',
+                        effects: { resources: { gold: -55, manpower: 20 }, reputation: 1 }
+                    },
+                    {
+                        id: 'flashpoint_ignore',
+                        title: 'Do not escalate',
+                        subtitle: '+35 gold, -2 reputation, +3 trust to enemy',
+                        summary: 'Treasury is preserved, but the frontier perceives hesitation.',
+                        effects: { resources: { gold: 35 }, reputation: -2, trust: { [primaryFactionKey]: 3 } }
+                    }
+                ]
+            });
+        }
+
+        if (context.lowResources.length > 0 && !this.isDynamicTemplateOnCooldown('supply_crisis', 5)) {
+            candidates.push({
+                priority: 45,
+                id: 'supply_crisis',
+                type: 'quest',
+                triggerTags: ['resource_levels', 'player_progress'],
+                title: 'Supply Crisis',
+                description: `Quartermasters warn that ${context.lowResources.join(', ')} reserves are critically low.`,
+                choices: [
+                    {
+                        id: 'supply_tax',
+                        title: 'Raise emergency taxes',
+                        subtitle: '+140 gold, -2 prestige',
+                        summary: 'Revenue rises quickly, but court prestige suffers.',
+                        effects: { resources: { gold: 140, prestige: -2 } }
+                    },
+                    {
+                        id: 'supply_trade',
+                        title: 'Negotiate external contracts',
+                        subtitle: '-70 gold, +80 food, +35 wood, +1 reputation',
+                        summary: 'External suppliers stabilize stocks and improve diplomatic standing.',
+                        effects: { resources: { gold: -70, food: 80, wood: 35 }, reputation: 1 }
+                    },
+                    {
+                        id: 'supply_conserve',
+                        title: 'Impose rationing',
+                        subtitle: '+45 food, +20 wood, -25 manpower',
+                        summary: 'Reserves improve, but military readiness is reduced.',
+                        effects: { resources: { food: 45, wood: 20, manpower: -25 } }
+                    }
+                ]
+            });
+        }
+
+        if (context.recentCaptures.length > 0 && !this.isDynamicTemplateOnCooldown('new_territory_integrate', 5)) {
+            const cityName = context.recentCaptures[0]?.cityName || 'newly captured city';
+            candidates.push({
+                priority: 40,
+                id: 'new_territory_integrate',
+                type: 'event',
+                triggerTags: ['location', 'player_progress', 'time'],
+                title: `Aftermath in ${cityName}`,
+                description: `${cityName} is under imperial control, but integration policy must be set now.`,
+                choices: [
+                    {
+                        id: 'integrate_lenient',
+                        title: 'Grant local autonomy',
+                        subtitle: '+2 reputation, +1 prestige, -30 gold',
+                        summary: 'Local elites cooperate, easing occupation pressure.',
+                        effects: { resources: { gold: -30, prestige: 1 }, reputation: 2 }
+                    },
+                    {
+                        id: 'integrate_strict',
+                        title: 'Impose direct rule',
+                        subtitle: '+90 gold, -1 reputation, +30 manpower',
+                        summary: 'Tax intake rises quickly while resentment increases.',
+                        effects: { resources: { gold: 90, manpower: 30 }, reputation: -1 }
+                    }
+                ]
+            });
+        }
+
+        if (context.reputation <= -20 && context.hostileFactions.length > 0 && !this.isDynamicTemplateOnCooldown('diplomatic_fracture', 6)) {
+            candidates.push({
+                priority: 35,
+                id: 'diplomatic_fracture',
+                type: 'event',
+                triggerTags: ['faction_relations', 'time'],
+                title: 'Diplomatic Fracture',
+                description: `Relations with ${primaryFactionLabel} are deteriorating and envoys demand concessions.`,
+                choices: [
+                    {
+                        id: 'fracture_concede',
+                        title: 'Offer concessions',
+                        subtitle: '-80 gold, +6 trust, +2 reputation',
+                        summary: 'Tensions cool, but at a financial cost.',
+                        effects: { resources: { gold: -80 }, trust: { [primaryFactionKey]: 6 }, reputation: 2 }
+                    },
+                    {
+                        id: 'fracture_reject',
+                        title: 'Reject demands',
+                        subtitle: '+1 prestige, -6 trust, -1 reputation',
+                        summary: 'Imperial authority is asserted while diplomacy worsens.',
+                        effects: { resources: { prestige: 1 }, trust: { [primaryFactionKey]: -6 }, reputation: -1 }
+                    }
+                ]
+            });
+        }
+
+        return candidates.sort((a, b) => b.priority - a.priority);
+    }
+
+    expireDynamicNarrativeEntries() {
+        if (!this.dynamicNarrativeState) this.initializeDynamicNarrativeState();
+        const expired = [];
+        const stillActive = [];
+        this.dynamicNarrativeState.active.forEach((entry) => {
+            const age = this.turn - (entry.createdTurn || this.turn);
+            if (entry.status === 'pending' && age >= 8) {
+                entry.status = 'expired';
+                entry.resolvedTurn = this.turn;
+                expired.push(entry);
+                this.dynamicNarrativeState.history.push({ ...entry });
+                return;
+            }
+            stillActive.push(entry);
+        });
+        this.dynamicNarrativeState.active = stillActive;
+        if (this.dynamicNarrativeState.history.length > 120) {
+            this.dynamicNarrativeState.history.splice(0, this.dynamicNarrativeState.history.length - 120);
+        }
+        return expired;
+    }
+
+    processDynamicNarrativeTurn() {
+        if (!this.dynamicNarrativeState) this.initializeDynamicNarrativeState();
+        const expired = this.expireDynamicNarrativeEntries();
+        if (!this.player || !gameMap || this.turn < 2) {
+            return { generated: [], expired };
+        }
+        const pendingCount = this.dynamicNarrativeState.active.filter((entry) => entry.status === 'pending').length;
+        if (pendingCount >= 3 || (this.turn - this.dynamicNarrativeState.lastGeneratedTurn) < 2) {
+            return { generated: [], expired };
+        }
+
+        const context = this.buildDynamicNarrativeContext();
+        const candidates = this.selectDynamicNarrativeCandidates(context);
+        if (candidates.length === 0) {
+            return { generated: [], expired };
+        }
+        const entry = this.createDynamicNarrativeEntry(candidates[0]);
+        this.dynamicNarrativeState.active.push(entry);
+        this.dynamicNarrativeState.lastGeneratedTurn = this.turn;
+        this.recordAIWorldEvent('dynamic_narrative_generated', {
+            narrativeId: entry.id,
+            templateId: entry.templateId,
+            narrativeType: entry.type
+        });
+        return { generated: [entry], expired };
+    }
+
+    applyDynamicNarrativeChoiceEffects(effects = {}, entry = null) {
+        const summary = [];
+        const resources = (effects && typeof effects.resources === 'object') ? effects.resources : {};
+        const signed = (key) => Number.isFinite(resources[key]) ? Math.floor(resources[key]) : 0;
+        const goldDelta = signed('gold');
+        const manpowerDelta = signed('manpower');
+        const prestigeDelta = signed('prestige');
+        const strategicKeys = ['food', 'wood', 'stone', 'iron', 'rare'];
+
+        if (goldDelta >= 0 && manpowerDelta >= 0 && prestigeDelta >= 0) {
+            if (goldDelta || manpowerDelta || prestigeDelta) {
+                this.addResources(goldDelta, manpowerDelta, prestigeDelta);
+            }
+        } else {
+            const positiveGold = Math.max(0, goldDelta);
+            const positiveManpower = Math.max(0, manpowerDelta);
+            const positivePrestige = Math.max(0, prestigeDelta);
+            if (positiveGold || positiveManpower || positivePrestige) {
+                this.addResources(positiveGold, positiveManpower, positivePrestige);
+            }
+            const costGold = Math.max(0, -goldDelta);
+            const costManpower = Math.max(0, -manpowerDelta);
+            const costPrestige = Math.max(0, -prestigeDelta);
+            if (costGold || costManpower || costPrestige) {
+                this.spendResources(costGold, costManpower, costPrestige);
+            }
+        }
+
+        strategicKeys.forEach((key) => {
+            const delta = signed(key);
+            if (!delta) return;
+            if (delta > 0) {
+                this.addStrategicResources({ [key]: delta });
+            } else {
+                const current = Number.isFinite(this.player?.resources?.[key]) ? this.player.resources[key] : 0;
+                this.player.resources[key] = Math.max(0, current + delta);
+            }
+        });
+
+        const trust = (effects && typeof effects.trust === 'object') ? effects.trust : {};
+        Object.entries(trust).forEach(([factionId, delta]) => {
+            if (!Number.isFinite(delta)) return;
+            const state = this.ensureDiplomacyFactionState(factionId || 'tribal');
+            state.trust = Math.max(0, Math.min(100, Math.floor((state.trust || 0) + delta)));
+            summary.push(`${this.getFactionDisplayName(factionId)} trust ${delta > 0 ? '+' : ''}${Math.floor(delta)}`);
+        });
+
+        const repDelta = Number.isFinite(effects?.reputation) ? Math.floor(effects.reputation) : 0;
+        if (repDelta !== 0) {
+            this.adjustReputation(repDelta);
+            summary.push(`Reputation ${repDelta > 0 ? '+' : ''}${repDelta}`);
+        }
+
+        const resourceSummary = [];
+        ['gold', 'manpower', 'prestige', ...strategicKeys].forEach((key) => {
+            const delta = signed(key);
+            if (!delta) return;
+            resourceSummary.push(`${key} ${delta > 0 ? '+' : ''}${delta}`);
+        });
+        if (resourceSummary.length > 0) summary.push(resourceSummary.join(', '));
+
+        this.recordAIWorldEvent('dynamic_narrative_choice', {
+            narrativeId: entry?.id || null,
+            templateId: entry?.templateId || null,
+            choiceEffects: effects
+        });
+        return summary;
+    }
+
+    resolveDynamicNarrativeChoice(entryId, choiceId) {
+        if (!this.dynamicNarrativeState) this.initializeDynamicNarrativeState();
+        const index = this.dynamicNarrativeState.active.findIndex((entry) => entry?.id === entryId && entry.status === 'pending');
+        if (index === -1) {
+            return { success: false, message: 'Quest/event no longer available.' };
+        }
+        const entry = this.dynamicNarrativeState.active[index];
+        const choice = entry.choices.find((item) => item.id === choiceId);
+        if (!choice) {
+            return { success: false, message: 'Invalid choice.' };
+        }
+
+        const outcomeSummary = this.applyDynamicNarrativeChoiceEffects(choice.effects, entry);
+        entry.status = 'resolved';
+        entry.resolvedTurn = this.turn;
+        entry.selectedChoiceId = choice.id;
+        this.dynamicNarrativeState.active.splice(index, 1);
+
+        const historyEntry = {
+            ...entry,
+            choices: entry.choices,
+            choiceTitle: choice.title,
+            choiceSummary: choice.summary,
+            outcomeSummary
+        };
+        this.dynamicNarrativeState.history.push(historyEntry);
+        if (this.dynamicNarrativeState.history.length > 120) {
+            this.dynamicNarrativeState.history.splice(0, this.dynamicNarrativeState.history.length - 120);
+        }
+
+        this.checkWinLossConditions();
+        return {
+            success: true,
+            message: choice.summary || `${entry.title}: ${choice.title}`,
+            entry: historyEntry
+        };
     }
 
     getAIFactionPersonalityType(factionId) {
@@ -3133,6 +3614,8 @@ class GameState {
 
         this.spendResources(totalUpkeep, 0, 0);
 
+        const dynamicNarrative = this.processDynamicNarrativeTurn();
+
         // Check win/loss
         this.checkWinLossConditions();
 
@@ -3149,7 +3632,8 @@ class GameState {
             upkeep: totalUpkeep,
             cityProduction,
             completedConstruction,
-            autoStartedConstruction
+            autoStartedConstruction,
+            dynamicNarrative
         };
     }
 
@@ -3286,6 +3770,7 @@ class GameState {
                     : null),
             aiFactions: this.aiFactions,
             aiEvents: this.aiEvents,
+            dynamicNarrativeState: this.dynamicNarrativeState,
             diplomacyState: this.diplomacyState,
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
@@ -3506,6 +3991,7 @@ class GameState {
         this.player = data.player;
         this.aiFactions = (data.aiFactions && typeof data.aiFactions === 'object') ? data.aiFactions : {};
         this.aiEvents = Array.isArray(data.aiEvents) ? data.aiEvents.slice(-40) : [];
+        this.restoreDynamicNarrativeState(data.dynamicNarrativeState);
         this.diplomacyState = (data.diplomacyState && typeof data.diplomacyState === 'object')
             ? data.diplomacyState
             : { reputation: 0, factions: {}, tradeRoutes: [] };
