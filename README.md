@@ -59,6 +59,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Heightmap-Based**: 256 elevation levels with natural color gradients
 - **Seeded World Generation Controls**: Default historical world remains intact, with an optional procedural mode and reproducible seed/config overrides for future modding
 - **Fog of War**: Discover the world as you explore with your units
+- **Layered Visibility Model**: Unexplored terrain, explored shroud, and currently visible tiles are now rendered separately
 
 ### Gameplay
 - **Turn-Based Strategy**: Tactical combat with resource management
@@ -85,6 +86,8 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata used by dynamic events
 - **Save/Load System**: Multiple save slots with auto-save
 - **Exploration**: Fog of war reveals as units move and cities are founded
+- **Vision & Recon Rules**: Unit classes and city status determine sight radius (scouts/intel see farther; capitals/fortified cities project wider vision)
+- **Exploration Discoveries**: Finding new macro-regions and landmark cities triggers discovery events with gold/manpower/prestige rewards
 - **Dynamic Enemy Realms**: AI factions maintain territory pressure, diplomacy/threat memory (AI-side), and strategic reactions to player captures and frontier changes
 
 ### Mobile Optimized
@@ -292,7 +295,7 @@ This starts a local server, opens the browser automatically, and runs `scripts/u
 - `VERSION` is the canonical release version used for checks and tagging.
 - Set/sync a new version:
 ```bash
-./scripts/version_set.sh 1.11.0
+./scripts/version_set.sh 1.12.0
 ```
 - Verify version consistency:
 ```bash
@@ -393,7 +396,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.11.0** - Adds a full research/technology-tree progression system with timed research, clear status visualization, and integrated tech unlock gating across units, city building, infrastructure, and diplomacy/trade outcomes.
+**Version 1.12.0** - Adds layered fog-of-war visibility (unexplored vs explored shroud), vision-range-driven reconnaissance, hidden enemy movement outside current sight, and exploration discovery rewards for regions/landmarks.
 
 ## License
 

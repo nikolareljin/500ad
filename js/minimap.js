@@ -157,10 +157,14 @@ class Minimap {
             for (let x = 0; x < this.gameMap.width; x++) {
                 const tile = this.gameMap.tiles[y][x];
                 if (!tile) continue;
+                const explored = !this.gameMap.isFoggedTile(x, y);
+                const currentlyVisible = this.gameMap.isTileVisible(x, y);
 
                 // Get color from heightmap or terrain
                 let color = '#888';
-                if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
+                if (!explored) {
+                    color = '#3d4048';
+                } else if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
                     MEDITERRANEAN_HEIGHTMAP[y] &&
                     MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
                     color = heightToColor(MEDITERRANEAN_HEIGHTMAP[y][x]);
@@ -178,12 +182,18 @@ class Minimap {
                 this.ctx.fillRect(px, py, sizeX, sizeY);
 
                 // Territory ownership / realm tint overlay for easier border reading.
-                const controlOwner = tile.owner || this.gameMap.getTerritoryOwnerAt(x, y);
-                const realmKey = (tile.faction && tile.terrain !== 'water') ? tile.faction : controlOwner;
+                const controlOwner = explored ? (tile.owner || this.gameMap.getTerritoryOwnerAt(x, y)) : null;
+                const realmKey = explored && tile.terrain !== 'water'
+                    ? ((tile.faction && tile.terrain !== 'water') ? tile.faction : controlOwner)
+                    : null;
                 realmGrid[y][x] = tile.terrain === 'water' ? null : (realmKey || null);
                 const realmStyle = getRealmStyle(realmGrid[y][x]);
                 if (realmStyle && tile.terrain !== 'water') {
                     this.ctx.fillStyle = realmStyle.fill;
+                    this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
+                if (explored && !currentlyVisible) {
+                    this.ctx.fillStyle = 'rgba(64, 66, 72, 0.32)';
                     this.ctx.fillRect(px, py, sizeX, sizeY);
                 }
             }
@@ -228,6 +238,7 @@ class Minimap {
             HISTORIC_TOWNS.forEach(town => {
                 const px = town.x * MAP_CONFIG.tileSize * this.scaleX;
                 const py = town.y * MAP_CONFIG.tileSize * this.scaleY;
+                if (this.gameMap.isFoggedTile(town.x, town.y)) return;
 
                 const tile = this.gameMap.getTile(town.x, town.y);
                 if (tile?.owner === 'player') this.ctx.fillStyle = '#f4d03f';

@@ -244,6 +244,12 @@ function resolveAppVersion() {
 }
 
 const SAVE_VERSION = resolveAppVersion();
+const EXPLORATION_REGION_IDS = {
+    northwest: 'Anatolian-Balkan Frontier',
+    northeast: 'Pontic-Caucasus Marches',
+    southwest: 'Mediterranean-Africa Littoral',
+    southeast: 'Levant-Persian Corridor'
+};
 
 const TECHNOLOGY_TREE = {
     military_logistics: {
@@ -522,7 +528,130 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = this.createDefaultExplorationState();
         this.initializeDynamicNarrativeState();
+    }
+
+    createDefaultExplorationState() {
+        return {
+            totalTilesDiscovered: 0,
+            discoveredRegions: {},
+            discoveredLandmarks: {}
+        };
+    }
+
+    ensureExplorationState() {
+        if (!this.exploration || typeof this.exploration !== 'object') {
+            this.exploration = this.createDefaultExplorationState();
+        }
+        if (!Number.isFinite(this.exploration.totalTilesDiscovered)) this.exploration.totalTilesDiscovered = 0;
+        if (!this.exploration.discoveredRegions || typeof this.exploration.discoveredRegions !== 'object') {
+            this.exploration.discoveredRegions = {};
+        }
+        if (!this.exploration.discoveredLandmarks || typeof this.exploration.discoveredLandmarks !== 'object') {
+            this.exploration.discoveredLandmarks = {};
+        }
+        return this.exploration;
+    }
+
+    getRegionIdForTile(tile) {
+        if (!tile || !gameMap) return null;
+        const xBand = tile.x < gameMap.width / 2 ? 'west' : 'east';
+        const yBand = tile.y < gameMap.height / 2 ? 'north' : 'south';
+        if (xBand === 'west' && yBand === 'north') return 'northwest';
+        if (xBand === 'east' && yBand === 'north') return 'northeast';
+        if (xBand === 'west' && yBand === 'south') return 'southwest';
+        return 'southeast';
+    }
+
+    processExplorationDiscoveries(newlyExploredTiles = [], options = {}) {
+        const grantRewards = options.grantRewards !== false;
+        if (!Array.isArray(newlyExploredTiles) || newlyExploredTiles.length === 0) return null;
+        if (!gameMap) return null;
+
+        const exploration = this.ensureExplorationState();
+        const uniqueKeys = new Set();
+        const uniqueTiles = [];
+        newlyExploredTiles.forEach((entry) => {
+            if (!Number.isInteger(entry?.x) || !Number.isInteger(entry?.y)) return;
+            const key = `${entry.x}_${entry.y}`;
+            if (uniqueKeys.has(key)) return;
+            uniqueKeys.add(key);
+            uniqueTiles.push(entry);
+        });
+        if (uniqueTiles.length === 0) return null;
+
+        exploration.totalTilesDiscovered += uniqueTiles.length;
+        const discoveredRegions = [];
+        const discoveredLandmarks = [];
+
+        uniqueTiles.forEach(({ x, y }) => {
+            const tile = gameMap.getTile(x, y);
+            if (!tile) return;
+
+            const regionId = this.getRegionIdForTile(tile);
+            if (regionId && !exploration.discoveredRegions[regionId]) {
+                exploration.discoveredRegions[regionId] = true;
+                discoveredRegions.push(regionId);
+            }
+
+            if (tile.cityData && (tile.cityData.kind === 'capital' || (tile.importance || 0) >= 8 || Boolean(tile.cityData.wonder))) {
+                const landmarkId = tile.cityData.id || `${x}_${y}`;
+                if (!exploration.discoveredLandmarks[landmarkId]) {
+                    exploration.discoveredLandmarks[landmarkId] = true;
+                    discoveredLandmarks.push({
+                        id: landmarkId,
+                        name: tile.cityData.name || `Landmark ${x},${y}`
+                    });
+                }
+            }
+        });
+
+        if (!grantRewards) {
+            return {
+                tiles: uniqueTiles.length,
+                regions: discoveredRegions,
+                landmarks: discoveredLandmarks
+            };
+        }
+
+        const goldReward = (discoveredRegions.length * 40) + (discoveredLandmarks.length * 120);
+        const manpowerReward = (discoveredRegions.length * 20) + (discoveredLandmarks.length * 50);
+        const prestigeReward = (discoveredRegions.length * 2) + (discoveredLandmarks.length * 7);
+        if (goldReward > 0 || manpowerReward > 0 || prestigeReward > 0) {
+            this.addResources(goldReward, manpowerReward, prestigeReward);
+        }
+
+        if (window.uiManager) {
+            discoveredRegions.forEach((regionId) => {
+                const label = EXPLORATION_REGION_IDS[regionId] || regionId;
+                uiManager.showNotification(`Discovered region: ${label}`, 'info');
+            });
+            discoveredLandmarks.forEach((landmark) => {
+                uiManager.showNotification(`Landmark discovered: ${landmark.name}`, 'success');
+            });
+            if (goldReward > 0 || manpowerReward > 0 || prestigeReward > 0) {
+                uiManager.showNotification(
+                    `Exploration rewards: +${goldReward} gold, +${manpowerReward} manpower, +${prestigeReward} prestige`,
+                    'success'
+                );
+            }
+        }
+
+        return {
+            tiles: uniqueTiles.length,
+            regions: discoveredRegions,
+            landmarks: discoveredLandmarks,
+            rewards: { gold: goldReward, manpower: manpowerReward, prestige: prestigeReward }
+        };
+    }
+
+    refreshPlayerVisibility(options = {}) {
+        if (!gameMap || typeof gameMap.recalculatePlayerVision !== 'function') return null;
+        const newlyExplored = gameMap.recalculatePlayerVision(this);
+        const discovery = this.processExplorationDiscoveries(newlyExplored, options);
+        gameMap.requestRender();
+        return discovery;
     }
 
     /**
@@ -566,6 +695,7 @@ class GameState {
         this.aiFactions = {};
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = this.createDefaultExplorationState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
@@ -587,6 +717,7 @@ class GameState {
         this.createStartingUnits(civilization, scenario);
         this.createEnemyUnits(scenario);
         this.refreshAIFactionState();
+        this.refreshPlayerVisibility({ grantRewards: false });
         gameMap.markTerritoryDirty();
         gameMap.requestRender();
 
@@ -3644,7 +3775,7 @@ class GameState {
 
             // Reveal fog of war around new position for player units
             if (unit.owner === 'player' && gameMap) {
-                gameMap.revealArea(newPosition.x, newPosition.y, 3);
+                this.refreshPlayerVisibility();
             }
 
             // Check for territory capture
@@ -3698,8 +3829,8 @@ class GameState {
 
         if (window.uiManager) {
             uiManager.showNotification(`${unit.name} disembarked at ${spawnPos.x},${spawnPos.y}`, 'success');
-            gameMap?.requestRender();
         }
+        this.refreshPlayerVisibility();
         return { success: true };
     }
 
@@ -3785,6 +3916,7 @@ class GameState {
         });
 
         gameMap.markTerritoryDirty();
+        this.refreshPlayerVisibility({ grantRewards: false });
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
         this.checkWinLossConditions();
     }
@@ -3860,7 +3992,7 @@ class GameState {
 
         // Process units with destination or automation
         this.processAutomatedUnits();
-        this.revealCarriedUnitVision();
+        this.refreshPlayerVisibility();
 
         // Healing phase: towns, fortified positions, and nearby support units.
         this.processUnitHealing();
@@ -4037,6 +4169,7 @@ class GameState {
             aiEvents: this.aiEvents,
             dynamicNarrativeState: this.dynamicNarrativeState,
             diplomacyState: this.diplomacyState,
+            exploration: this.exploration,
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -4047,7 +4180,8 @@ class GameState {
             buildings: this.buildings,
             territories: this.territories,
             cityOwnership: this.captureCityOwnership(),
-            fortifications: this.captureFortifications()
+            fortifications: this.captureFortifications(),
+            fogOfWar: gameMap?.exportFogState?.() || null
         };
     }
 
@@ -4218,11 +4352,6 @@ class GameState {
 
         (gameMap?.getCityTiles() || []).forEach((cityTile) => this.expandRoadNetworkFromCity(cityTile));
 
-        gameMap.getCityTiles('player').forEach(tile => gameMap.revealArea(tile.x, tile.y, 4));
-        this.units
-            .filter(unit => unit.owner === 'player')
-            .forEach(unit => gameMap.revealArea(unit.position.x, unit.position.y, 3));
-
         gameMap.markTerritoryDirty();
     }
 
@@ -4261,7 +4390,11 @@ class GameState {
         this.diplomacyState = (data.diplomacyState && typeof data.diplomacyState === 'object')
             ? data.diplomacyState
             : { reputation: 0, factions: {}, tradeRoutes: [] };
+        this.exploration = (data.exploration && typeof data.exploration === 'object')
+            ? data.exploration
+            : this.createDefaultExplorationState();
         this.initializeDiplomacyState();
+        this.ensureExplorationState();
         this.ensureStrategicResourceStockpile();
         if (!Array.isArray(this.player.techResearched)) {
             this.player.techResearched = [];
@@ -4308,8 +4441,14 @@ class GameState {
         this.territories = data.territories;
         this.restoreCityOwnership(data.cityOwnership || []);
         this.restoreFortifications(data.fortifications || []);
+        if (data.fogOfWar && typeof gameMap.importFogState === 'function') {
+            gameMap.importFogState(data.fogOfWar);
+        } else if (typeof gameMap.initializeFogOfWar === 'function') {
+            gameMap.initializeFogOfWar();
+        }
         this.refreshAIFactionState();
         this.updateAIFactionIntelFromWorldState();
+        this.refreshPlayerVisibility({ grantRewards: false });
         this.initialized = true;
 
         return true;

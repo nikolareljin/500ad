@@ -523,6 +523,7 @@ class GameMap {
 
         // Fog of war
         this.fogOfWar = [];
+        this.visibilityMap = [];
 
         this.selectedTile = null;
         this.hoveredTile = null;
@@ -996,13 +997,16 @@ class GameMap {
      */
     initializeFogOfWar() {
         this.fogOfWar = [];
+        this.visibilityMap = [];
         this.fogAlphaCache = [];
         for (let y = 0; y < this.height; y++) {
             this.fogOfWar[y] = [];
+            this.visibilityMap[y] = [];
             this.fogAlphaCache[y] = [];
             for (let x = 0; x < this.width; x++) {
                 // Start with everything fogged
                 this.fogOfWar[y][x] = true;
+                this.visibilityMap[y][x] = false;
                 this.fogAlphaCache[y][x] = -1;
             }
         }
@@ -1011,7 +1015,9 @@ class GameMap {
     /**
      * Reveal area around a position (for units/cities)
      */
-    revealArea(x, y, radius = 3) {
+    revealArea(x, y, radius = 3, options = {}) {
+        const markVisible = options?.markVisible !== false;
+        const newlyExplored = [];
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
                 const nx = x + dx;
@@ -1019,7 +1025,13 @@ class GameMap {
                 if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     if (dist <= radius) {
-                        this.fogOfWar[ny][nx] = false;
+                        if (markVisible && this.visibilityMap[ny]) {
+                            this.visibilityMap[ny][nx] = true;
+                        }
+                        if (this.fogOfWar[ny][nx]) {
+                            this.fogOfWar[ny][nx] = false;
+                            newlyExplored.push({ x: nx, y: ny });
+                        }
                         for (let cdy = -1; cdy <= 1; cdy++) {
                             for (let cdx = -1; cdx <= 1; cdx++) {
                                 const cx = nx + cdx;
@@ -1032,6 +1044,59 @@ class GameMap {
                 }
             }
         }
+        return newlyExplored;
+    }
+
+    clearVisibilityMap() {
+        for (let y = 0; y < this.height; y++) {
+            const row = this.visibilityMap[y];
+            if (!row) continue;
+            row.fill(false);
+        }
+    }
+
+    getUnitVisionRadius(unit) {
+        if (!unit) return 2;
+        const bonusVision = Number.isFinite(unit.bonuses?.vision) ? Math.floor(unit.bonuses.vision) : 0;
+        let radius = 2 + bonusVision;
+        if (unit.category === 'scout' || unit.category === 'intel') radius += 1;
+        if (unit.type === 'naval') radius += 1;
+        return Math.max(1, Math.min(7, radius));
+    }
+
+    getCityVisionRadius(cityTile) {
+        if (!cityTile?.cityData) return 3;
+        let radius = cityTile.cityData.kind === 'capital' ? 5 : 4;
+        const wallsLevel = Number(cityTile.cityData.buildings?.walls || 0);
+        if (wallsLevel >= 2) radius += 1;
+        return Math.max(3, Math.min(7, radius));
+    }
+
+    recalculatePlayerVision(state) {
+        if (!state) return [];
+        this.clearVisibilityMap();
+        const newlyExplored = [];
+
+        const playerCities = this.getCityTiles('player') || [];
+        playerCities.forEach((tile) => {
+            const radius = this.getCityVisionRadius(tile);
+            const discovered = this.revealArea(tile.x, tile.y, radius, { markVisible: true });
+            if (discovered.length > 0) newlyExplored.push(...discovered);
+        });
+
+        const playerUnits = (state.units || []).filter((unit) =>
+            unit?.owner === 'player'
+            && !unit.isCarried
+            && Number.isFinite(unit.position?.x)
+            && Number.isFinite(unit.position?.y)
+        );
+        playerUnits.forEach((unit) => {
+            const radius = this.getUnitVisionRadius(unit);
+            const discovered = this.revealArea(unit.position.x, unit.position.y, radius, { markVisible: true });
+            if (discovered.length > 0) newlyExplored.push(...discovered);
+        });
+
+        return newlyExplored;
     }
 
     /**
@@ -1040,6 +1105,11 @@ class GameMap {
     isFoggedTile(x, y) {
         if (!this.fogOfWar[y] || this.fogOfWar[y][x] === undefined) return false;
         return this.fogOfWar[y][x];
+    }
+
+    isTileVisible(x, y) {
+        if (!this.visibilityMap[y] || this.visibilityMap[y][x] === undefined) return false;
+        return this.visibilityMap[y][x];
     }
 
     /**
@@ -1068,7 +1138,7 @@ class GameMap {
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
         // Edge tiles stay lighter, deep unknown gets denser.
-        const alpha = 0.3 + (1 - edgeFactor) * 0.35;
+        const alpha = 0.72 + (1 - edgeFactor) * 0.25;
         if (this.fogAlphaCache?.[y]) {
             this.fogAlphaCache[y][x] = alpha;
         }
@@ -1089,6 +1159,7 @@ class GameMap {
             for (let x = startX; x < endX; x++) {
                 const height = MEDITERRANEAN_HEIGHTMAP[y]?.[x];
                 if (height === undefined || height > 50) continue;
+                if (this.isFoggedTile(x, y)) continue;
 
                 // Draw river strokes only for inland water, not broad oceans.
                 if (height < 40) continue;
@@ -1385,10 +1456,19 @@ class GameMap {
                 }
 
                 // Gray fog of war for undiscovered areas with softened boundaries.
-                const fogAlpha = this.getFogAlpha(x, y);
-                if (fogAlpha > 0) {
-                    this.ctx.fillStyle = `rgba(120, 124, 132, ${fogAlpha})`;
-                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                const tileVisible = this.isTileVisible(x, y);
+                if (!tileVisible) {
+                    if (this.isFoggedTile(x, y)) {
+                        const fogAlpha = this.getFogAlpha(x, y);
+                        if (fogAlpha > 0) {
+                            this.ctx.fillStyle = `rgba(120, 124, 132, ${fogAlpha})`;
+                            this.ctx.fillRect(px, py, tileSize, tileSize);
+                        }
+                    } else {
+                        // Explored-but-not-currently-visible shroud.
+                        this.ctx.fillStyle = 'rgba(72, 74, 82, 0.30)';
+                        this.ctx.fillRect(px, py, tileSize, tileSize);
+                    }
                 }
             }
         }
@@ -1401,6 +1481,7 @@ class GameMap {
             gameState.units.forEach(unit => {
                 if (unit.position.x >= startX && unit.position.x < endX &&
                     unit.position.y >= startY && unit.position.y < endY) {
+                    if (unit.owner !== 'player' && !this.isTileVisible(unit.position.x, unit.position.y)) return;
                     this.drawUnit(unit);
                 }
             });
@@ -1854,7 +1935,11 @@ class GameMap {
         const tile = this.getTile(x, y);
 
         // Check if there's a unit on this tile
-        const unit = gameState.units.find(u => u.position.x === x && u.position.y === y);
+        const unit = gameState.units.find((u) => {
+            if (u.position.x !== x || u.position.y !== y) return false;
+            if (u.owner === 'player') return true;
+            return this.isTileVisible(x, y);
+        });
 
         if (unit && unit.owner === 'player') {
             gameState.selectUnit(unit.id);
@@ -1871,7 +1956,7 @@ class GameMap {
             if (!moved && window.uiManager) {
                 window.uiManager.showNotification('Unit cannot move to that tile', 'error');
             }
-        } else if (tile?.cityData && window.uiManager) {
+        } else if (tile?.cityData && window.uiManager && !this.isFoggedTile(x, y)) {
             const p = tile.cityData.production;
             const wonderText = tile.cityData.wonder ? ` | Wonder: ${tile.cityData.wonder}` : '';
             const tribeText = tile.cityData.tribe ? ` | Tribe: ${tile.cityData.tribe}` : '';
@@ -1936,6 +2021,29 @@ class GameMap {
             return this.tiles[y][x];
         }
         return null;
+    }
+
+    exportFogState() {
+        const exploredTiles = [];
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!this.fogOfWar[y]?.[x]) exploredTiles.push([x, y]);
+            }
+        }
+        return { exploredTiles };
+    }
+
+    importFogState(data) {
+        this.initializeFogOfWar();
+        const exploredTiles = Array.isArray(data?.exploredTiles) ? data.exploredTiles : [];
+        exploredTiles.forEach((entry) => {
+            if (!Array.isArray(entry) || entry.length < 2) return;
+            const [x, y] = entry;
+            if (!Number.isInteger(x) || !Number.isInteger(y)) return;
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
+            this.fogOfWar[y][x] = false;
+            this.fogAlphaCache[y][x] = -1;
+        });
     }
 
     tileToGeo(x, y) {

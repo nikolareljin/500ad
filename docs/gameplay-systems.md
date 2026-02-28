@@ -9,6 +9,20 @@
   - Red: critical health
 - Numeric HP values are not rendered directly on the map.
 
+## Fog of War and Exploration
+
+- Fog now has two states:
+  - `unexplored`: fully hidden terrain
+  - `explored shroud`: previously discovered but not currently visible
+- Current visibility is recalculated from:
+  - player unit vision ranges (scouts/intel classes have extended vision)
+  - player city vision ranges (capitals and developed walls increase city sight)
+- Enemy units are only rendered/inspectable while inside currently visible tiles.
+- Exploration discoveries now trigger on first reveal:
+  - region discovery events for new macro map sectors
+  - landmark discovery events for major cities/capitals/wonders
+- Discovery events grant immediate bonus resources (`gold`, `manpower`, `prestige`) and are persisted through save/load.
+
 ## Tactical Combat Layer
 
 - Battles now run through a tactical combat layer when opposing armies engage.
