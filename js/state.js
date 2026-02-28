@@ -266,8 +266,7 @@ const TECHNOLOGY_TREE = {
         requires: ['military_logistics'],
         effects: { siegeAttackMultiplier: 1.2 },
         unlocks: {
-            buildings: ['walls'],
-            units: ['mangonel']
+            buildings: ['walls']
         }
     },
     naval_architecture: {
@@ -312,8 +311,7 @@ const TECHNOLOGY_TREE = {
         requires: ['irrigation_systems'],
         effects: { researchDiscount: 0.1, prestigePerTurn: 2, diplomacyAcceptanceBonus: 0.05 },
         unlocks: {
-            buildings: ['temple'],
-            units: ['spy', 'priests']
+            buildings: ['temple']
         }
     },
     caravan_routes: {
@@ -325,8 +323,7 @@ const TECHNOLOGY_TREE = {
         effects: { goldMultiplier: 1.12, tradePostBonus: 2, tradeIncomeMultiplier: 1.15 },
         unlocks: {
             buildings: ['workshop'],
-            buildActions: ['build_caravan_camp', 'build_canal'],
-            units: ['caravan']
+            buildActions: ['build_caravan_camp', 'build_canal']
         }
     }
 };
@@ -3374,7 +3371,8 @@ class GameState {
         };
     }
 
-    getBuildActionOptionStatus(cityTile, actionId) {
+    getBuildActionValidation(cityTile, actionId, options = {}) {
+        const includeResourceCheck = options.includeResourceCheck !== false;
         const action = BUILD_ACTIONS[actionId];
         if (!action) {
             return { actionId, action: null, available: false, reasons: ['Unknown action'] };
@@ -3385,10 +3383,12 @@ class GameState {
         if (researchGate && !this.player?.techResearched?.includes(researchGate)) {
             reasons.push(`Requires ${TECHNOLOGY_TREE[researchGate]?.name || researchGate}`);
         }
-        const resources = this.player?.resources || {};
-        if ((resources.gold || 0) < (action.gold || 0)) reasons.push(`Missing ${(action.gold || 0) - (resources.gold || 0)} gold`);
-        if ((resources.manpower || 0) < (action.manpower || 0)) reasons.push(`Missing ${(action.manpower || 0) - (resources.manpower || 0)} manpower`);
-        if ((resources.prestige || 0) < (action.prestige || 0)) reasons.push(`Missing ${(action.prestige || 0) - (resources.prestige || 0)} prestige`);
+        if (includeResourceCheck) {
+            const resources = this.player?.resources || {};
+            if ((resources.gold || 0) < (action.gold || 0)) reasons.push(`Missing ${(action.gold || 0) - (resources.gold || 0)} gold`);
+            if ((resources.manpower || 0) < (action.manpower || 0)) reasons.push(`Missing ${(action.manpower || 0) - (resources.manpower || 0)} manpower`);
+            if ((resources.prestige || 0) < (action.prestige || 0)) reasons.push(`Missing ${(action.prestige || 0) - (resources.prestige || 0)} prestige`);
+        }
 
         if (!cityTile) {
             reasons.push('Select a map tile first');
@@ -3397,6 +3397,7 @@ class GameState {
 
         const isPlayerControlled = cityTile.owner === 'player' || gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player';
         if (!isPlayerControlled) reasons.push('Requires a player-owned tile');
+        if (actionId === 'establish_town' && cityTile.terrain === 'water') reasons.push('Cannot establish a town on water');
 
         if (actionId !== 'establish_town' && !cityTile.cityData) {
             reasons.push('Select a city tile for this action');
@@ -3436,31 +3437,22 @@ class GameState {
         };
     }
 
+    getBuildActionOptionStatus(cityTile, actionId) {
+        return this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: true });
+    }
+
     getBuildActionOptions(cityTile) {
         return Object.entries(BUILD_ACTIONS).map(([actionId]) => this.getBuildActionOptionStatus(cityTile, actionId));
     }
 
     applyCityBuildAction(cityTile, actionId) {
-        const isPlayerControlled = cityTile && (
-            cityTile.owner === 'player' ||
-            gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player'
-        );
-        if (!isPlayerControlled) {
-            return { success: false, message: 'Build actions require a player-owned tile' };
+        const validation = this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: false });
+        if (!validation.available) {
+            return { success: false, message: validation.reasons[0] || 'Build action unavailable' };
         }
-
-        const action = BUILD_ACTIONS[actionId];
-        if (!action) return { success: false, message: 'Unknown build action' };
-        const requiredTech = this.getTechnologyIdUnlockingBuildAction(actionId);
-        if (requiredTech && !this.player.techResearched.includes(requiredTech)) {
-            const techName = TECHNOLOGY_TREE[requiredTech]?.name || requiredTech;
-            return { success: false, message: `${action.name} requires ${techName}` };
-        }
+        const action = validation.action;
 
         if (actionId === 'establish_town' && !cityTile.cityData) {
-            if (cityTile.terrain === 'water') {
-                return { success: false, message: 'Cannot establish a town on water' };
-            }
             cityTile.terrain = 'city';
             cityTile.building = 'town';
             cityTile.cityData = {
@@ -3479,47 +3471,6 @@ class GameState {
         if (!cityTile.cityData) {
             return { success: false, message: 'Select a city tile for that build action' };
         }
-        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
-        if (actionId === 'build_port' && (cityTile.cityData.port || cityTile.cityData.navalYard)) {
-            return { success: false, message: 'Port already built in this city' };
-        }
-        if (actionId === 'build_caravan_camp' && cityTile.cityData.caravanCamp) {
-            return { success: false, message: 'Caravan Camp already built in this city' };
-        }
-        if (actionId === 'build_canal' && cityTile.cityData.canal) {
-            return { success: false, message: 'Canal already built in this city' };
-        }
-        if (actionId === 'establish_monastery' && cityTile.cityData.monastery) {
-            return { success: false, message: 'Monastery already established in this city' };
-        }
-        if (actionId === 'build_road' && (infra.roads || 0) >= 8) {
-            return { success: false, message: 'Road infrastructure already at maximum' };
-        }
-        if (actionId === 'build_farm' && (infra.agriculture || 0) >= 8) {
-            return { success: false, message: 'Agriculture already at maximum' };
-        }
-        if (actionId === 'build_fort' && (cityTile.cityData.fortLevel || 0) >= 6) {
-            return { success: false, message: 'Fortification level already at maximum' };
-        }
-        if (actionId === 'irrigate' && cityTile.cityData.irrigated) {
-            return { success: false, message: 'Tile is already irrigated' };
-        }
-        if (actionId === 'plant_forest' && cityTile.cityData.forestManaged) {
-            return { success: false, message: 'Forest management already established' };
-        }
-
-        if (actionId === 'build_port') {
-            const nearWater = [
-                { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-                { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-            ].some((offset) => gameMap?.getTile(cityTile.x + offset.x, cityTile.y + offset.y)?.terrain === 'water');
-            if (!nearWater) return { success: false, message: 'Ports require adjacent water' };
-        }
-
-        const terrainConstraint = gameMap?.terrainAllowsBuildAction?.(cityTile.x, cityTile.y, actionId);
-        if (terrainConstraint && !terrainConstraint.allowed) {
-            return { success: false, message: terrainConstraint.reason || 'Terrain does not support that build action' };
-        }
 
         if (!this.spendResources(action.gold, action.manpower, action.prestige || 0)) {
             return { success: false, message: `Need ${action.gold}g/${action.manpower}m/${action.prestige || 0}p` };
@@ -3529,6 +3480,7 @@ class GameState {
             cityTile.owner = 'player';
         }
 
+        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
         const production = cityTile.cityData.production || (cityTile.cityData.production = { food: 0, industry: 0, gold: 0 });
 
         if (actionId === 'establish_town') {
