@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.11.0] - 2026-02-28
+
+### Added
+- Added a full research progression pipeline with per-technology research time, single active-research tracking, and turn-by-turn completion.
+- Added technology metadata for explicit unlock mapping across units, city buildings, and infrastructure actions.
+- Added a new `Research & Technology Tree` modal with tiered node layout, status chips (`Available`, `Researching`, `Researched`, `Locked`), prerequisite display, unlock summaries, and start-research actions.
+
+### Changed
+- Changed research flow so selecting a technology now starts a project (cost paid on start) instead of completing instantly.
+- Changed city build-action presentation to show availability/lock reasons (including tech prerequisites and resource/terrain constraints) directly in the build modal.
+- Expanded technology effects to include diplomacy/trade integration (`diplomacyAcceptanceBonus`, `tradeIncomeMultiplier`) and applied those effects in diplomacy acceptance and trade-income simulation.
+
+### Fixed
+- Fixed unit and infrastructure progression gaps where advanced options could be accessed before their intended technology unlock.
+- Fixed save-load compatibility for the new research state by normalizing/sanitizing active research data during deserialization.
+
 ## [1.10.0] - 2026-02-28
 
 ### Added
