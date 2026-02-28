@@ -657,8 +657,9 @@ class UIManager {
 
         const tile = gameMap.getTile(gameMap.selectedTile.x, gameMap.selectedTile.y);
         const isPlayerControlled = tile && (tile.owner === 'player' || gameMap.getTerritoryOwnerAt(tile.x, tile.y) === 'player');
-        if (!isPlayerControlled) {
-            this.showNotification('Build actions require a player-owned tile', 'error');
+        const hasColonizationUnit = Boolean(gameState.getColonizationUnitOnTile?.(tile));
+        if (!isPlayerControlled && !hasColonizationUnit) {
+            this.showNotification('Build here requires either a player-owned tile or a stationed land unit for colonization', 'error');
             return;
         }
         const cityData = gameState.ensureCityBuildingState(tile);

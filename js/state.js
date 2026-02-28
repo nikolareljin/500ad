@@ -3649,7 +3649,12 @@ class GameState {
         }
 
         const isPlayerControlled = cityTile.owner === 'player' || gameMap?.getTerritoryOwnerAt(cityTile.x, cityTile.y) === 'player';
-        if (!isPlayerControlled) reasons.push('Requires a player-owned tile');
+        if (actionId === 'establish_town') {
+            const colonizer = this.getColonizationUnitOnTile(cityTile);
+            if (!colonizer) reasons.push('Requires a player land unit stationed on this tile');
+        } else if (!isPlayerControlled) {
+            reasons.push('Requires a player-owned tile');
+        }
         if (actionId === 'establish_town' && cityTile.terrain === 'water') reasons.push('Cannot establish a town on water');
         if (actionId === 'establish_town' && cityTile.cityData) reasons.push('Tile already has a city');
         if (actionId === 'establish_town' && cityTile.terrain === 'city') reasons.push('Tile is already urbanized');
@@ -3700,6 +3705,19 @@ class GameState {
         return Object.entries(BUILD_ACTIONS).map(([actionId]) => this.getBuildActionOptionStatus(cityTile, actionId));
     }
 
+    getColonizationUnitOnTile(tile) {
+        if (!tile) return null;
+        const occupant = this.units.find((unit) =>
+            unit?.owner === 'player'
+            && !unit.isCarried
+            && unit.position?.x === tile.x
+            && unit.position?.y === tile.y
+        );
+        if (!occupant) return null;
+        if (occupant.type === 'naval' || occupant.category === 'transport') return null;
+        return occupant;
+    }
+
     applyCityBuildAction(cityTile, actionId) {
         const validation = this.getBuildActionValidation(cityTile, actionId, { includeResourceCheck: false });
         if (!validation.available) {
@@ -3708,8 +3726,13 @@ class GameState {
         const action = validation.action;
 
         if (actionId === 'establish_town' && !cityTile.cityData) {
+            const colonizer = this.getColonizationUnitOnTile(cityTile);
+            if (!colonizer) {
+                return { success: false, message: 'Requires a player land unit stationed on this tile' };
+            }
             cityTile.terrain = 'city';
             cityTile.building = 'town';
+            cityTile.owner = 'player';
             cityTile.cityData = {
                 id: `founded_${cityTile.x}_${cityTile.y}_${this.turn}`,
                 name: `New Settlement ${this.turn}`,
@@ -3718,6 +3741,8 @@ class GameState {
                 production: { food: 2, industry: 1, gold: 1 },
                 infrastructure: { roads: 1, agriculture: 1, industry: 1 }
             };
+            colonizer.currentMovement = 0;
+            colonizer.fortified = false;
             if (!this.player.territories.includes(cityTile.cityData.id)) {
                 this.player.territories.push(cityTile.cityData.id);
             }
