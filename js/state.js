@@ -652,9 +652,6 @@ class GameState {
         const discovery = this.processExplorationDiscoveries(newlyExplored, options);
         if (!options.suppressRender) {
             gameMap.requestRender();
-            if (typeof minimap !== 'undefined' && minimap && typeof minimap.render === 'function') {
-                minimap.render();
-            }
         }
         return discovery;
     }
@@ -2749,6 +2746,7 @@ class GameState {
     processUnitDestination(unit, options = {}) {
         if (!unit.destination) return;
         const suppressVisibilityRefresh = options?.suppressVisibilityRefresh === true;
+        const suppressRender = options?.suppressRender === true;
 
         let safety = 0;
         let movedAny = false;
@@ -2798,7 +2796,7 @@ class GameState {
         }
 
         if (movedAny && unit.owner === 'player' && !suppressVisibilityRefresh) {
-            this.refreshPlayerVisibility();
+            this.refreshPlayerVisibility({ suppressRender });
         }
     }
 

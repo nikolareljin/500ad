@@ -1141,8 +1141,8 @@ class GameMap {
         }
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
-        // Keep unexplored tiles readable while still clearly unknown.
-        const alpha = 0.20 + (1 - edgeFactor) * 0.16;
+        // Keep terrain readable but make unexplored areas clearly grayed-out.
+        const alpha = 0.36 + (1 - edgeFactor) * 0.22;
         if (this.fogAlphaCache?.[y]) {
             this.fogAlphaCache[y][x] = alpha;
         }
@@ -1382,6 +1382,7 @@ class GameMap {
 
                 const px = x * tileSize;
                 const py = y * tileSize;
+                const isFogged = this.isFoggedTile(x, y);
 
                 const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
 
@@ -1390,7 +1391,7 @@ class GameMap {
                 this.ctx.fillRect(px, py, tileSize, tileSize);
 
                 // Draw subtle grid only on explored tiles to avoid "square earth" look in fog.
-                if (!this.isFoggedTile(x, y)) {
+                if (!isFogged) {
                     this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
                     this.ctx.lineWidth = 1;
                     this.ctx.strokeRect(px, py, tileSize, tileSize);
@@ -1398,7 +1399,7 @@ class GameMap {
 
                 // Draw territory control overlay.
                 const controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y);
-                if (controlOwner && tile.terrain !== 'water') {
+                if (!isFogged && controlOwner && tile.terrain !== 'water') {
                     if (controlOwner === 'player') {
                         this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
                     } else if (controlOwner === 'enemy') {
@@ -1410,7 +1411,7 @@ class GameMap {
                 }
 
                 // Draw city/building icons
-                if (tile.building) {
+                if (!isFogged && tile.building) {
                     const cx = px + tileSize / 2;
                     const cy = py + tileSize / 2;
                     const size = tileSize * 0.22;
@@ -1431,7 +1432,7 @@ class GameMap {
                     }
                 }
 
-                if (tile.fort && tile.terrain !== 'water') {
+                if (!isFogged && tile.fort && tile.terrain !== 'water') {
                     const cx = px + tileSize / 2;
                     const cy = py + tileSize / 2;
                     const size = tileSize * 0.25;
@@ -1451,18 +1452,18 @@ class GameMap {
                     this.ctx.stroke();
                 }
 
-                if (tile.road && tile.terrain !== 'water') {
+                if (!isFogged && tile.road && tile.terrain !== 'water') {
                     this.drawRoad(tile, px, py, tileSize);
                 }
 
-                if (tile.resourceNode && tile.terrain !== 'water' && !this.isFoggedTile(x, y)) {
+                if (tile.resourceNode && tile.terrain !== 'water' && !isFogged) {
                     this.drawResourceNode(tile, px, py, tileSize);
                 }
 
                 // Gray fog of war for undiscovered areas with softened boundaries.
                 const tileVisible = this.isTileVisible(x, y);
                 if (!tileVisible) {
-                    if (this.isFoggedTile(x, y)) {
+                    if (isFogged) {
                         const fogAlpha = this.getFogAlpha(x, y);
                         if (fogAlpha > 0) {
                             this.ctx.fillStyle = `rgba(122, 126, 136, ${fogAlpha})`;
