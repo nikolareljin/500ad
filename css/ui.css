@@ -882,6 +882,137 @@
     letter-spacing: 0.02em;
 }
 
+.tech-active-banner {
+    margin: 0.5rem 0 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: var(--radius-sm);
+    background: rgba(15, 23, 42, 0.45);
+}
+
+.tech-tree-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+.tech-tree-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    max-height: 62vh;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.tech-tier-section h3 {
+    margin: 0 0 0.45rem;
+}
+
+.tech-tier-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.7rem;
+}
+
+.tech-node {
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.tech-node-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+}
+
+.tech-node-header h3 {
+    margin: 0;
+    font-size: 1.02rem;
+}
+
+.tech-node-description {
+    margin: 0.35rem 0 0.45rem;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.tech-node-meta {
+    margin: 0.2rem 0;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.tech-node-progress {
+    margin: 0.45rem 0 0;
+    color: var(--gold-light);
+    font-size: 0.86rem;
+}
+
+.tech-node-blocked {
+    margin: 0.45rem 0 0;
+    color: #f7c7c7;
+    font-size: 0.86rem;
+}
+
+.tech-start-btn {
+    width: 100%;
+    margin-top: 0.55rem;
+    min-height: auto;
+}
+
+.tech-status-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.tech-status-available {
+    border-color: rgba(16, 185, 129, 0.65);
+    background: rgba(16, 185, 129, 0.2);
+    color: #baf7df;
+}
+
+.tech-status-researching {
+    border-color: rgba(59, 130, 246, 0.7);
+    background: rgba(59, 130, 246, 0.2);
+    color: #bfddff;
+}
+
+.tech-status-researched {
+    border-color: rgba(212, 175, 55, 0.7);
+    background: rgba(212, 175, 55, 0.22);
+    color: #ffe9a2;
+}
+
+.tech-status-locked {
+    border-color: rgba(120, 130, 145, 0.7);
+    background: rgba(120, 130, 145, 0.2);
+    color: #d4d8df;
+}
+
+.tech-node-researching {
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.tech-node-researched {
+    box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35);
+}
+
+.tech-node-locked {
+    opacity: 0.86;
+}
+
 @keyframes modalAppear {
     from {
         transform: scale(0.9);
