@@ -1362,7 +1362,9 @@ class UIManager {
                     : 'Move mode OFF.',
                 'info'
             );
-            this.showUnitPanel(unit);
+            if (!armed) {
+                this.showUnitPanel(unit);
+            }
             gameMap?.requestRender();
         });
         container.appendChild(moveBtn);

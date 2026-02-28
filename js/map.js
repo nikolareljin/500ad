@@ -2053,6 +2053,7 @@ class GameMap {
             this.suppressNextClick = true;
             this.touchGesture.active = false;
             this.touchGesture.startTile = null;
+            this.lastTouchTap = { x: null, y: null, time: 0 };
             return;
         }
 
