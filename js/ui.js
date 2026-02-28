@@ -1337,10 +1337,15 @@ class UIManager {
         const moveBtn = document.createElement('button');
         moveBtn.className = 'action-btn';
         moveBtn.id = 'btn-move-unit';
-        moveBtn.textContent = 'Move';
+        const moveArmed = Boolean(gameMap?.awaitingMoveOrder);
+        moveBtn.textContent = moveArmed ? 'Move: Armed' : 'Move';
+        if (moveArmed) moveBtn.classList.add('active');
         moveBtn.onclick = withClickSound(() => {
+            if (gameMap) gameMap.awaitingMoveOrder = true;
             this.hideUnitPanelForMapTargeting();
-            this.showNotification('Select a destination tile to move this unit.', 'info');
+            moveBtn.textContent = 'Move: Armed';
+            moveBtn.classList.add('active');
+            this.showNotification('Move armed: tap a destination tile to move the selected unit.', 'info');
         });
         container.appendChild(moveBtn);
 
@@ -1777,6 +1782,7 @@ class UIManager {
         const panel = document.getElementById('unit-panel');
         panel?.classList.remove('active', 'enemy-panel');
         gameState.selectedUnit = null;
+        if (gameMap) gameMap.awaitingMoveOrder = false;
         gameMap?.requestRender();
     }
 

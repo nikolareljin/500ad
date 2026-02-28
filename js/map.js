@@ -520,6 +520,10 @@ class GameMap {
         this.isPanning = false;
         this.lastPanX = 0;
         this.lastPanY = 0;
+        this.panMoved = false;
+        this.panDistance = 0;
+        this.suppressClickUntil = 0;
+        this.awaitingMoveOrder = false;
 
         // Fog of war
         this.fogOfWar = [];
@@ -1137,8 +1141,8 @@ class GameMap {
         }
 
         const edgeFactor = totalNeighbors > 0 ? exploredNeighbors / totalNeighbors : 0;
-        // Edge tiles stay lighter, deep unknown gets denser.
-        const alpha = 0.72 + (1 - edgeFactor) * 0.25;
+        // Keep unexplored tiles readable while still clearly unknown.
+        const alpha = 0.20 + (1 - edgeFactor) * 0.16;
         if (this.fogAlphaCache?.[y]) {
             this.fogAlphaCache[y][x] = alpha;
         }
@@ -1461,12 +1465,12 @@ class GameMap {
                     if (this.isFoggedTile(x, y)) {
                         const fogAlpha = this.getFogAlpha(x, y);
                         if (fogAlpha > 0) {
-                            this.ctx.fillStyle = `rgba(120, 124, 132, ${fogAlpha})`;
+                            this.ctx.fillStyle = `rgba(122, 126, 136, ${fogAlpha})`;
                             this.ctx.fillRect(px, py, tileSize, tileSize);
                         }
                     } else {
                         // Explored-but-not-currently-visible shroud.
-                        this.ctx.fillStyle = 'rgba(72, 74, 82, 0.30)';
+                        this.ctx.fillStyle = 'rgba(88, 92, 102, 0.14)';
                         this.ctx.fillRect(px, py, tileSize, tileSize);
                     }
                 }
@@ -1602,6 +1606,8 @@ class GameMap {
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
+            this.panMoved = false;
+            this.panDistance = 0;
             this.canvas.style.cursor = 'grabbing';
         });
 
@@ -1612,6 +1618,10 @@ class GameMap {
 
                 this.camera.x -= dx;
                 this.camera.y -= dy;
+                this.panDistance += Math.sqrt((dx * dx) + (dy * dy));
+                if (this.panDistance >= 4) {
+                    this.panMoved = true;
+                }
 
                 // Clamp camera to map bounds
                 const maxX = (this.width * MAP_CONFIG.tileSize) - this.canvas.width;
@@ -1627,6 +1637,10 @@ class GameMap {
         });
 
         this.canvas.addEventListener('mouseup', () => {
+            if (this.isPanning && this.panMoved) {
+                // Prevent drag-release from being interpreted as a click-to-move.
+                this.suppressClickUntil = Date.now() + 180;
+            }
             this.isPanning = false;
             this.canvas.style.cursor = 'default';
         });
@@ -1885,6 +1899,7 @@ class GameMap {
      * Handle click event
      */
     handleClick(event) {
+        if (Date.now() < this.suppressClickUntil) return;
         const tile = this.screenToTile(event.clientX, event.clientY);
         if (tile) {
             this.selectTile(tile.x, tile.y);
@@ -1943,6 +1958,7 @@ class GameMap {
 
         if (unit && unit.owner === 'player') {
             gameState.selectUnit(unit.id);
+            this.awaitingMoveOrder = false;
             if (window.uiManager) {
                 window.uiManager.showUnitPanel(unit);
             }
@@ -1950,11 +1966,13 @@ class GameMap {
             if (window.uiManager) {
                 window.uiManager.showEnemyUnitPanel(unit);
             }
-        } else if (gameState.selectedUnit) {
+        } else if (gameState.selectedUnit && this.awaitingMoveOrder) {
             // Try to move selected unit
             const moved = gameState.moveUnit(gameState.selectedUnit.id, { x, y });
             if (!moved && window.uiManager) {
                 window.uiManager.showNotification('Unit cannot move to that tile', 'error');
+            } else if (moved) {
+                this.awaitingMoveOrder = false;
             }
         } else if (tile?.cityData && window.uiManager && !this.isFoggedTile(x, y)) {
             const p = tile.cityData.production;

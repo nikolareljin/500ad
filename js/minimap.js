@@ -9,6 +9,7 @@ class Minimap {
         this.canvas = null;
         this.ctx = null;
         this.viewportIndicator = null;
+        this.activeUnitIndicator = null;
         this.scaleX = 0;
         this.scaleY = 0;
         this.width = 0;
@@ -30,6 +31,7 @@ class Minimap {
         }
 
         this.ctx = this.canvas.getContext('2d');
+        this.ensureIndicators();
 
         this.resize();
 
@@ -38,6 +40,27 @@ class Minimap {
 
         // Initial render
         this.render();
+    }
+
+    ensureIndicators() {
+        if (!this.canvas) return;
+        const container = this.canvas.parentElement;
+        if (!container) return;
+
+        if (!this.viewportIndicator) {
+            this.viewportIndicator = document.createElement('div');
+            this.viewportIndicator.id = 'minimap-viewport';
+            this.viewportIndicator.className = 'minimap-viewport';
+            container.appendChild(this.viewportIndicator);
+        }
+
+        this.activeUnitIndicator = document.getElementById('minimap-active-unit');
+        if (!this.activeUnitIndicator) {
+            this.activeUnitIndicator = document.createElement('div');
+            this.activeUnitIndicator.id = 'minimap-active-unit';
+            this.activeUnitIndicator.className = 'minimap-active-unit';
+            container.appendChild(this.activeUnitIndicator);
+        }
     }
 
     /**
@@ -162,9 +185,7 @@ class Minimap {
 
                 // Get color from heightmap or terrain
                 let color = '#888';
-                if (!explored) {
-                    color = '#3d4048';
-                } else if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
+                if (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined' &&
                     MEDITERRANEAN_HEIGHTMAP[y] &&
                     MEDITERRANEAN_HEIGHTMAP[y][x] !== undefined) {
                     color = heightToColor(MEDITERRANEAN_HEIGHTMAP[y][x]);
@@ -180,6 +201,10 @@ class Minimap {
 
                 this.ctx.fillStyle = color;
                 this.ctx.fillRect(px, py, sizeX, sizeY);
+                if (!explored) {
+                    this.ctx.fillStyle = 'rgba(92, 96, 108, 0.34)';
+                    this.ctx.fillRect(px, py, sizeX, sizeY);
+                }
 
                 // Territory ownership / realm tint overlay for easier border reading.
                 const controlOwner = explored ? (tile.owner || this.gameMap.getTerritoryOwnerAt(x, y)) : null;
@@ -193,7 +218,7 @@ class Minimap {
                     this.ctx.fillRect(px, py, sizeX, sizeY);
                 }
                 if (explored && !currentlyVisible) {
-                    this.ctx.fillStyle = 'rgba(64, 66, 72, 0.32)';
+                    this.ctx.fillStyle = 'rgba(78, 82, 92, 0.16)';
                     this.ctx.fillRect(px, py, sizeX, sizeY);
                 }
             }
@@ -268,6 +293,28 @@ class Minimap {
         this.viewportIndicator.style.top = `${vpY}px`;
         this.viewportIndicator.style.width = `${vpWidth}px`;
         this.viewportIndicator.style.height = `${vpHeight}px`;
+        this.updateActiveUnitIndicator();
+    }
+
+    updateActiveUnitIndicator() {
+        if (!this.activeUnitIndicator) return;
+        const selectedUnit = (typeof gameState !== 'undefined' && gameState)
+            ? gameState.selectedUnit
+            : null;
+
+        if (!selectedUnit
+            || selectedUnit.owner !== 'player'
+            || !Number.isFinite(selectedUnit.position?.x)
+            || !Number.isFinite(selectedUnit.position?.y)) {
+            this.activeUnitIndicator.style.display = 'none';
+            return;
+        }
+
+        const centerX = ((selectedUnit.position.x * MAP_CONFIG.tileSize) + (MAP_CONFIG.tileSize / 2)) * this.scaleX;
+        const centerY = ((selectedUnit.position.y * MAP_CONFIG.tileSize) + (MAP_CONFIG.tileSize / 2)) * this.scaleY;
+        this.activeUnitIndicator.style.display = 'block';
+        this.activeUnitIndicator.style.left = `${centerX}px`;
+        this.activeUnitIndicator.style.top = `${centerY}px`;
     }
 }
 
