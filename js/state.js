@@ -3116,7 +3116,9 @@ class GameState {
         const researched = new Set(this.player?.techResearched || []);
         const hasPort = Boolean(cityTile.cityData.port || cityTile.cityData.navalYard);
         const technologyLock = this.getTechnologyIdUnlockingUnit(unitId);
-        if (technologyLock && !researched.has(technologyLock)) {
+        const unitsWithAlternativeInfraOrTech = new Set(['mangonel', 'spy', 'caravan', 'priests']);
+        const shouldApplyTechnologyLock = !unitsWithAlternativeInfraOrTech.has(unitId);
+        if (shouldApplyTechnologyLock && technologyLock && !researched.has(technologyLock)) {
             reasons.push(`Requires ${TECHNOLOGY_TREE[technologyLock]?.name || technologyLock}`);
         }
         const requireTech = (techId, label) => {
@@ -3399,6 +3401,19 @@ class GameState {
         if (actionId !== 'establish_town' && !cityTile.cityData) {
             reasons.push('Select a city tile for this action');
         }
+        const cityData = cityTile.cityData || null;
+        const infra = cityData?.infrastructure || {};
+        if (cityData) {
+            if (actionId === 'build_port' && (cityData.port || cityData.navalYard)) reasons.push('Port already built');
+            if (actionId === 'build_caravan_camp' && cityData.caravanCamp) reasons.push('Caravan Camp already built');
+            if (actionId === 'build_canal' && cityData.canal) reasons.push('Canal already built');
+            if (actionId === 'establish_monastery' && cityData.monastery) reasons.push('Monastery already established');
+            if (actionId === 'build_road' && (infra.roads || 0) >= 8) reasons.push('Road infrastructure already at maximum');
+            if (actionId === 'build_farm' && (infra.agriculture || 0) >= 8) reasons.push('Agriculture already at maximum');
+            if (actionId === 'build_fort' && (cityData.fortLevel || 0) >= 6) reasons.push('Fortification level already at maximum');
+            if (actionId === 'irrigate' && cityData.irrigated) reasons.push('Tile already irrigated');
+            if (actionId === 'plant_forest' && cityData.forestManaged) reasons.push('Forest management already established');
+        }
 
         if (actionId === 'build_port') {
             const nearWater = [
@@ -3464,6 +3479,34 @@ class GameState {
         if (!cityTile.cityData) {
             return { success: false, message: 'Select a city tile for that build action' };
         }
+        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
+        if (actionId === 'build_port' && (cityTile.cityData.port || cityTile.cityData.navalYard)) {
+            return { success: false, message: 'Port already built in this city' };
+        }
+        if (actionId === 'build_caravan_camp' && cityTile.cityData.caravanCamp) {
+            return { success: false, message: 'Caravan Camp already built in this city' };
+        }
+        if (actionId === 'build_canal' && cityTile.cityData.canal) {
+            return { success: false, message: 'Canal already built in this city' };
+        }
+        if (actionId === 'establish_monastery' && cityTile.cityData.monastery) {
+            return { success: false, message: 'Monastery already established in this city' };
+        }
+        if (actionId === 'build_road' && (infra.roads || 0) >= 8) {
+            return { success: false, message: 'Road infrastructure already at maximum' };
+        }
+        if (actionId === 'build_farm' && (infra.agriculture || 0) >= 8) {
+            return { success: false, message: 'Agriculture already at maximum' };
+        }
+        if (actionId === 'build_fort' && (cityTile.cityData.fortLevel || 0) >= 6) {
+            return { success: false, message: 'Fortification level already at maximum' };
+        }
+        if (actionId === 'irrigate' && cityTile.cityData.irrigated) {
+            return { success: false, message: 'Tile is already irrigated' };
+        }
+        if (actionId === 'plant_forest' && cityTile.cityData.forestManaged) {
+            return { success: false, message: 'Forest management already established' };
+        }
 
         if (actionId === 'build_port') {
             const nearWater = [
@@ -3486,7 +3529,6 @@ class GameState {
             cityTile.owner = 'player';
         }
 
-        const infra = cityTile.cityData.infrastructure || (cityTile.cityData.infrastructure = {});
         const production = cityTile.cityData.production || (cityTile.cityData.production = { food: 0, industry: 0, gold: 0 });
 
         if (actionId === 'establish_town') {
