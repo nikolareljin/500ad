@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.13.0] - 2026-03-01
+
+### Added
+- Added a guided tutorial and onboarding flow that walks players through movement, combat, city building, diplomacy, and ending turns.
+- Added contextual tutorial hints tied to the active onboarding step to support early-game pacing and discovery of core mechanics.
+- Added tutorial replay access from the in-game menu, with explicit skip support during onboarding.
+
+### Changed
+- Changed save data format to persist tutorial onboarding progress so campaigns can resume with correct tutorial state.
+
 ## [1.12.0] - 2026-02-28
 
 ### Added

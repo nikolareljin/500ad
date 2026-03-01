@@ -529,6 +529,7 @@ class GameState {
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.exploration = this.createDefaultExplorationState();
+        this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
     }
 
@@ -538,6 +539,41 @@ class GameState {
             discoveredRegions: {},
             discoveredLandmarks: {}
         };
+    }
+
+    createDefaultTutorialState() {
+        return {
+            active: true,
+            skipped: false,
+            completed: false,
+            stepIndex: 0,
+            progress: {
+                move: false,
+                combat: false,
+                build: false,
+                diplomacy: false,
+                endTurn: false
+            }
+        };
+    }
+
+    ensureTutorialState() {
+        if (!this.tutorialState || typeof this.tutorialState !== 'object') {
+            this.tutorialState = this.createDefaultTutorialState();
+        }
+        this.tutorialState.active = Boolean(this.tutorialState.active);
+        this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
+        this.tutorialState.completed = Boolean(this.tutorialState.completed);
+        const rawStep = Number.isFinite(this.tutorialState.stepIndex) ? Math.floor(this.tutorialState.stepIndex) : 0;
+        this.tutorialState.stepIndex = Math.max(0, rawStep);
+        if (!this.tutorialState.progress || typeof this.tutorialState.progress !== 'object') {
+            this.tutorialState.progress = {};
+        }
+        const keys = ['move', 'combat', 'build', 'diplomacy', 'endTurn'];
+        keys.forEach((key) => {
+            this.tutorialState.progress[key] = Boolean(this.tutorialState.progress[key]);
+        });
+        return this.tutorialState;
     }
 
     ensureExplorationState() {
@@ -717,6 +753,7 @@ class GameState {
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.exploration = this.createDefaultExplorationState();
+        this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
@@ -4344,6 +4381,7 @@ class GameState {
             dynamicNarrativeState: this.dynamicNarrativeState,
             diplomacyState: this.diplomacyState,
             exploration: this.exploration,
+            tutorialState: this.ensureTutorialState(),
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -4567,8 +4605,19 @@ class GameState {
         this.exploration = (data.exploration && typeof data.exploration === 'object')
             ? data.exploration
             : this.createDefaultExplorationState();
+        const hasTutorialState = Boolean(data.tutorialState && typeof data.tutorialState === 'object');
+        this.tutorialState = hasTutorialState
+            ? data.tutorialState
+            : this.createDefaultTutorialState();
         this.initializeDiplomacyState();
         this.ensureExplorationState();
+        this.ensureTutorialState();
+        if (!hasTutorialState && this.turn > 3) {
+            // Avoid forcing onboarding on legacy saves that already progressed beyond opening turns.
+            this.tutorialState.active = false;
+            this.tutorialState.completed = true;
+            this.tutorialState.skipped = false;
+        }
         this.ensureStrategicResourceStockpile();
         if (!Array.isArray(this.player.techResearched)) {
             this.player.techResearched = [];
