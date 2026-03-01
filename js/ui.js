@@ -12,6 +12,8 @@ class UIManager {
         this.selectedFaction = 'byzantine';
         this.selectedScenario = SCENARIOS.empire;
         this.selectedLeaderCard = null;
+        this.tutorialPanel = null;
+        this.tutorialLastHintByStep = {};
     }
 
     /**
@@ -173,6 +175,7 @@ class UIManager {
         if (this.screens[screenName]) {
             this.screens[screenName].classList.add('active');
             this.currentScreen = screenName;
+            this.updateTutorialPanelVisibility();
         }
     }
 
@@ -507,6 +510,7 @@ class UIManager {
                 `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`,
                 'info'
             );
+            this.startTutorial({ replay: false });
         } else {
             this.showScreen('leaderSelection');
         }
@@ -531,6 +535,7 @@ class UIManager {
             this.updateHUD();
             audioManager.playMusic('500ad_ambient');
             this.showNotification('Game loaded', 'success');
+            this.updateTutorialPanelVisibility();
         } else {
             this.showScreen('mainMenu');
             this.showNotification(result.message || 'No save game found', 'error');
@@ -578,6 +583,7 @@ class UIManager {
                     'info'
                 );
             }
+            this.onTutorialAction('endTurn');
         } finally {
             this.showTurnProcessing(false);
         }
@@ -735,6 +741,7 @@ class UIManager {
                     ? `${cityName}: ${result.buildingName} upgrade to L${result.targetLevel} started (${result.turns} turns)`
                     : `${cityName}: ${result.actionName}`;
                 this.showNotification(message, 'success');
+                this.onTutorialAction('build');
             }
         );
     }
@@ -924,6 +931,9 @@ class UIManager {
                     const result = gameState.applyDiplomacyAction(actionId, factionId);
                     this.showNotification(result.message, result.success ? 'success' : 'error');
                     this.updateHUD();
+                    if (result.success) {
+                        this.onTutorialAction('diplomacy');
+                    }
                     renderDiplomacyModal();
                 });
             });
@@ -1123,6 +1133,7 @@ class UIManager {
         this.showCombatResult(result);
         this.updateHUD();
         gameMap.requestRender();
+        this.onTutorialAction('combat');
     }
 
     fortifySelectedUnit() {
@@ -1448,6 +1459,227 @@ class UIManager {
         }
     }
 
+    getTutorialSteps() {
+        return [
+            {
+                id: 'intro',
+                title: 'Welcome to 500 A.D.',
+                description: 'This short onboarding covers movement, combat, city building, diplomacy, and turn flow.',
+                requiredAction: null,
+                hint: 'You can skip now and replay anytime from Game Menu.'
+            },
+            {
+                id: 'move',
+                title: 'Step 1: Move a Unit',
+                description: 'Select one of your units, arm Move Mode, then click a reachable tile.',
+                requiredAction: 'move',
+                hint: 'Tip: double-click your selected unit to toggle Move Mode quickly.'
+            },
+            {
+                id: 'combat',
+                title: 'Step 2: Engage in Combat',
+                description: 'Select a target enemy unit and use Attack when in range.',
+                requiredAction: 'combat',
+                hint: 'Select an enemy tile first, then use Attack from the unit panel.'
+            },
+            {
+                id: 'build',
+                title: 'Step 3: Build in a City',
+                description: 'Select a player city tile and open Build to start infrastructure or city upgrades.',
+                requiredAction: 'build',
+                hint: 'Use Build on a player-owned city tile from the action bar.'
+            },
+            {
+                id: 'diplomacy',
+                title: 'Step 4: Diplomacy',
+                description: 'Open Diplomacy and apply one action (truce, alliance, trade, or war).',
+                requiredAction: 'diplomacy',
+                hint: 'Diplomacy outcomes change trust, reputation, and trade options.'
+            },
+            {
+                id: 'end_turn',
+                title: 'Step 5: End Turn',
+                description: 'End your turn to process economy, AI actions, and quests/events.',
+                requiredAction: 'endTurn',
+                hint: 'Check your resource and event notifications after each turn.'
+            }
+        ];
+    }
+
+    getTutorialState() {
+        if (!gameState?.ensureTutorialState) return null;
+        return gameState.ensureTutorialState();
+    }
+
+    isTutorialVisible() {
+        const state = this.getTutorialState();
+        return Boolean(
+            state
+            && state.active
+            && !state.skipped
+            && !state.completed
+            && this.currentScreen === 'game'
+        );
+    }
+
+    startTutorial(options = {}) {
+        const state = this.getTutorialState();
+        if (!state) return;
+        const replay = Boolean(options.replay);
+        if (replay) {
+            state.progress = {
+                move: false,
+                combat: false,
+                build: false,
+                diplomacy: false,
+                endTurn: false
+            };
+            state.stepIndex = 0;
+            state.completed = false;
+            state.skipped = false;
+            state.active = true;
+            this.showNotification('Tutorial restarted.', 'info');
+        } else if (state.completed || state.skipped) {
+            return;
+        } else {
+            state.active = true;
+        }
+        this.tutorialLastHintByStep = {};
+        this.updateTutorialPanelVisibility();
+        this.showTutorialHint();
+    }
+
+    replayTutorial() {
+        this.closeModal();
+        this.startTutorial({ replay: true });
+    }
+
+    skipTutorial() {
+        const state = this.getTutorialState();
+        if (!state) return;
+        state.active = false;
+        state.skipped = true;
+        this.updateTutorialPanelVisibility();
+        this.showNotification('Tutorial skipped. Replay it anytime from Game Menu.', 'info');
+    }
+
+    completeTutorial() {
+        const state = this.getTutorialState();
+        if (!state) return;
+        state.active = false;
+        state.completed = true;
+        state.skipped = false;
+        this.updateTutorialPanelVisibility();
+        this.showNotification('Tutorial complete. You can replay it from Game Menu.', 'success');
+    }
+
+    advanceTutorialStep(delta) {
+        const state = this.getTutorialState();
+        if (!state) return;
+        const steps = this.getTutorialSteps();
+        const current = steps[state.stepIndex] || steps[0];
+        if (delta > 0 && current?.requiredAction && !state.progress[current.requiredAction]) {
+            this.showNotification('Complete the current tutorial action before continuing.', 'info');
+            this.showTutorialHint();
+            return;
+        }
+        state.stepIndex = Math.max(0, Math.min(steps.length - 1, state.stepIndex + delta));
+        this.renderTutorialPanel();
+        this.showTutorialHint();
+    }
+
+    onTutorialAction(action) {
+        const state = this.getTutorialState();
+        if (!state || !state.active || state.skipped || state.completed) return;
+        const normalized = action === 'end_turn' ? 'endTurn' : action;
+        if (!Object.prototype.hasOwnProperty.call(state.progress, normalized)) return;
+        state.progress[normalized] = true;
+        const steps = this.getTutorialSteps();
+        const current = steps[state.stepIndex] || null;
+        if (current?.requiredAction === normalized) {
+            if (state.stepIndex >= steps.length - 1) {
+                this.completeTutorial();
+                return;
+            }
+            state.stepIndex += 1;
+            this.renderTutorialPanel();
+            this.showTutorialHint();
+        } else {
+            this.renderTutorialPanel();
+        }
+    }
+
+    ensureTutorialPanel() {
+        if (this.tutorialPanel && document.body.contains(this.tutorialPanel)) {
+            return this.tutorialPanel;
+        }
+        const panel = document.createElement('section');
+        panel.id = 'tutorial-panel';
+        panel.className = 'tutorial-panel';
+        document.body.appendChild(panel);
+        this.tutorialPanel = panel;
+        return panel;
+    }
+
+    updateTutorialPanelVisibility() {
+        const panel = this.ensureTutorialPanel();
+        if (!this.isTutorialVisible()) {
+            panel.classList.remove('active');
+            return;
+        }
+        panel.classList.add('active');
+        this.renderTutorialPanel();
+    }
+
+    renderTutorialPanel() {
+        if (!this.isTutorialVisible()) return;
+        const panel = this.ensureTutorialPanel();
+        const state = this.getTutorialState();
+        if (!state) return;
+        const steps = this.getTutorialSteps();
+        const step = steps[state.stepIndex] || steps[0];
+        const required = step.requiredAction;
+        const isDone = !required || Boolean(state.progress[required]);
+        const progressText = `${state.stepIndex + 1}/${steps.length}`;
+        panel.innerHTML = `
+            <div class="tutorial-header">
+                <strong>Tutorial</strong>
+                <span class="tutorial-progress">${progressText}</span>
+            </div>
+            <h3>${this.escapeHtml(step.title)}</h3>
+            <p>${this.escapeHtml(step.description)}</p>
+            ${required ? `<p class="tutorial-status ${isDone ? 'done' : 'pending'}">${isDone ? 'Completed' : 'Waiting for action'}</p>` : ''}
+            <div class="tutorial-actions">
+                <button class="menu-btn" data-tutorial="prev" ${state.stepIndex === 0 ? 'disabled' : ''}>Back</button>
+                <button class="menu-btn" data-tutorial="next">${state.stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
+                <button class="menu-btn" data-tutorial="skip">Skip</button>
+            </div>
+        `;
+        panel.querySelector('[data-tutorial="prev"]')?.addEventListener('click', () => this.advanceTutorialStep(-1));
+        panel.querySelector('[data-tutorial="next"]')?.addEventListener('click', () => {
+            if (state.stepIndex >= steps.length - 1) {
+                this.completeTutorial();
+                return;
+            }
+            this.advanceTutorialStep(1);
+        });
+        panel.querySelector('[data-tutorial="skip"]')?.addEventListener('click', () => this.skipTutorial());
+    }
+
+    showTutorialHint() {
+        if (!this.isTutorialVisible()) return;
+        const state = this.getTutorialState();
+        if (!state) return;
+        const steps = this.getTutorialSteps();
+        const step = steps[state.stepIndex] || null;
+        if (!step?.hint) return;
+        const now = Date.now();
+        const lastShown = Number(this.tutorialLastHintByStep[state.stepIndex] || 0);
+        if ((now - lastShown) < 4000) return;
+        this.tutorialLastHintByStep[state.stepIndex] = now;
+        this.showNotification(step.hint, 'info');
+    }
+
     /**
      * Show notification
      */
@@ -1710,6 +1942,7 @@ class UIManager {
             <h2>Game Menu</h2>
             <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem;">
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
+                <button class="menu-btn" onclick="uiManager.replayTutorial()">Tutorial & Onboarding</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
@@ -1746,6 +1979,7 @@ class UIManager {
             this.initializeGameView();
             this.updateHUD();
             this.showNotification('Game loaded', 'success');
+            this.updateTutorialPanelVisibility();
         } else {
             this.showScreen('mainMenu');
             this.showNotification(result.message, 'error');
@@ -1783,6 +2017,7 @@ class UIManager {
                     gameMap?.requestRender();
                 }
             }
+            this.updateTutorialPanelVisibility();
         });
     }
 

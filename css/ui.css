@@ -1175,3 +1175,79 @@
         transform: rotate(360deg);
     }
 }
+
+/* === Tutorial Panel === */
+.tutorial-panel {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 1200;
+    width: min(360px, calc(100vw - 24px));
+    background: rgba(12, 17, 33, 0.96);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+    display: none;
+}
+
+.tutorial-panel.active {
+    display: block;
+}
+
+.tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    color: var(--imperial-gold);
+}
+
+.tutorial-progress {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+
+.tutorial-panel h3 {
+    margin: 0 0 6px 0;
+    font-size: 1.05rem;
+    color: var(--parchment);
+}
+
+.tutorial-panel p {
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    color: rgba(243, 239, 224, 0.9);
+}
+
+.tutorial-status {
+    font-weight: 600;
+}
+
+.tutorial-status.done {
+    color: #75cf88;
+}
+
+.tutorial-status.pending {
+    color: #f0c36b;
+}
+
+.tutorial-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.tutorial-actions .menu-btn {
+    flex: 1;
+    min-height: 38px;
+}
+
+@media (max-width: 768px) {
+    .tutorial-panel {
+        left: 12px;
+        right: 12px;
+        bottom: 86px;
+        width: auto;
+    }
+}
