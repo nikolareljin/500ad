@@ -421,22 +421,29 @@ function executeCombat(attackerId, defenderId, terrain = 'plains') {
  * Check if unit should level up
  */
 function checkLevelUp(unit) {
-    const expNeeded = unit.level * 100;
+    if (!unit) return false;
+    let leveled = false;
 
-    if (unit.experience >= expNeeded) {
+    while (unit.experience >= (unit.level * 100)) {
+        const expNeeded = unit.level * 100;
         unit.level++;
         unit.experience -= expNeeded;
 
-        // Increase stats
-        unit.stats.health += 10;
-        unit.stats.attack += 2;
-        unit.stats.defense += 2;
+        const growth = getUnitGrowthProfile(unit.typeId);
+        unit.stats.health += growth.health;
+        unit.stats.attack += growth.attack;
+        unit.stats.defense += growth.defense;
         unit.currentHealth = unit.stats.health;
 
-        return true;
+        // Veteran units can promote into elite branches once they reach level 3.
+        const promoted = promoteUnitByExperience(unit);
+        if (promoted) {
+            unit.currentHealth = unit.stats.health;
+        }
+        leveled = true;
     }
 
-    return false;
+    return leveled;
 }
 
 /**

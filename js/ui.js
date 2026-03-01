@@ -583,6 +583,11 @@ class UIManager {
                     'info'
                 );
             }
+            if (Array.isArray(result.completedTraining) && result.completedTraining.length > 0) {
+                result.completedTraining.forEach((entry) => {
+                    this.showNotification(`Training completed: ${entry.unit?.name || 'Unit'} at ${entry.cityName}`, 'success');
+                });
+            }
             this.onTutorialAction('endTurn');
         } finally {
             this.showTurnProcessing(false);
@@ -615,8 +620,12 @@ class UIManager {
             .map((entry) => ({
                 id: entry.unitId,
                 title: `${entry.unit?.name || entry.unitId}`,
-                subtitle: entry.finalCost ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m` : '',
-                detail: entry.available ? 'Available' : entry.reasons.join(' • '),
+                subtitle: entry.finalCost
+                    ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m • ${entry.trainingTurns || 1} turn(s) • upkeep ${entry.upkeep || 0}`
+                    : '',
+                detail: entry.available
+                    ? (entry.upgradePath?.length ? `Upgrades to: ${entry.upgradePath.map((id) => getUnitById(id)?.name || id).join(', ')}` : 'Available')
+                    : entry.reasons.join(' • '),
                 disabled: !entry.available
             }));
 
@@ -639,14 +648,16 @@ class UIManager {
                     );
                     return;
                 }
-                const unit = gameState.recruitUnit(unitId, spawnTile, { cityTile: tile });
-                if (!unit) {
+                const queued = gameState.queueUnitRecruitment(unitId, tile);
+                if (!queued.success) {
                     this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
                     return;
                 }
                 this.updateHUD();
                 gameMap.requestRender();
-                this.showNotification(`${unit.name} recruited at ${tile.cityData.name}`, 'success');
+                const unit = getUnitById(unitId);
+                const turns = queued.project?.totalTurns || 1;
+                this.showNotification(`${unit?.name || unitId} training started at ${tile.cityData.name} (${turns} turn${turns === 1 ? '' : 's'})`, 'success');
             }
         );
     }

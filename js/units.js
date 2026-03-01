@@ -695,6 +695,27 @@ const UNIT_TYPES = {
     }
 };
 
+const UNIT_UPGRADE_PATHS = {
+    skutatoi: ['varangian', 'mountain_infantry'],
+    psilos: ['archers', 'explorer'],
+    archers: ['horsearchers', 'mangonel'],
+    kavallarioi: ['cataphract', 'tagmata'],
+    horsearchers: ['tagmata'],
+    cataphract: ['klibanophoroi'],
+    engineers: ['mangonel'],
+    transport: ['merchant_ship'],
+    dromon: ['dromon_greekfire'],
+    priests: ['healer']
+};
+
+const UNIT_LEVEL_GROWTH = {
+    infantry: { health: 8, attack: 2, defense: 3 },
+    cavalry: { health: 10, attack: 3, defense: 2 },
+    special: { health: 6, attack: 2, defense: 2 },
+    naval: { health: 12, attack: 3, defense: 3 },
+    default: { health: 8, attack: 2, defense: 2 }
+};
+
 /**
  * Get all units available for a specific era
  */
@@ -723,6 +744,88 @@ function getUnitById(id) {
         }
     }
     return null;
+}
+
+function getUnitGrowthProfile(unitTypeId) {
+    const unit = getUnitById(unitTypeId);
+    if (!unit) return UNIT_LEVEL_GROWTH.default;
+    return UNIT_LEVEL_GROWTH[unit.type] || UNIT_LEVEL_GROWTH.default;
+}
+
+function getUnitUpgradePath(unitTypeId) {
+    return [...(UNIT_UPGRADE_PATHS[unitTypeId] || [])];
+}
+
+function getUnitUpgradeOptions(unit, options = {}) {
+    if (!unit) return [];
+    const path = getUnitUpgradePath(unit.typeId);
+    if (path.length === 0) return [];
+    const availableUnits = options.availableUnits instanceof Set ? options.availableUnits : null;
+    return path.filter((targetId) => !availableUnits || availableUnits.has(targetId));
+}
+
+function getUnitTrainingTurns(unitTypeId, context = {}) {
+    const unit = getUnitById(unitTypeId);
+    if (!unit) return 0;
+    const baseByType = {
+        infantry: 1,
+        cavalry: 2,
+        special: 2,
+        naval: 3
+    };
+    const baseByCategory = {
+        elite: 3,
+        superheavy: 3,
+        siege: 3,
+        support: 2,
+        scout: 1,
+        economic: 1,
+        transport: 2,
+        warship: 3
+    };
+    const base = Number.isFinite(unit.trainingTurns)
+        ? unit.trainingTurns
+        : (baseByCategory[unit.category] || baseByType[unit.type] || 2);
+    const barracksLevel = Math.max(0, Number(context.barracksLevel || 0));
+    const recruitmentSpeed = Math.max(1, Number(context.recruitmentSpeed || 1));
+    const barracksReduction = Math.min(0.35, barracksLevel * 0.12);
+    const leaderReduction = Math.min(0.4, (recruitmentSpeed - 1) * 0.35);
+    return Math.max(1, Math.round(base * (1 - barracksReduction - leaderReduction)));
+}
+
+function applyUnitPromotion(unit, targetTypeId) {
+    const target = getUnitById(targetTypeId);
+    if (!unit || !target) return false;
+
+    const maxHealthBefore = Math.max(1, Number(unit.stats?.health || 1));
+    const healthRatio = Math.max(0, Math.min(1, Number(unit.currentHealth || 0) / maxHealthBefore));
+    const levelBonus = 1 + Math.max(0, Number(unit.level || 1) - 1) * 0.04;
+
+    unit.promotedFrom = unit.typeId;
+    unit.typeId = target.id;
+    unit.name = target.name;
+    unit.type = target.type;
+    unit.category = target.category;
+    unit.symbol = target.symbol || unit.symbol || '⚔️';
+    unit.bonuses = { ...target.bonuses };
+    unit.stats = {
+        health: Math.max(1, Math.floor((target.stats?.health || 1) * levelBonus)),
+        attack: Math.max(1, Math.floor((target.stats?.attack || 1) * levelBonus)),
+        defense: Math.max(1, Math.floor((target.stats?.defense || 1) * levelBonus)),
+        movement: Math.max(1, Math.floor(target.stats?.movement || 1)),
+        range: Math.max(1, Math.floor(target.stats?.range || 1))
+    };
+    unit.currentHealth = Math.max(1, Math.floor(unit.stats.health * healthRatio));
+    unit.currentMovement = unit.stats.movement;
+    unit.upgradeHistory = [...(Array.isArray(unit.upgradeHistory) ? unit.upgradeHistory : []), target.id];
+    return true;
+}
+
+function promoteUnitByExperience(unit, options = {}) {
+    if (!unit || Number(unit.level || 1) < 3) return false;
+    const optionsForUnit = getUnitUpgradeOptions(unit, options);
+    if (optionsForUnit.length === 0) return false;
+    return applyUnitPromotion(unit, optionsForUnit[0]);
 }
 
 /**
@@ -782,6 +885,8 @@ function createUnit(unitTypeId, position, owner) {
         level: 1,
         morale: 100,
         symbol: unitType.symbol || '⚔️',
-        bonuses: { ...unitType.bonuses }
+        bonuses: { ...unitType.bonuses },
+        promotedFrom: null,
+        upgradeHistory: []
     };
 }

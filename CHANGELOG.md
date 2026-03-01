@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.14.0] - 2026-03-01
+
+### Added
+- Added unit upgrade-path definitions for core military lines (for example infantry, cavalry, siege, and naval evolutions) so veteran units can promote into stronger variants.
+- Added per-city recruitment training queues with turn-based completion, including training-time calculations influenced by barracks level and leader recruitment speed.
+- Added recruitment modal details for training duration, upkeep cost, and future upgrade branches to make army planning explicit before spending resources.
+
+### Changed
+- Changed level-up progression to use role-specific growth profiles (infantry/cavalry/special/naval) and promotion hooks once units reach veteran thresholds.
+- Changed AI faction garrison spawning to use era-aware and faction-biased unit rosters, then apply turn-based veteran scaling so late campaigns field more advanced armies.
+
 ## [1.13.0] - 2026-03-01
 
 ### Added

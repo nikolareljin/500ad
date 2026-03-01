@@ -71,7 +71,8 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **City Building Tree**: Develop each city through upgradeable `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`, each with tech requirements and build times.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
-- **Unit Progression**: Experience and leveling system
+- **Unit Progression**: Experience and leveling system with role-based stat growth and veteran promotions along upgrade paths
+- **Training Queue System**: Recruitment now uses per-city training time and queue processing each turn
 - **Combat System**: Tactical layer with formations (`Line`, `Wedge`, `Shield Wall`), battle-type/terrain modifiers, effective morale-driven outcomes, and concise combat logs
 - **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
 - **Diplomacy & Trade System**: Negotiate truces, alliances, trade agreements, and declarations of war with per-faction trust/hostility and reputation impacts
@@ -402,7 +403,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.13.0** - Adds an integrated tutorial and onboarding flow with guided action steps (movement, combat, city building, diplomacy, turn progression), contextual hints, skip support, and replay from the in-game menu.
+**Version 1.14.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
 
 ## License
 
