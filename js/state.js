@@ -415,6 +415,7 @@ const RECRUITMENT_UNIT_CATALOG = [
 ];
 
 const STRATEGIC_RESOURCE_KEYS = ['food', 'wood', 'stone', 'iron', 'rare'];
+const TUTORIAL_MAX_STEP_INDEX = 5;
 const CITY_BUILDING_BALANCE = {
     workshopRecruitGoldDiscountPerLevel: 0.06,
     workshopRecruitGoldDiscountCap: 0.24,
@@ -565,7 +566,7 @@ class GameState {
         this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
         const rawStep = Number.isFinite(this.tutorialState.stepIndex) ? Math.floor(this.tutorialState.stepIndex) : 0;
-        this.tutorialState.stepIndex = Math.max(0, rawStep);
+        this.tutorialState.stepIndex = Math.min(TUTORIAL_MAX_STEP_INDEX, Math.max(0, rawStep));
         if (!this.tutorialState.progress || typeof this.tutorialState.progress !== 'object') {
             this.tutorialState.progress = {};
         }
@@ -941,7 +942,7 @@ class GameState {
                     unitTypeId: project.unitTypeId,
                     turnsRemaining: Math.max(0, Math.floor(Number(project.turnsRemaining || 0))),
                     totalTurns: Math.max(1, Math.floor(Number(project.totalTurns || project.turnsRemaining || 1))),
-                    queuedTurn: Math.max(0, Math.floor(Number(project.queuedTurn || this.turn || 0)))
+                    queuedTurn: Math.max(0, Math.floor(Number(project.queuedTurn ?? this.turn ?? 0)))
                 }));
         }
         return cityData;
@@ -3528,8 +3529,14 @@ class GameState {
                 owner: 'player',
                 faction: this.player?.faction || this.selectedFaction || 'byzantine'
             });
+            if (!unit) {
+                active.turnsRemaining = 0;
+                if (!active.blocked) {
+                    active.blocked = 'Recruitment failed';
+                }
+                return;
+            }
             queue.shift();
-            if (!unit) return;
             completed.push({
                 cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
                 unit
