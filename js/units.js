@@ -818,6 +818,9 @@ function applyUnitPromotion(unit, targetTypeId) {
     unit.currentHealth = Math.max(1, Math.floor(unit.stats.health * healthRatio));
     unit.currentMovement = unit.stats.movement;
     unit.upgradeHistory = [...(Array.isArray(unit.upgradeHistory) ? unit.upgradeHistory : []), target.id];
+    if (typeof gameState?.applyFactionUnitNaming === 'function') {
+        gameState.applyFactionUnitNaming(unit, unit.faction);
+    }
     return true;
 }
 

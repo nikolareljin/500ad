@@ -1633,11 +1633,13 @@ class UIManager {
     }
 
     updateTutorialPanelVisibility() {
-        const panel = this.ensureTutorialPanel();
         if (!this.isTutorialVisible()) {
-            panel.classList.remove('active');
+            if (this.tutorialPanel && document.body.contains(this.tutorialPanel)) {
+                this.tutorialPanel.classList.remove('active');
+            }
             return;
         }
+        const panel = this.ensureTutorialPanel();
         panel.classList.add('active');
         this.renderTutorialPanel();
     }

@@ -566,7 +566,7 @@ class GameState {
         this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
         const rawStep = Number.isFinite(this.tutorialState.stepIndex) ? Math.floor(this.tutorialState.stepIndex) : 0;
-        this.tutorialState.stepIndex = Math.min(TUTORIAL_MAX_STEP_INDEX, Math.max(0, rawStep));
+        this.tutorialState.stepIndex = Math.min(this.getTutorialMaxStepIndex(), Math.max(0, rawStep));
         if (!this.tutorialState.progress || typeof this.tutorialState.progress !== 'object') {
             this.tutorialState.progress = {};
         }
@@ -575,6 +575,19 @@ class GameState {
             this.tutorialState.progress[key] = Boolean(this.tutorialState.progress[key]);
         });
         return this.tutorialState;
+    }
+
+    getTutorialMaxStepIndex() {
+        // UI tutorial definitions are the authoritative source when available.
+        const steps = (typeof window !== 'undefined'
+            && window.uiManager
+            && typeof window.uiManager.getTutorialSteps === 'function')
+            ? window.uiManager.getTutorialSteps()
+            : null;
+        if (Array.isArray(steps) && steps.length > 0) {
+            return steps.length - 1;
+        }
+        return TUTORIAL_MAX_STEP_INDEX;
     }
 
     ensureExplorationState() {
