@@ -599,8 +599,7 @@
     backdrop-filter: blur(5px);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
     z-index: 145;
-    overflow-y: auto;
-    overflow-x: visible;
+    overflow: visible;
 }
 
 .command-overview.collapsed .overview-grid,
@@ -672,7 +671,9 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 0.5rem;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: visible;
+    max-height: min(48vh, 420px);
     padding-right: 0.2rem;
 }
 

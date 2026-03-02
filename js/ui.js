@@ -1272,6 +1272,19 @@ class UIManager {
 
     toggleOverviewHelp() {
         if (!this.commandOverview) return;
+        if (this.overviewCollapsed) {
+            const helpBtn = document.getElementById('btn-overview-help');
+            if (helpBtn) {
+                // Keep ARIA state truthful while content is intentionally hidden in collapsed mode.
+                helpBtn.setAttribute('aria-pressed', 'false');
+                helpBtn.setAttribute('aria-expanded', 'false');
+                helpBtn.setAttribute('aria-label', 'Show contextual help');
+                helpBtn.title = 'Show contextual help';
+                helpBtn.setAttribute('aria-controls', 'overview-help-text');
+            }
+            this.commandOverview.classList.remove('help-visible');
+            return;
+        }
         const helpVisible = this.commandOverview.classList.toggle('help-visible');
         const helpBtn = document.getElementById('btn-overview-help');
         if (helpBtn) {
