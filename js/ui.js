@@ -15,6 +15,7 @@ class UIManager {
         this.tutorialPanel = null;
         this.tutorialLastHintByStep = {};
         this.overviewCollapsed = false;
+        this.overviewCityCache = { key: '', metrics: null };
     }
 
     /**
@@ -1248,13 +1249,28 @@ class UIManager {
         this.commandOverview?.classList.toggle('collapsed', this.overviewCollapsed);
         const toggleBtn = document.getElementById('btn-overview-toggle');
         if (toggleBtn) {
+            const isExpanded = !this.overviewCollapsed;
+            const label = this.overviewCollapsed ? 'Expand overview panel' : 'Collapse overview panel';
             toggleBtn.textContent = this.overviewCollapsed ? '+' : '−';
-            toggleBtn.title = this.overviewCollapsed ? 'Expand overview panel' : 'Collapse overview panel';
+            toggleBtn.title = label;
+            toggleBtn.setAttribute('aria-label', label);
+            toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            if (this.commandOverview?.id) toggleBtn.setAttribute('aria-controls', this.commandOverview.id);
         }
     }
 
     toggleOverviewHelp() {
-        this.commandOverview?.classList.toggle('help-visible');
+        if (!this.commandOverview) return;
+        const helpVisible = this.commandOverview.classList.toggle('help-visible');
+        const helpBtn = document.getElementById('btn-overview-help');
+        if (helpBtn) {
+            const label = helpVisible ? 'Hide contextual help' : 'Show contextual help';
+            helpBtn.setAttribute('aria-pressed', String(helpVisible));
+            helpBtn.setAttribute('aria-expanded', String(helpVisible));
+            helpBtn.setAttribute('aria-label', label);
+            helpBtn.title = label;
+            helpBtn.setAttribute('aria-controls', 'overview-help-text');
+        }
     }
 
     renderOverviewLines(lines) {
@@ -1301,7 +1317,12 @@ class UIManager {
             { label: 'Known Factions', value: String(overview.length) },
             { label: 'At War', value: String(hostile) },
             { label: 'Trade Routes', value: String(activeRoutes) },
-            { label: 'Top Threat', value: strongest ? this.formatFactionName(strongest.factionId) : 'None' }
+            {
+                label: 'Top Threat',
+                value: strongest
+                    ? (strongest.displayName || this.formatFactionName(strongest.factionId) || 'Unknown')
+                    : 'None'
+            }
         ];
         el.innerHTML = this.renderOverviewLines(lines);
     }
@@ -1309,15 +1330,23 @@ class UIManager {
     updateCityOverviewCard() {
         const el = this.overviewCards?.cities;
         if (!el) return;
-        const cityTiles = gameMap?.getCityTiles?.('player') || [];
-        const constructions = cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length;
-        const queues = cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0);
-        const autoBuild = cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length;
+        const cacheKey = `${Number(gameState?.turn) || 0}:${Number(gameState?.units?.length) || 0}`;
+        let metrics = this.overviewCityCache.metrics;
+        if (this.overviewCityCache.key !== cacheKey || !metrics) {
+            const cityTiles = gameMap?.getCityTiles?.('player') || [];
+            metrics = {
+                ownedCities: cityTiles.length,
+                constructions: cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length,
+                queues: cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0),
+                autoBuild: cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length
+            };
+            this.overviewCityCache = { key: cacheKey, metrics };
+        }
         const lines = [
-            { label: 'Owned Cities', value: String(cityTiles.length) },
-            { label: 'Under Construction', value: String(constructions) },
-            { label: 'Training Queue', value: String(queues) },
-            { label: 'Auto Build Enabled', value: String(autoBuild) }
+            { label: 'Owned Cities', value: String(metrics.ownedCities) },
+            { label: 'Under Construction', value: String(metrics.constructions) },
+            { label: 'Training Queue', value: String(metrics.queues) },
+            { label: 'Auto Build Enabled', value: String(metrics.autoBuild) }
         ];
         el.innerHTML = this.renderOverviewLines(lines);
     }

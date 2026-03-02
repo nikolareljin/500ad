@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.16.0** - Introduces a versioned save-game schema and compatibility layer so saves remain loadable across game and content updates.
+**Version 1.16.0** - Adds a modular Command Overview UI with resources, faction intel, city management, and events panels plus contextual help and quick actions.
 
 ## License
 
