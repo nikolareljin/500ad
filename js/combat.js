@@ -434,17 +434,14 @@ function checkLevelUp(unit) {
         unit.level++;
         unit.experience -= expNeeded;
 
+        // Promote first so growth is applied to the resulting unit type for this level.
+        promoteUnitByExperience(unit, { availableUnits });
+
         const growth = getUnitGrowthProfile(unit.typeId);
         unit.stats.health += growth.health;
         unit.stats.attack += growth.attack;
         unit.stats.defense += growth.defense;
         unit.currentHealth = unit.stats.health;
-
-        // Veteran units can promote into elite branches once they reach level 3.
-        const promoted = promoteUnitByExperience(unit, { availableUnits });
-        if (promoted) {
-            unit.currentHealth = unit.stats.health;
-        }
         leveled = true;
     }
 

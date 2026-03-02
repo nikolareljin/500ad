@@ -584,16 +584,22 @@ class UIManager {
                 );
             }
             if (Array.isArray(result.completedTraining) && result.completedTraining.length > 0) {
-                result.completedTraining.forEach((entry) => {
-                    if (entry?.blocked) {
-                        this.showNotification(
-                            `Training blocked at ${entry.cityName}: ${entry.reason || 'Spawn location unavailable'}`,
-                            'info'
-                        );
-                        return;
-                    }
-                    this.showNotification(`Training completed: ${entry.unit?.name || 'Unit'} at ${entry.cityName}`, 'success');
-                });
+                const blockedEntries = result.completedTraining.filter((entry) => entry?.blocked);
+                const completedEntries = result.completedTraining.filter((entry) => !entry?.blocked);
+
+                if (completedEntries.length > 0) {
+                    const completedText = completedEntries
+                        .map((entry) => `${entry.unit?.name || 'Unit'} at ${entry.cityName}`)
+                        .join(', ');
+                    this.showNotification(`Training completed: ${completedText}`, 'success');
+                }
+
+                if (blockedEntries.length > 0) {
+                    const blockedText = blockedEntries
+                        .map((entry) => `${entry.cityName} (${entry.reason || 'Spawn location unavailable'})`)
+                        .join(', ');
+                    this.showNotification(`Training blocked: ${blockedText}`, 'info');
+                }
             }
             this.onTutorialAction('endTurn');
         } finally {

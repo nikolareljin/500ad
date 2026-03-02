@@ -3554,14 +3554,19 @@ class GameState {
             if (!spawnTile) {
                 active.turnsRemaining = 0;
                 active.blocked = 'No adjacent spawn tile';
+                const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
+                active.lastBlockedReason = active.blocked;
+                active.blockedNotified = true;
                 if (queue.length > 1) {
                     queue.push(queue.shift());
                 }
-                completed.push({
-                    cityName,
-                    blocked: true,
-                    reason: active.blocked
-                });
+                if (shouldNotifyBlocked) {
+                    completed.push({
+                        cityName,
+                        blocked: true,
+                        reason: active.blocked
+                    });
+                }
                 continue;
             }
 
@@ -3576,14 +3581,19 @@ class GameState {
                 if (!active.blocked) {
                     active.blocked = 'Recruitment failed';
                 }
+                const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
+                active.lastBlockedReason = active.blocked;
+                active.blockedNotified = true;
                 if (queue.length > 1) {
                     queue.push(queue.shift());
                 }
-                completed.push({
-                    cityName,
-                    blocked: true,
-                    reason: active.blocked
-                });
+                if (shouldNotifyBlocked) {
+                    completed.push({
+                        cityName,
+                        blocked: true,
+                        reason: active.blocked
+                    });
+                }
                 continue;
             }
 
