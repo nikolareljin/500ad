@@ -3542,51 +3542,56 @@ class GameState {
         for (const cityTile of playerCities) {
             const queue = this.ensureCityTrainingQueue(cityTile);
             if (!queue.length) continue;
-            const attempts = queue.length;
-            for (let i = 0; i < attempts; i++) {
-                // Barracks-centric pacing: each city progresses one training project per turn.
-                const active = queue[0];
-                const rawTurns = Number(active.turnsRemaining);
-                const safeTurns = Number.isFinite(rawTurns) ? rawTurns : 0;
-                active.turnsRemaining = Math.max(0, safeTurns - 1);
-                if (active.turnsRemaining > 0) break;
+            // Barracks-centric pacing: each city progresses one training project per turn.
+            const active = queue[0];
+            const rawTurns = Number(active.turnsRemaining);
+            const safeTurns = Number.isFinite(rawTurns) ? rawTurns : 0;
+            active.turnsRemaining = Math.max(0, safeTurns - 1);
+            if (active.turnsRemaining > 0) continue;
 
-                const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
-                if (!spawnTile) {
-                    active.turnsRemaining = 0;
-                    active.blocked = 'No adjacent spawn tile';
-                    if (queue.length > 1) {
-                        queue.push(queue.shift());
-                        continue;
-                    }
-                    break;
+            const cityName = cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`;
+            const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
+            if (!spawnTile) {
+                active.turnsRemaining = 0;
+                active.blocked = 'No adjacent spawn tile';
+                if (queue.length > 1) {
+                    queue.push(queue.shift());
                 }
-
-                const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
-                    cityTile,
-                    skipCost: true,
-                    owner: 'player',
-                    faction: this.player?.faction || this.selectedFaction || 'byzantine'
-                });
-                if (!unit) {
-                    active.turnsRemaining = 0;
-                    if (!active.blocked) {
-                        active.blocked = 'Recruitment failed';
-                    }
-                    if (queue.length > 1) {
-                        queue.push(queue.shift());
-                        continue;
-                    }
-                    break;
-                }
-
-                queue.shift();
                 completed.push({
-                    cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
-                    unit
+                    cityName,
+                    blocked: true,
+                    reason: active.blocked
                 });
-                break;
+                continue;
             }
+
+            const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
+                cityTile,
+                skipCost: true,
+                owner: 'player',
+                faction: this.player?.faction || this.selectedFaction || 'byzantine'
+            });
+            if (!unit) {
+                active.turnsRemaining = 0;
+                if (!active.blocked) {
+                    active.blocked = 'Recruitment failed';
+                }
+                if (queue.length > 1) {
+                    queue.push(queue.shift());
+                }
+                completed.push({
+                    cityName,
+                    blocked: true,
+                    reason: active.blocked
+                });
+                continue;
+            }
+
+            queue.shift();
+            completed.push({
+                cityName,
+                unit
+            });
         }
         return completed;
     }
@@ -4630,7 +4635,10 @@ class GameState {
             x: tile.x,
             y: tile.y,
             owner: tile.owner || null,
-            faction: tile.faction || null
+            faction: tile.faction || null,
+            trainingQueue: Array.isArray(tile.cityData?.trainingQueue)
+                ? tile.cityData.trainingQueue.map((project) => ({ ...project }))
+                : []
         }));
     }
 
@@ -4712,6 +4720,11 @@ class GameState {
             if (saved) {
                 tile.owner = saved.owner || null;
                 if (saved.faction) tile.faction = saved.faction;
+                if (Array.isArray(saved.trainingQueue)) {
+                    tile.cityData.trainingQueue = saved.trainingQueue.map((project) => ({ ...project }));
+                    // Reuse queue sanitation to clamp numeric fields and remove malformed entries.
+                    this.ensureCityBuildingState(tile);
+                }
 
                 // Mark consumed entries so we can detect stale/unmatched save data.
                 if (saved.id && byId.get(saved.id) === saved) {

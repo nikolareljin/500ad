@@ -585,6 +585,13 @@ class UIManager {
             }
             if (Array.isArray(result.completedTraining) && result.completedTraining.length > 0) {
                 result.completedTraining.forEach((entry) => {
+                    if (entry?.blocked) {
+                        this.showNotification(
+                            `Training blocked at ${entry.cityName}: ${entry.reason || 'Spawn location unavailable'}`,
+                            'info'
+                        );
+                        return;
+                    }
                     this.showNotification(`Training completed: ${entry.unit?.name || 'Unit'} at ${entry.cityName}`, 'success');
                 });
             }
@@ -1657,6 +1664,7 @@ class UIManager {
         const step = steps[state.stepIndex] || steps[0];
         const required = step.requiredAction;
         const isDone = !required || Boolean(state.progress[required]);
+        const isFinalStep = state.stepIndex === steps.length - 1;
         const progressText = `${state.stepIndex + 1}/${steps.length}`;
         panel.innerHTML = `
             <div class="tutorial-header">
@@ -1668,13 +1676,18 @@ class UIManager {
             ${required ? `<p class="tutorial-status ${isDone ? 'done' : 'pending'}">${isDone ? 'Completed' : 'Waiting for action'}</p>` : ''}
             <div class="tutorial-actions">
                 <button class="menu-btn" data-tutorial="prev" ${state.stepIndex === 0 ? 'disabled' : ''}>Back</button>
-                <button class="menu-btn" data-tutorial="next">${state.stepIndex === steps.length - 1 ? 'Finish' : 'Next'}</button>
+                <button class="menu-btn" data-tutorial="next" ${(isFinalStep && !isDone) ? 'disabled' : ''}>${isFinalStep ? 'Finish' : 'Next'}</button>
                 <button class="menu-btn" data-tutorial="skip">Skip</button>
             </div>
         `;
         panel.querySelector('[data-tutorial="prev"]')?.addEventListener('click', () => this.advanceTutorialStep(-1));
         panel.querySelector('[data-tutorial="next"]')?.addEventListener('click', () => {
-            if (state.stepIndex >= steps.length - 1) {
+            if (isFinalStep) {
+                if (!isDone) {
+                    this.showNotification('Complete the current tutorial action before finishing.', 'info');
+                    this.showTutorialHint();
+                    return;
+                }
                 this.completeTutorial();
                 return;
             }
