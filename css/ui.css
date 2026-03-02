@@ -599,7 +599,8 @@
     backdrop-filter: blur(5px);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
     z-index: 145;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: visible;
 }
 
 .command-overview.collapsed .overview-grid,
@@ -671,7 +672,7 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 0.5rem;
-    overflow-y: auto;
+    overflow: visible;
     padding-right: 0.2rem;
 }
 
@@ -721,9 +722,15 @@
     border: 1px solid rgba(212, 175, 55, 0.38);
 }
 
-.overview-card h4[data-tip]:hover::after {
+.overview-card h4[data-tip]:hover::after,
+.overview-card h4[data-tip]:focus-visible::after {
     opacity: 1;
     transform: translateY(0);
+}
+
+.overview-card h4[data-tip]:focus-visible {
+    outline: 2px solid rgba(247, 211, 126, 0.8);
+    outline-offset: 2px;
 }
 
 .overview-card-body {

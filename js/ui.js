@@ -1246,6 +1246,18 @@ class UIManager {
     toggleCommandOverview() {
         this.overviewCollapsed = !this.overviewCollapsed;
         this.commandOverview?.classList.toggle('collapsed', this.overviewCollapsed);
+        if (this.overviewCollapsed && this.commandOverview?.classList.contains('help-visible')) {
+            // Keep visual and ARIA help states synchronized when the overview is collapsed.
+            this.commandOverview.classList.remove('help-visible');
+            const helpBtn = document.getElementById('btn-overview-help');
+            if (helpBtn) {
+                helpBtn.setAttribute('aria-pressed', 'false');
+                helpBtn.setAttribute('aria-expanded', 'false');
+                helpBtn.setAttribute('aria-label', 'Show contextual help');
+                helpBtn.title = 'Show contextual help';
+                helpBtn.setAttribute('aria-controls', 'overview-help-text');
+            }
+        }
         const toggleBtn = document.getElementById('btn-overview-toggle');
         if (toggleBtn) {
             const isExpanded = !this.overviewCollapsed;
