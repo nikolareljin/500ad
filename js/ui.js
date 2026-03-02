@@ -15,7 +15,6 @@ class UIManager {
         this.tutorialPanel = null;
         this.tutorialLastHintByStep = {};
         this.overviewCollapsed = false;
-        this.overviewCityCache = { key: '', metrics: null };
     }
 
     /**
@@ -1330,18 +1329,13 @@ class UIManager {
     updateCityOverviewCard() {
         const el = this.overviewCards?.cities;
         if (!el) return;
-        const cacheKey = `${Number(gameState?.turn) || 0}:${Number(gameState?.units?.length) || 0}`;
-        let metrics = this.overviewCityCache.metrics;
-        if (this.overviewCityCache.key !== cacheKey || !metrics) {
-            const cityTiles = gameMap?.getCityTiles?.('player') || [];
-            metrics = {
-                ownedCities: cityTiles.length,
-                constructions: cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length,
-                queues: cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0),
-                autoBuild: cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length
-            };
-            this.overviewCityCache = { key: cacheKey, metrics };
-        }
+        const cityTiles = gameMap?.getCityTiles?.('player') || [];
+        const metrics = {
+            ownedCities: cityTiles.length,
+            constructions: cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length,
+            queues: cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0),
+            autoBuild: cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length
+        };
         const lines = [
             { label: 'Owned Cities', value: String(metrics.ownedCities) },
             { label: 'Under Construction', value: String(metrics.constructions) },

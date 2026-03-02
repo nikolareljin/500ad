@@ -662,6 +662,11 @@
     display: block;
 }
 
+/* Collapsed state must always hide help content. */
+.command-overview.collapsed.help-visible .overview-help {
+    display: none;
+}
+
 .overview-grid {
     display: grid;
     grid-template-columns: 1fr;
