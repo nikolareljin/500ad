@@ -187,6 +187,44 @@
             <canvas id="game-map" width="800" height="600"></canvas>
         </div>
 
+        <!-- Command Overview -->
+        <aside class="command-overview" id="command-overview" aria-label="Command overview panels">
+            <div class="overview-header">
+                <h3>Command Overview</h3>
+                <div class="overview-header-actions">
+                    <button class="overview-icon-btn" id="btn-overview-help" title="Toggle contextual help" aria-label="Toggle contextual help">?</button>
+                    <button class="overview-icon-btn" id="btn-overview-toggle" title="Collapse overview panel" aria-label="Collapse overview panel">−</button>
+                </div>
+            </div>
+            <div class="overview-help" id="overview-help-text">
+                Hover cards for contextual hints. Use quick actions to jump directly into diplomacy, city building, recruitment, and quests.
+            </div>
+            <div class="overview-grid" id="overview-grid">
+                <section class="overview-card" id="overview-resources">
+                    <h4 data-tip="Live snapshot of strategic stockpiles and military readiness.">Resources</h4>
+                    <div class="overview-card-body">No data yet.</div>
+                </section>
+                <section class="overview-card" id="overview-faction">
+                    <h4 data-tip="Summarized diplomacy and threat posture from known factions.">Faction Intel</h4>
+                    <div class="overview-card-body">No data yet.</div>
+                </section>
+                <section class="overview-card" id="overview-cities">
+                    <h4 data-tip="Shows city queue pressure and construction posture.">City Management</h4>
+                    <div class="overview-card-body">No data yet.</div>
+                </section>
+                <section class="overview-card" id="overview-events">
+                    <h4 data-tip="Active narrative pressure and most recent quest/event activity.">Events</h4>
+                    <div class="overview-card-body">No data yet.</div>
+                </section>
+            </div>
+            <div class="overview-actions">
+                <button class="overview-action-btn" data-overview-action="build" title="Open city build actions">Build</button>
+                <button class="overview-action-btn" data-overview-action="recruit" title="Open city recruitment">Recruit</button>
+                <button class="overview-action-btn" data-overview-action="diplomacy" title="Open diplomacy screen">Diplomacy</button>
+                <button class="overview-action-btn" data-overview-action="quests" title="Open quests and events">Quests</button>
+            </div>
+        </aside>
+
         <!-- Unit Panel -->
         <div class="unit-panel" id="unit-panel">
             <div class="unit-panel-header">

@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.16.0] - 2026-03-02
+
+### Added
+- Added a modular in-game `Command Overview` rail with dedicated cards for `Resources`, `Faction Intel`, `City Management`, and `Events`.
+- Added contextual quick-action buttons in the overview (`Build`, `Recruit`, `Diplomacy`, `Quests`) for faster navigation to core systems.
+- Added inline tooltip hints on overview card headers and a toggleable contextual-help panel.
+
+### Changed
+- Updated HUD refresh flow to continuously sync overview metrics (stockpiles, faction pressure, city queue pressure, and active event status) as turns and actions progress.
+- Updated mobile layout rules so the new overview rail remains readable and actionable on smaller resolutions.
+
 ## [1.15.0] - 2026-03-02
 
 ### Added

@@ -14,6 +14,7 @@ class UIManager {
         this.selectedLeaderCard = null;
         this.tutorialPanel = null;
         this.tutorialLastHintByStep = {};
+        this.overviewCollapsed = false;
     }
 
     /**
@@ -32,6 +33,13 @@ class UIManager {
         this.modalContent = document.getElementById('modal-content');
         this.notificationContainer = document.getElementById('notification-container');
         this.turnProcessingOverlay = document.getElementById('turn-processing-overlay');
+        this.commandOverview = document.getElementById('command-overview');
+        this.overviewCards = {
+            resources: document.querySelector('#overview-resources .overview-card-body'),
+            faction: document.querySelector('#overview-faction .overview-card-body'),
+            cities: document.querySelector('#overview-cities .overview-card-body'),
+            events: document.querySelector('#overview-events .overview-card-body')
+        };
 
         // Set up event listeners
         this.setupEventListeners();
@@ -152,6 +160,39 @@ class UIManager {
 
         window.addEventListener('resize', () => {
             this.positionUnitPanel();
+        });
+
+        document.getElementById('btn-overview-toggle')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.toggleCommandOverview();
+        });
+
+        document.getElementById('btn-overview-help')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.toggleOverviewHelp();
+        });
+
+        document.querySelectorAll('[data-overview-action]').forEach((button) => {
+            button.addEventListener('click', () => {
+                audioManager.playUISound('click');
+                const action = button.getAttribute('data-overview-action');
+                switch (action) {
+                    case 'build':
+                        this.buildInSelectedCity();
+                        break;
+                    case 'recruit':
+                        this.recruitAtSelectedCity();
+                        break;
+                    case 'diplomacy':
+                        this.manageDiplomacy();
+                        break;
+                    case 'quests':
+                        this.showQuestLogModal();
+                        break;
+                    default:
+                        break;
+                }
+            });
         });
 
         // Close modal on overlay click
@@ -1199,6 +1240,104 @@ class UIManager {
         setOptionalResource('resource-iron', resources.iron);
         setOptionalResource('resource-rare', resources.rare);
         document.getElementById('turn-number').textContent = gameState.turn;
+        this.updateCommandOverview();
+    }
+
+    toggleCommandOverview() {
+        this.overviewCollapsed = !this.overviewCollapsed;
+        this.commandOverview?.classList.toggle('collapsed', this.overviewCollapsed);
+        const toggleBtn = document.getElementById('btn-overview-toggle');
+        if (toggleBtn) {
+            toggleBtn.textContent = this.overviewCollapsed ? '+' : '−';
+            toggleBtn.title = this.overviewCollapsed ? 'Expand overview panel' : 'Collapse overview panel';
+        }
+    }
+
+    toggleOverviewHelp() {
+        this.commandOverview?.classList.toggle('help-visible');
+    }
+
+    renderOverviewLines(lines) {
+        return lines.map((line) => `
+            <div class="overview-line">
+                <span class="overview-label">${this.escapeHtml(line.label)}</span>
+                <span class="overview-value">${this.escapeHtml(line.value)}</span>
+            </div>
+        `).join('');
+    }
+
+    updateCommandOverview() {
+        if (!this.commandOverview || !gameState?.initialized) return;
+        this.updateResourcesOverviewCard();
+        this.updateFactionOverviewCard();
+        this.updateCityOverviewCard();
+        this.updateEventsOverviewCard();
+    }
+
+    updateResourcesOverviewCard() {
+        const el = this.overviewCards?.resources;
+        if (!el) return;
+        const resources = gameState?.player?.resources || {};
+        const armySize = Array.isArray(gameState?.units)
+            ? gameState.units.filter((unit) => unit?.owner === 'player').length
+            : 0;
+        const lines = [
+            { label: 'Gold', value: String(resources.gold || 0) },
+            { label: 'Manpower', value: String(resources.manpower || 0) },
+            { label: 'Strategic Stockpile', value: String((resources.food || 0) + (resources.wood || 0) + (resources.stone || 0) + (resources.iron || 0) + (resources.rare || 0)) },
+            { label: 'Fielded Units', value: String(armySize) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateFactionOverviewCard() {
+        const el = this.overviewCards?.faction;
+        if (!el) return;
+        const overview = typeof gameState?.getDiplomacyOverview === 'function' ? gameState.getDiplomacyOverview() : [];
+        const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route?.active).length;
+        const hostile = overview.filter((row) => row?.status === 'war').length;
+        const strongest = [...overview].sort((a, b) => (b?.hostility || 0) - (a?.hostility || 0))[0];
+        const lines = [
+            { label: 'Known Factions', value: String(overview.length) },
+            { label: 'At War', value: String(hostile) },
+            { label: 'Trade Routes', value: String(activeRoutes) },
+            { label: 'Top Threat', value: strongest ? this.formatFactionName(strongest.factionId) : 'None' }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateCityOverviewCard() {
+        const el = this.overviewCards?.cities;
+        if (!el) return;
+        const cityTiles = gameMap?.getCityTiles?.('player') || [];
+        const constructions = cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length;
+        const queues = cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0);
+        const autoBuild = cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length;
+        const lines = [
+            { label: 'Owned Cities', value: String(cityTiles.length) },
+            { label: 'Under Construction', value: String(constructions) },
+            { label: 'Training Queue', value: String(queues) },
+            { label: 'Auto Build Enabled', value: String(autoBuild) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateEventsOverviewCard() {
+        const el = this.overviewCards?.events;
+        if (!el) return;
+        const overview = typeof gameState?.getDynamicNarrativeOverview === 'function'
+            ? gameState.getDynamicNarrativeOverview()
+            : { active: [], history: [] };
+        const active = Array.isArray(overview?.active) ? overview.active : [];
+        const history = Array.isArray(overview?.history) ? overview.history : [];
+        const recent = history.length > 0 ? history[history.length - 1] : null;
+        const lines = [
+            { label: 'Active Quests/Events', value: String(active.length) },
+            { label: 'History Entries', value: String(history.length) },
+            { label: 'Recent Entry', value: recent?.title ? String(recent.title).slice(0, 24) : 'None' },
+            { label: 'Current Turn', value: String(gameState?.turn || 0) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
     }
 
     /**
