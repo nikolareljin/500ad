@@ -42,7 +42,7 @@ class StorageManager {
                 playerName: gameState.selectedLeader?.name || 'Unknown',
                 turn: gameState.turn
             },
-            data: payload
+            payload
         };
     }
 
@@ -52,37 +52,54 @@ class StorageManager {
         }
 
         // Native schema v1 envelope.
-        if (raw.schemaVersion === SAVE_SCHEMA_VERSION && raw.data && typeof raw.data === 'object') {
+        const rawPayload = raw.payload && typeof raw.payload === 'object'
+            ? raw.payload
+            : (raw.data && typeof raw.data === 'object' ? raw.data : null);
+        if (raw.schemaVersion === SAVE_SCHEMA_VERSION && rawPayload) {
             const metadata = raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
+            let savedAt = metadata.savedAt;
+            if (!savedAt && Number.isFinite(rawPayload.timestamp)) {
+                const legacyDate = new Date(rawPayload.timestamp);
+                if (!Number.isNaN(legacyDate.getTime())) {
+                    savedAt = legacyDate.toISOString();
+                }
+            }
             return {
                 envelope: {
                     schemaVersion: SAVE_SCHEMA_VERSION,
                     format: 'json',
                     metadata: {
                         slotNumber,
-                        savedAt: metadata.savedAt || new Date().toISOString(),
-                        playerName: metadata.playerName || (raw.data.selectedLeader?.name || 'Unknown'),
-                        turn: Number.isFinite(metadata.turn) ? metadata.turn : raw.data.turn
+                        savedAt: savedAt || new Date().toISOString(),
+                        playerName: metadata.playerName || (rawPayload.selectedLeader?.name || 'Unknown'),
+                        turn: Number.isFinite(metadata.turn) ? metadata.turn : rawPayload.turn
                     },
-                    data: raw.data
+                    payload: rawPayload
                 },
-                payload: raw.data
+                payload: rawPayload
             };
         }
 
         // Legacy flat save shape from previous versions.
         if (raw.version && raw.player && Array.isArray(raw.units)) {
             const payload = { ...raw };
+            let savedAt = raw.savedAt;
+            if (!savedAt && Number.isFinite(raw.timestamp)) {
+                const legacyDate = new Date(raw.timestamp);
+                if (!Number.isNaN(legacyDate.getTime())) {
+                    savedAt = legacyDate.toISOString();
+                }
+            }
             const envelope = {
                 schemaVersion: SAVE_SCHEMA_VERSION,
                 format: 'json',
                 metadata: {
                     slotNumber,
-                    savedAt: raw.savedAt || new Date().toISOString(),
+                    savedAt: savedAt || new Date().toISOString(),
                     playerName: raw.playerName || raw.selectedLeader?.name || 'Unknown',
                     turn: Number.isFinite(raw.turn) ? raw.turn : 1
                 },
-                data: payload
+                payload
             };
             return { envelope, payload };
         }
@@ -137,8 +154,12 @@ class StorageManager {
                 return { success: false, message: 'Failed to load save data' };
             }
 
-            // Rewrite saves into current envelope format for forward compatibility.
-            localStorage.setItem(key, JSON.stringify(normalized.envelope));
+            // Rewrite into current envelope format when possible, but do not fail a successful load.
+            try {
+                localStorage.setItem(key, JSON.stringify(normalized.envelope));
+            } catch (rewriteError) {
+                console.warn('Save format migration write failed; continuing with loaded state:', rewriteError);
+            }
             return { success: true, message: 'Game loaded successfully', data: normalized.envelope };
         } catch (error) {
             console.error('Load failed:', error);

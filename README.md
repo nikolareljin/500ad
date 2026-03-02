@@ -211,7 +211,7 @@ Note: the opening position and controlled towns depend on the selected era, lead
 - Vanilla JavaScript (no frameworks)
 - CSS3 with Byzantine-themed design
 - LocalStorage for save/load
-- Versioned JSON save envelope (`schemaVersion` + metadata + payload)
+- Versioned JSON save envelope (`schemaVersion`, `format`, `metadata`, `payload`)
 - Web Audio API for sound
 
 ### File Structure
@@ -406,7 +406,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.15.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
+**Version 1.15.0** - Introduces a versioned save-game schema and compatibility layer so saves remain loadable across game and content updates.
 
 ## License
 
