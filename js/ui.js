@@ -650,7 +650,11 @@ class UIManager {
                 }
                 const queued = gameState.queueUnitRecruitment(unitId, tile);
                 if (!queued.success) {
-                    this.showNotification('Cannot recruit that unit here (requirements or resources missing)', 'error');
+                    const queuedReasons = Array.isArray(queued.reasons) ? queued.reasons : [];
+                    const fallbackReasons = currentStatus && Array.isArray(currentStatus.reasons) ? currentStatus.reasons : [];
+                    const reasons = queuedReasons.length ? queuedReasons : fallbackReasons;
+                    const reasonText = reasons.length ? reasons.join('; ') : 'requirements or resources missing';
+                    this.showNotification(`Cannot recruit that unit here: ${reasonText}`, 'error');
                     return;
                 }
                 this.updateHUD();

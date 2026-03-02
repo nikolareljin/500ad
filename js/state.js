@@ -949,26 +949,27 @@ class GameState {
         if (!Array.isArray(cityData.trainingQueue)) {
             cityData.trainingQueue = [];
         } else {
-            cityData.trainingQueue = cityData.trainingQueue
-                .filter((project) => project && typeof project === 'object' && typeof project.unitTypeId === 'string')
-                .map((project) => {
-                    const turnsRemainingRaw = Number(project.turnsRemaining);
-                    const turnsRemaining = Math.max(0, Math.floor(Number.isFinite(turnsRemainingRaw) ? turnsRemainingRaw : 0));
+            const sanitizedQueue = [];
+            for (const project of cityData.trainingQueue) {
+                if (!project || typeof project !== 'object' || typeof project.unitTypeId !== 'string') {
+                    continue;
+                }
+                if (typeof project.id !== 'string' || !project.id) {
+                    project.id = `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                }
 
-                    const totalTurnsRaw = Number(project.totalTurns ?? project.turnsRemaining ?? 1);
-                    const totalTurns = Math.max(1, Math.floor(Number.isFinite(totalTurnsRaw) ? totalTurnsRaw : 1));
+                const turnsRemainingRaw = Number(project.turnsRemaining);
+                project.turnsRemaining = Math.max(0, Math.floor(Number.isFinite(turnsRemainingRaw) ? turnsRemainingRaw : 0));
 
-                    const queuedTurnRaw = Number(project.queuedTurn ?? this.turn ?? 0);
-                    const queuedTurn = Math.max(0, Math.floor(Number.isFinite(queuedTurnRaw) ? queuedTurnRaw : 0));
+                const totalTurnsRaw = Number(project.totalTurns ?? project.turnsRemaining ?? 1);
+                project.totalTurns = Math.max(1, Math.floor(Number.isFinite(totalTurnsRaw) ? totalTurnsRaw : 1));
 
-                    return {
-                        id: String(project.id || `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
-                        unitTypeId: project.unitTypeId,
-                        turnsRemaining,
-                        totalTurns,
-                        queuedTurn
-                    };
-                });
+                const queuedTurnRaw = Number(project.queuedTurn ?? this.turn ?? 0);
+                project.queuedTurn = Math.max(0, Math.floor(Number.isFinite(queuedTurnRaw) ? queuedTurnRaw : 0));
+
+                sanitizedQueue.push(project);
+            }
+            cityData.trainingQueue = sanitizedQueue;
         }
         return cityData;
     }
@@ -3538,9 +3539,9 @@ class GameState {
         if (!gameMap) return [];
         const completed = [];
         const playerCities = gameMap.getCityTiles('player');
-        playerCities.forEach((cityTile) => {
+        for (const cityTile of playerCities) {
             const queue = this.ensureCityTrainingQueue(cityTile);
-            if (!queue.length) return;
+            if (!queue.length) continue;
             const attempts = queue.length;
             for (let i = 0; i < attempts; i++) {
                 // Barracks-centric pacing: each city progresses one training project per turn.
@@ -3548,7 +3549,7 @@ class GameState {
                 const rawTurns = Number(active.turnsRemaining);
                 const safeTurns = Number.isFinite(rawTurns) ? rawTurns : 0;
                 active.turnsRemaining = Math.max(0, safeTurns - 1);
-                if (active.turnsRemaining > 0) return;
+                if (active.turnsRemaining > 0) break;
 
                 const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
                 if (!spawnTile) {
@@ -3558,7 +3559,7 @@ class GameState {
                         queue.push(queue.shift());
                         continue;
                     }
-                    return;
+                    break;
                 }
 
                 const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
@@ -3576,7 +3577,7 @@ class GameState {
                         queue.push(queue.shift());
                         continue;
                     }
-                    return;
+                    break;
                 }
 
                 queue.shift();
@@ -3584,9 +3585,9 @@ class GameState {
                     cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
                     unit
                 });
-                return;
+                break;
             }
-        });
+        }
         return completed;
     }
 
