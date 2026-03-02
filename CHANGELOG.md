@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.15.0] - 2026-03-02
+
+### Added
+- Added a versioned save envelope format (`schemaVersion`, `format`, `metadata`, `payload`) in `storage.js` to stabilize serialized save structure for future migrations.
+- Added legacy save normalization so older flat-save records are automatically wrapped into the new `{ schemaVersion, format, metadata, payload }` envelope on load/import.
+
+### Changed
+- Changed save-slot persistence to rewrite loaded legacy saves into the current envelope format after successful deserialization.
+- Changed save export/import flows to validate and normalize save format instead of storing raw unvalidated JSON.
+
+### Fixed
+- Fixed save-slot robustness by validating slot identifiers before save/load/import operations and rejecting invalid slot inputs with clear failure responses.
+
 ## [1.14.0] - 2026-03-01
 
 ### Added

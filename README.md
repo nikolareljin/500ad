@@ -87,6 +87,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Terrain Effects**: Terrain now affects movement, combat effectiveness, and city build suitability (farms, irrigation, canals, forest management)
 - **Biome Rules**: Deterministic biomes (`plains`, `forest`, `desert`, `mountains`, `tundra`) influence movement costs, strategic resource weighting, and event-affinity metadata used by dynamic events
 - **Save/Load System**: Multiple save slots with auto-save
+- **Versioned Save Schema**: Save files are stored as versioned JSON envelopes with legacy-save normalization for smoother compatibility across releases
 - **Exploration**: Fog of war reveals as units move and cities are founded
 - **Vision & Recon Rules**: Unit classes and city status determine sight radius (scouts/intel see farther; capitals/fortified cities project wider vision)
 - **Exploration Discoveries**: Finding new macro-regions and landmark cities triggers discovery events with gold/manpower/prestige rewards
@@ -210,6 +211,7 @@ Note: the opening position and controlled towns depend on the selected era, lead
 - Vanilla JavaScript (no frameworks)
 - CSS3 with Byzantine-themed design
 - LocalStorage for save/load
+- Versioned JSON save envelope (`schemaVersion`, `format`, `metadata`, `payload`)
 - Web Audio API for sound
 
 ### File Structure
@@ -362,6 +364,7 @@ window.setWorldGenerationConfig({
 - Procedural mode currently does not generate procedural rivers yet, so river/fertility bonuses still follow the historical heightmap river data path.
 - Procedural regeneration can take noticeable time on slower devices because terrain/biome noise is recomputed across the full map.
 - Save/load compatibility for procedural worlds assumes compatible generation rules; changing generation code between versions can alter regenerated terrain/resource layouts for the same seed.
+- Legacy save slots are normalized to the current save envelope format during load/import to keep save metadata and payload shape consistent.
 - These APIs are intended for trusted local modding/testing scripts only. Do not run untrusted browser-console snippets.
 - Biome event-affinity metadata is exposed on map tiles as `tile.biomeEventWeights` and is consumed by the dynamic event pipeline.
 
@@ -403,7 +406,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.14.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
+**Version 1.15.0** - Introduces a versioned save-game schema and compatibility layer so saves remain loadable across game and content updates.
 
 ## License
 

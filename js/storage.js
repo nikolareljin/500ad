@@ -11,9 +11,111 @@ const STORAGE_KEYS = {
     SETTINGS: 'byzantine_settings'
 };
 
+const SAVE_SCHEMA_VERSION = 1;
+
 class StorageManager {
     constructor() {
         this.settings = this.loadSettings();
+    }
+
+    normalizeSlotNumber(slotNumber) {
+        let parsed = null;
+        if (typeof slotNumber === 'number') {
+            parsed = slotNumber;
+        } else if (typeof slotNumber === 'string') {
+            const trimmed = slotNumber.trim();
+            if (/^\d+$/.test(trimmed)) {
+                parsed = Number(trimmed);
+            }
+        }
+        if (!Number.isInteger(parsed) || parsed < 0 || parsed > 3) {
+            return null;
+        }
+        return parsed;
+    }
+
+    getSlotKey(slotNumber) {
+        return slotNumber === 0
+            ? STORAGE_KEYS.AUTO_SAVE
+            : STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
+    }
+
+    buildSaveEnvelope(payload, slotNumber) {
+        return {
+            schemaVersion: SAVE_SCHEMA_VERSION,
+            format: 'json',
+            metadata: {
+                slotNumber,
+                savedAt: new Date().toISOString(),
+                playerName: gameState.selectedLeader?.name || 'Unknown',
+                turn: gameState.turn
+            },
+            payload
+        };
+    }
+
+    normalizeSaveEnvelope(raw, slotNumber) {
+        if (!raw || typeof raw !== 'object') {
+            return null;
+        }
+
+        // Native schema v1 envelope.
+        const rawPayload = raw.payload && typeof raw.payload === 'object'
+            ? raw.payload
+            : (raw.data && typeof raw.data === 'object' ? raw.data : null);
+        const normalizedSchemaVersion = Number(raw.schemaVersion);
+        const hasValidSchemaVersion = Number.isFinite(normalizedSchemaVersion) && normalizedSchemaVersion === SAVE_SCHEMA_VERSION;
+        const hasValidFormat = raw.format === undefined || raw.format === 'json';
+        if (hasValidSchemaVersion && hasValidFormat && rawPayload) {
+            const metadata = raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
+            let savedAt = metadata.savedAt;
+            if (!savedAt && Number.isFinite(rawPayload.timestamp)) {
+                const legacyDate = new Date(rawPayload.timestamp);
+                if (!Number.isNaN(legacyDate.getTime())) {
+                    savedAt = legacyDate.toISOString();
+                }
+            }
+            return {
+                envelope: {
+                    schemaVersion: SAVE_SCHEMA_VERSION,
+                    format: 'json',
+                    metadata: {
+                        slotNumber,
+                        savedAt: savedAt || new Date().toISOString(),
+                        playerName: metadata.playerName || (rawPayload.selectedLeader?.name || 'Unknown'),
+                        turn: Number.isFinite(metadata.turn) ? metadata.turn : rawPayload.turn
+                    },
+                    payload: rawPayload
+                },
+                payload: rawPayload
+            };
+        }
+
+        // Legacy flat save shape from previous versions.
+        if (raw.version && raw.player && Array.isArray(raw.units)) {
+            const payload = { ...raw };
+            let savedAt = raw.savedAt;
+            if (!savedAt && Number.isFinite(raw.timestamp)) {
+                const legacyDate = new Date(raw.timestamp);
+                if (!Number.isNaN(legacyDate.getTime())) {
+                    savedAt = legacyDate.toISOString();
+                }
+            }
+            const envelope = {
+                schemaVersion: SAVE_SCHEMA_VERSION,
+                format: 'json',
+                metadata: {
+                    slotNumber,
+                    savedAt: savedAt || new Date().toISOString(),
+                    playerName: raw.playerName || raw.selectedLeader?.name || 'Unknown',
+                    turn: Number.isFinite(raw.turn) ? raw.turn : 1
+                },
+                payload
+            };
+            return { envelope, payload };
+        }
+
+        return null;
     }
 
     /**
@@ -21,15 +123,13 @@ class StorageManager {
      */
     saveGame(slotNumber = 0) {
         try {
-            const saveData = {
-                ...gameState.serialize(),
-                slotNumber,
-                savedAt: new Date().toISOString(),
-                playerName: gameState.selectedLeader?.name || 'Unknown',
-                turn: gameState.turn
-            };
-
-            const key = slotNumber === 0 ? STORAGE_KEYS.AUTO_SAVE : STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
+            const normalizedSlot = this.normalizeSlotNumber(slotNumber);
+            if (normalizedSlot === null) {
+                return { success: false, message: 'Invalid save slot number' };
+            }
+            const payload = gameState.serialize();
+            const saveData = this.buildSaveEnvelope(payload, normalizedSlot);
+            const key = this.getSlotKey(normalizedSlot);
             localStorage.setItem(key, JSON.stringify(saveData));
 
             return { success: true, message: 'Game saved successfully' };
@@ -44,7 +144,11 @@ class StorageManager {
      */
     loadGame(slotNumber = 0) {
         try {
-            const key = slotNumber === 0 ? STORAGE_KEYS.AUTO_SAVE : STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
+            const normalizedSlot = this.normalizeSlotNumber(slotNumber);
+            if (normalizedSlot === null) {
+                return { success: false, message: 'Invalid save slot number' };
+            }
+            const key = this.getSlotKey(normalizedSlot);
             const saveDataStr = localStorage.getItem(key);
 
             if (!saveDataStr) {
@@ -52,13 +156,22 @@ class StorageManager {
             }
 
             const saveData = JSON.parse(saveDataStr);
-            const success = gameState.deserialize(saveData);
-
-            if (success) {
-                return { success: true, message: 'Game loaded successfully', data: saveData };
-            } else {
+            const normalized = this.normalizeSaveEnvelope(saveData, normalizedSlot);
+            if (!normalized) {
+                return { success: false, message: 'Invalid or unsupported save data format' };
+            }
+            const success = gameState.deserialize(normalized.payload);
+            if (!success) {
                 return { success: false, message: 'Failed to load save data' };
             }
+
+            // Rewrite into current envelope format when possible, but do not fail a successful load.
+            try {
+                localStorage.setItem(key, JSON.stringify(normalized.envelope));
+            } catch (rewriteError) {
+                console.warn('Save format migration write failed; continuing with loaded state:', rewriteError);
+            }
+            return { success: true, message: 'Game loaded successfully', data: normalized.envelope };
         } catch (error) {
             console.error('Load failed:', error);
             return { success: false, message: 'Failed to load game' };
@@ -70,17 +183,22 @@ class StorageManager {
      */
     getSaveSlotInfo(slotNumber) {
         try {
-            const key = slotNumber === 0 ? STORAGE_KEYS.AUTO_SAVE : STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
+            const normalizedSlot = this.normalizeSlotNumber(slotNumber);
+            if (normalizedSlot === null) return null;
+            const key = this.getSlotKey(normalizedSlot);
             const saveDataStr = localStorage.getItem(key);
 
             if (!saveDataStr) return null;
 
             const saveData = JSON.parse(saveDataStr);
+            const normalized = this.normalizeSaveEnvelope(saveData, normalizedSlot);
+            if (!normalized) return null;
+            const metadata = normalized.envelope.metadata || {};
             return {
-                slotNumber,
-                playerName: saveData.playerName,
-                turn: saveData.turn,
-                savedAt: saveData.savedAt,
+                slotNumber: normalizedSlot,
+                playerName: metadata.playerName,
+                turn: metadata.turn,
+                savedAt: metadata.savedAt,
                 exists: true
             };
         } catch (error) {
@@ -123,12 +241,19 @@ class StorageManager {
      * Export save data as JSON
      */
     exportSave(slotNumber) {
-        const key = STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
-        const saveDataStr = localStorage.getItem(key);
-
-        if (!saveDataStr) return null;
-
-        return saveDataStr;
+        try {
+            const normalizedSlot = this.normalizeSlotNumber(slotNumber);
+            if (normalizedSlot === null || normalizedSlot === 0) return null;
+            const key = this.getSlotKey(normalizedSlot);
+            const saveDataStr = localStorage.getItem(key);
+            if (!saveDataStr) return null;
+            const saveData = JSON.parse(saveDataStr);
+            const normalized = this.normalizeSaveEnvelope(saveData, normalizedSlot);
+            if (!normalized) return null;
+            return JSON.stringify(normalized.envelope);
+        } catch (error) {
+            return null;
+        }
     }
 
     /**
@@ -136,9 +261,26 @@ class StorageManager {
      */
     importSave(jsonData, slotNumber) {
         try {
+            const normalizedSlot = this.normalizeSlotNumber(slotNumber);
+            if (normalizedSlot === null || normalizedSlot === 0) {
+                return { success: false, message: 'Invalid save slot number' };
+            }
             const saveData = JSON.parse(jsonData);
-            const key = STORAGE_KEYS[`SAVE_SLOT_${slotNumber}`];
-            localStorage.setItem(key, jsonData);
+            const normalized = this.normalizeSaveEnvelope(saveData, normalizedSlot);
+            if (!normalized) {
+                return { success: false, message: 'Invalid or unsupported save data' };
+            }
+            const envelope = normalized.envelope;
+            const payload = envelope && envelope.payload;
+            const payloadVersion = payload && payload.version;
+            if (!payload || typeof payloadVersion === 'undefined') {
+                return { success: false, message: 'Invalid or unsupported save data' };
+            }
+            if (typeof isSupportedSaveVersion === 'function' && !isSupportedSaveVersion(payloadVersion)) {
+                return { success: false, message: 'Invalid or unsupported save data' };
+            }
+            const key = this.getSlotKey(normalizedSlot);
+            localStorage.setItem(key, JSON.stringify(envelope));
             return { success: true, message: 'Save imported successfully' };
         } catch (error) {
             return { success: false, message: 'Invalid save data' };
