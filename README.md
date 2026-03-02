@@ -406,7 +406,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.14.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
+**Version 1.15.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
 
 ## License
 
