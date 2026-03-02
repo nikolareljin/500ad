@@ -19,7 +19,15 @@ class StorageManager {
     }
 
     normalizeSlotNumber(slotNumber) {
-        const parsed = Number(slotNumber);
+        let parsed = null;
+        if (typeof slotNumber === 'number') {
+            parsed = slotNumber;
+        } else if (typeof slotNumber === 'string') {
+            const trimmed = slotNumber.trim();
+            if (/^\d+$/.test(trimmed)) {
+                parsed = Number(trimmed);
+            }
+        }
         if (!Number.isInteger(parsed) || parsed < 0 || parsed > 3) {
             return null;
         }
@@ -55,7 +63,10 @@ class StorageManager {
         const rawPayload = raw.payload && typeof raw.payload === 'object'
             ? raw.payload
             : (raw.data && typeof raw.data === 'object' ? raw.data : null);
-        if (raw.schemaVersion === SAVE_SCHEMA_VERSION && rawPayload) {
+        const normalizedSchemaVersion = Number(raw.schemaVersion);
+        const hasValidSchemaVersion = Number.isFinite(normalizedSchemaVersion) && normalizedSchemaVersion === SAVE_SCHEMA_VERSION;
+        const hasValidFormat = raw.format === undefined || raw.format === 'json';
+        if (hasValidSchemaVersion && hasValidFormat && rawPayload) {
             const metadata = raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
             let savedAt = metadata.savedAt;
             if (!savedAt && Number.isFinite(rawPayload.timestamp)) {
@@ -259,8 +270,17 @@ class StorageManager {
             if (!normalized) {
                 return { success: false, message: 'Invalid or unsupported save data' };
             }
+            const envelope = normalized.envelope;
+            const payload = envelope && envelope.payload;
+            const payloadVersion = payload && payload.version;
+            if (!payload || typeof payloadVersion === 'undefined') {
+                return { success: false, message: 'Invalid or unsupported save data' };
+            }
+            if (typeof isSupportedSaveVersion === 'function' && !isSupportedSaveVersion(payloadVersion)) {
+                return { success: false, message: 'Invalid or unsupported save data' };
+            }
             const key = this.getSlotKey(normalizedSlot);
-            localStorage.setItem(key, JSON.stringify(normalized.envelope));
+            localStorage.setItem(key, JSON.stringify(envelope));
             return { success: true, message: 'Save imported successfully' };
         } catch (error) {
             return { success: false, message: 'Invalid save data' };
