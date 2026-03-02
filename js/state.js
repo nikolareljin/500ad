@@ -565,7 +565,8 @@ class GameState {
         this.tutorialState.active = Boolean(this.tutorialState.active);
         this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
-        const rawStep = Number.isFinite(this.tutorialState.stepIndex) ? Math.floor(this.tutorialState.stepIndex) : 0;
+        const rawStepValue = Number(this.tutorialState.stepIndex);
+        const rawStep = Number.isFinite(rawStepValue) ? Math.floor(rawStepValue) : 0;
         this.tutorialState.stepIndex = Math.min(this.getTutorialMaxStepIndex(), Math.max(0, rawStep));
         if (!this.tutorialState.progress || typeof this.tutorialState.progress !== 'object') {
             this.tutorialState.progress = {};
@@ -950,13 +951,24 @@ class GameState {
         } else {
             cityData.trainingQueue = cityData.trainingQueue
                 .filter((project) => project && typeof project === 'object' && typeof project.unitTypeId === 'string')
-                .map((project) => ({
-                    id: String(project.id || `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
-                    unitTypeId: project.unitTypeId,
-                    turnsRemaining: Math.max(0, Math.floor(Number(project.turnsRemaining || 0))),
-                    totalTurns: Math.max(1, Math.floor(Number(project.totalTurns || project.turnsRemaining || 1))),
-                    queuedTurn: Math.max(0, Math.floor(Number(project.queuedTurn ?? this.turn ?? 0)))
-                }));
+                .map((project) => {
+                    const turnsRemainingRaw = Number(project.turnsRemaining);
+                    const turnsRemaining = Math.max(0, Math.floor(Number.isFinite(turnsRemainingRaw) ? turnsRemainingRaw : 0));
+
+                    const totalTurnsRaw = Number(project.totalTurns ?? project.turnsRemaining ?? 1);
+                    const totalTurns = Math.max(1, Math.floor(Number.isFinite(totalTurnsRaw) ? totalTurnsRaw : 1));
+
+                    const queuedTurnRaw = Number(project.queuedTurn ?? this.turn ?? 0);
+                    const queuedTurn = Math.max(0, Math.floor(Number.isFinite(queuedTurnRaw) ? queuedTurnRaw : 0));
+
+                    return {
+                        id: String(project.id || `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+                        unitTypeId: project.unitTypeId,
+                        turnsRemaining,
+                        totalTurns,
+                        queuedTurn
+                    };
+                });
         }
         return cityData;
     }
@@ -3469,7 +3481,9 @@ class GameState {
                 unit.experience = (unit.experience || 0) + (barracksLevel * CITY_BUILDING_BALANCE.barracksRecruitXpPerLevel);
             }
             this.units.push(unit);
-            this.player.unitsOwned.push(unit.id);
+            if (unit.owner === 'player' && Array.isArray(this.player?.unitsOwned)) {
+                this.player.unitsOwned.push(unit.id);
+            }
         }
 
         return unit;
@@ -3531,7 +3545,9 @@ class GameState {
             for (let i = 0; i < attempts; i++) {
                 // Barracks-centric pacing: each city progresses one training project per turn.
                 const active = queue[0];
-                active.turnsRemaining = Math.max(0, Number(active.turnsRemaining || 0) - 1);
+                const rawTurns = Number(active.turnsRemaining);
+                const safeTurns = Number.isFinite(rawTurns) ? rawTurns : 0;
+                active.turnsRemaining = Math.max(0, safeTurns - 1);
                 if (active.turnsRemaining > 0) return;
 
                 const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
