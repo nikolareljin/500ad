@@ -423,6 +423,11 @@ function executeCombat(attackerId, defenderId, terrain = 'plains') {
 function checkLevelUp(unit) {
     if (!unit) return false;
     let leveled = false;
+    let availableUnits = null;
+    const currentEra = gameState?.getCurrentEraTag?.();
+    if (currentEra) {
+        availableUnits = new Set(getUnitsByEra(currentEra).map((u) => u.id));
+    }
 
     while (unit.experience >= (unit.level * 100)) {
         const expNeeded = unit.level * 100;
@@ -436,7 +441,7 @@ function checkLevelUp(unit) {
         unit.currentHealth = unit.stats.health;
 
         // Veteran units can promote into elite branches once they reach level 3.
-        const promoted = promoteUnitByExperience(unit);
+        const promoted = promoteUnitByExperience(unit, { availableUnits });
         if (promoted) {
             unit.currentHealth = unit.stats.health;
         }

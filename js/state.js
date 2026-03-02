@@ -3260,7 +3260,7 @@ class GameState {
 
     getFactionArmyRoster(town, owner, faction) {
         const era = this.getCurrentEraTag();
-        const eligible = getUnitsByEra(era).filter((u) => u.type !== 'naval');
+        const eligible = getUnitsByEra(era).filter((u) => this.isCombatRosterUnit(u));
         const factionBias = {
             byzantine: ['skutatoi', 'archers', 'kavallarioi', 'cataphract', 'mangonel'],
             arab: ['horsearchers', 'camel_riders', 'archers', 'kavallarioi'],
@@ -3276,7 +3276,7 @@ class GameState {
         const pushIfValid = (unitId, weight = 1) => {
             const unit = getUnitById(unitId);
             if (!unit || !unit.era?.includes(era)) return;
-            if (unit.type === 'naval' || unit.category === 'transport') return;
+            if (!this.isCombatRosterUnit(unit)) return;
             if (unit.category === 'desert' && cityTerrain === 'water') return;
             const repeats = Math.max(1, Math.floor(weight));
             for (let i = 0; i < repeats; i++) roster.push(unitId);
@@ -3309,10 +3309,14 @@ class GameState {
         const baseXP = Math.max(0, Math.floor(this.turn * 1.8));
         unit.experience = baseXP;
         // Spawned veteran armies may level and promote as the campaign matures.
-        let safety = 0;
-        while (checkLevelUp(unit) && safety < 5) {
-            safety++;
-        }
+        checkLevelUp(unit);
+    }
+
+    isCombatRosterUnit(unit) {
+        if (!unit || unit.type === 'naval') return false;
+        const nonCombatCategories = new Set(['support', 'economic', 'scout', 'intel', 'infrastructure', 'transport']);
+        if (nonCombatCategories.has(unit.category)) return false;
+        return unit.type === 'infantry' || unit.type === 'cavalry' || unit.category === 'siege' || unit.category === 'shock';
     }
 
     createEnemyUnits(scenario) {
@@ -3510,37 +3514,49 @@ class GameState {
         playerCities.forEach((cityTile) => {
             const queue = this.ensureCityTrainingQueue(cityTile);
             if (!queue.length) return;
+            const attempts = queue.length;
+            for (let i = 0; i < attempts; i++) {
+                // Barracks-centric pacing: each city progresses one training project per turn.
+                const active = queue[0];
+                active.turnsRemaining = Math.max(0, Number(active.turnsRemaining || 0) - 1);
+                if (active.turnsRemaining > 0) return;
 
-            // Barracks-centric pacing: each city progresses one active training project.
-            const active = queue[0];
-            active.turnsRemaining = Math.max(0, Number(active.turnsRemaining || 0) - 1);
-            if (active.turnsRemaining > 0) return;
-
-            const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
-            if (!spawnTile) {
-                active.turnsRemaining = 0;
-                active.blocked = 'No adjacent spawn tile';
-                return;
-            }
-
-            const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
-                cityTile,
-                skipCost: true,
-                owner: 'player',
-                faction: this.player?.faction || this.selectedFaction || 'byzantine'
-            });
-            if (!unit) {
-                active.turnsRemaining = 0;
-                if (!active.blocked) {
-                    active.blocked = 'Recruitment failed';
+                const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
+                if (!spawnTile) {
+                    active.turnsRemaining = 0;
+                    active.blocked = 'No adjacent spawn tile';
+                    if (queue.length > 1) {
+                        queue.push(queue.shift());
+                        continue;
+                    }
+                    return;
                 }
+
+                const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
+                    cityTile,
+                    skipCost: true,
+                    owner: 'player',
+                    faction: this.player?.faction || this.selectedFaction || 'byzantine'
+                });
+                if (!unit) {
+                    active.turnsRemaining = 0;
+                    if (!active.blocked) {
+                        active.blocked = 'Recruitment failed';
+                    }
+                    if (queue.length > 1) {
+                        queue.push(queue.shift());
+                        continue;
+                    }
+                    return;
+                }
+
+                queue.shift();
+                completed.push({
+                    cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
+                    unit
+                });
                 return;
             }
-            queue.shift();
-            completed.push({
-                cityName: cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`,
-                unit
-            });
         });
         return completed;
     }
