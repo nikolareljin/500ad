@@ -2200,6 +2200,7 @@ class GameMap {
             if (!moved && window.uiManager) {
                 window.uiManager.showNotification('Unit cannot move to that tile', 'error');
             } else if (moved) {
+                window.uiManager?.onTutorialAction?.('move');
                 this.awaitingMoveOrder = false;
             }
         } else if (tile?.cityData && window.uiManager && !this.isFoggedTile(x, y)) {

@@ -415,6 +415,7 @@ const RECRUITMENT_UNIT_CATALOG = [
 ];
 
 const STRATEGIC_RESOURCE_KEYS = ['food', 'wood', 'stone', 'iron', 'rare'];
+const TUTORIAL_MAX_STEP_INDEX = 5;
 const CITY_BUILDING_BALANCE = {
     workshopRecruitGoldDiscountPerLevel: 0.06,
     workshopRecruitGoldDiscountCap: 0.24,
@@ -529,6 +530,7 @@ class GameState {
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.exploration = this.createDefaultExplorationState();
+        this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
     }
 
@@ -538,6 +540,55 @@ class GameState {
             discoveredRegions: {},
             discoveredLandmarks: {}
         };
+    }
+
+    createDefaultTutorialState() {
+        return {
+            active: true,
+            skipped: false,
+            completed: false,
+            stepIndex: 0,
+            progress: {
+                move: false,
+                combat: false,
+                build: false,
+                diplomacy: false,
+                endTurn: false
+            }
+        };
+    }
+
+    ensureTutorialState() {
+        if (!this.tutorialState || typeof this.tutorialState !== 'object') {
+            this.tutorialState = this.createDefaultTutorialState();
+        }
+        this.tutorialState.active = Boolean(this.tutorialState.active);
+        this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
+        this.tutorialState.completed = Boolean(this.tutorialState.completed);
+        const rawStepValue = Number(this.tutorialState.stepIndex);
+        const rawStep = Number.isFinite(rawStepValue) ? Math.floor(rawStepValue) : 0;
+        this.tutorialState.stepIndex = Math.min(this.getTutorialMaxStepIndex(), Math.max(0, rawStep));
+        if (!this.tutorialState.progress || typeof this.tutorialState.progress !== 'object') {
+            this.tutorialState.progress = {};
+        }
+        const keys = ['move', 'combat', 'build', 'diplomacy', 'endTurn'];
+        keys.forEach((key) => {
+            this.tutorialState.progress[key] = Boolean(this.tutorialState.progress[key]);
+        });
+        return this.tutorialState;
+    }
+
+    getTutorialMaxStepIndex() {
+        // UI tutorial definitions are the authoritative source when available.
+        const steps = (typeof window !== 'undefined'
+            && window.uiManager
+            && typeof window.uiManager.getTutorialSteps === 'function')
+            ? window.uiManager.getTutorialSteps()
+            : null;
+        if (Array.isArray(steps) && steps.length > 0) {
+            return steps.length - 1;
+        }
+        return TUTORIAL_MAX_STEP_INDEX;
     }
 
     ensureExplorationState() {
@@ -717,6 +768,7 @@ class GameState {
         this.aiEvents = [];
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.exploration = this.createDefaultExplorationState();
+        this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         this.setupScenarioTowns(civilization, scenario);
@@ -893,6 +945,31 @@ class GameState {
         }
         if (typeof cityData.autoBuildEnabled !== 'boolean') {
             cityData.autoBuildEnabled = false;
+        }
+        if (!Array.isArray(cityData.trainingQueue)) {
+            cityData.trainingQueue = [];
+        } else {
+            const sanitizedQueue = [];
+            for (const project of cityData.trainingQueue) {
+                if (!project || typeof project !== 'object' || typeof project.unitTypeId !== 'string') {
+                    continue;
+                }
+                if (typeof project.id !== 'string' || !project.id) {
+                    project.id = `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                }
+
+                const turnsRemainingRaw = Number(project.turnsRemaining);
+                project.turnsRemaining = Math.max(0, Math.floor(Number.isFinite(turnsRemainingRaw) ? turnsRemainingRaw : 0));
+
+                const totalTurnsRaw = Number(project.totalTurns ?? project.turnsRemaining ?? 1);
+                project.totalTurns = Math.max(1, Math.floor(Number.isFinite(totalTurnsRaw) ? totalTurnsRaw : 1));
+
+                const queuedTurnRaw = Number(project.queuedTurn ?? this.turn ?? 0);
+                project.queuedTurn = Math.max(0, Math.floor(Number.isFinite(queuedTurnRaw) ? queuedTurnRaw : 0));
+
+                sanitizedQueue.push(project);
+            }
+            cityData.trainingQueue = sanitizedQueue;
         }
         return cityData;
     }
@@ -3180,7 +3257,8 @@ class GameState {
     }
 
     spawnFactionArmyAtTown(town, owner, faction, unitCount = 2) {
-        const baseTypes = ['skutatoi', 'archers', 'kavallarioi'];
+        const roster = this.getFactionArmyRoster(town, owner, faction);
+        if (roster.length === 0) return false;
         let spawnedAny = false;
         for (let i = 0; i < unitCount; i++) {
             const preferredOffset = { x: i % 2, y: 1 + Math.floor(i / 2) };
@@ -3188,14 +3266,83 @@ class GameState {
             if (!spawnPos) continue;
             // Defensive guard: never allow spawning on the town tile itself.
             if (spawnPos.x === town.x && spawnPos.y === town.y) continue;
-            const unitType = baseTypes[i % baseTypes.length];
+            const unitType = roster[(this.turn + i) % roster.length];
             const unit = createUnit(unitType, spawnPos, owner);
             if (!unit) continue;
             this.applyFactionUnitNaming(unit, faction);
+            this.applySpawnProgression(unit, owner);
             this.units.push(unit);
             spawnedAny = true;
         }
         return spawnedAny;
+    }
+
+    getCurrentEraTag() {
+        const century = Number(this.selectedCentury || 6);
+        if (century <= 7) return 'early';
+        if (century <= 10) return 'middle';
+        return 'late';
+    }
+
+    getFactionArmyRoster(town, owner, faction) {
+        const era = this.getCurrentEraTag();
+        const eligible = getUnitsByEra(era).filter((u) => this.isCombatRosterUnit(u));
+        const factionBias = {
+            byzantine: ['skutatoi', 'archers', 'kavallarioi', 'cataphract', 'mangonel'],
+            arab: ['horsearchers', 'camel_riders', 'archers', 'kavallarioi'],
+            bulgar: ['mountain_infantry', 'skutatoi', 'archers', 'kavallarioi'],
+            frank: ['skutatoi', 'kavallarioi', 'cataphract', 'engineers'],
+            sassanid: ['horsearchers', 'camel_riders', 'kavallarioi', 'archers'],
+            tribal: ['skutatoi', 'archers', 'kavallarioi', 'psilos']
+        };
+        const biasPool = factionBias[faction] || factionBias.tribal;
+        const cityTerrain = gameMap?.getTile(town.x, town.y)?.terrain || 'plains';
+        const roster = [];
+
+        const pushIfValid = (unitId, weight = 1) => {
+            const unit = getUnitById(unitId);
+            if (!unit || !unit.era?.includes(era)) return;
+            if (!this.isCombatRosterUnit(unit)) return;
+            if (unit.category === 'desert' && cityTerrain === 'water') return;
+            const repeats = Math.max(1, Math.floor(weight));
+            for (let i = 0; i < repeats; i++) roster.push(unitId);
+        };
+
+        biasPool.forEach((unitId) => pushIfValid(unitId, 2));
+        eligible.forEach((unit) => {
+            let weight = 1;
+            if (unit.type === 'infantry') weight += 1;
+            if (unit.type === 'cavalry') weight += 1;
+            if (unit.category === 'elite' || unit.category === 'superheavy') weight = Math.max(1, weight - 1);
+            pushIfValid(unit.id, weight);
+        });
+
+        if (owner === 'player') return roster;
+
+        // AI factions can field advanced units in later turns to reflect progression.
+        if (this.turn > 20) {
+            ['varangian', 'tagmata', 'mangonel'].forEach((unitId) => pushIfValid(unitId, 1));
+        }
+        if (this.turn > 35) {
+            ['klibanophoroi', 'war_elephants'].forEach((unitId) => pushIfValid(unitId, 1));
+        }
+
+        return roster.length > 0 ? roster : ['skutatoi', 'archers', 'kavallarioi'];
+    }
+
+    applySpawnProgression(unit, owner = 'enemy') {
+        if (!unit || owner !== 'enemy') return;
+        const baseXP = Math.max(0, Math.floor(this.turn * 1.8));
+        unit.experience = baseXP;
+        // Spawned veteran armies may level and promote as the campaign matures.
+        checkLevelUp(unit);
+    }
+
+    isCombatRosterUnit(unit) {
+        if (!unit || unit.type === 'naval') return false;
+        const nonCombatCategories = new Set(['support', 'economic', 'scout', 'intel', 'infrastructure', 'transport']);
+        if (nonCombatCategories.has(unit.category)) return false;
+        return unit.type === 'infantry' || unit.type === 'cavalry' || unit.category === 'siege' || unit.category === 'shock';
     }
 
     createEnemyUnits(scenario) {
@@ -3316,21 +3463,18 @@ class GameState {
         if (tile.terrain !== 'water' && waterOnly) return null;
 
         const sourceCity = options.cityTile || null;
-        const recruitCost = this.getRecruitmentCost(unitTypeId, sourceCity);
-        if (!recruitCost) return null;
-
-        // Check if player can afford
-        if (!this.canAfford(recruitCost.gold, recruitCost.manpower)) {
-            return null;
+        if (!options.skipCost) {
+            const recruitCost = this.getRecruitmentCost(unitTypeId, sourceCity);
+            if (!recruitCost) return null;
+            if (!this.canAfford(recruitCost.gold, recruitCost.manpower)) return null;
+            this.spendResources(recruitCost.gold, recruitCost.manpower);
         }
 
-        // Spend resources
-        this.spendResources(recruitCost.gold, recruitCost.manpower);
-
         // Create unit
-        const unit = createUnit(unitTypeId, position, 'player');
+        const unit = createUnit(unitTypeId, position, options.owner || 'player');
         if (unit) {
-            this.applyFactionUnitNaming(unit, this.player?.faction || this.selectedFaction || 'byzantine');
+            const faction = options.faction || this.player?.faction || this.selectedFaction || 'byzantine';
+            this.applyFactionUnitNaming(unit, faction);
             const barracksLevel = this.getCityBuildingLevel(sourceCity, 'barracks');
             if (barracksLevel > 0) {
                 // Each barracks level grants a fixed onboarding XP bonus (+8) so trained cities produce
@@ -3338,10 +3482,128 @@ class GameState {
                 unit.experience = (unit.experience || 0) + (barracksLevel * CITY_BUILDING_BALANCE.barracksRecruitXpPerLevel);
             }
             this.units.push(unit);
-            this.player.unitsOwned.push(unit.id);
+            if (unit.owner === 'player' && Array.isArray(this.player?.unitsOwned)) {
+                this.player.unitsOwned.push(unit.id);
+            }
         }
 
         return unit;
+    }
+
+    queueUnitRecruitment(unitTypeId, cityTile) {
+        const status = this.getRecruitmentOptionStatus(cityTile, unitTypeId);
+        if (!status.available) {
+            return {
+                success: false,
+                reasons: status.reasons || ['Recruitment requirements not met']
+            };
+        }
+
+        const cost = status.finalCost || this.getRecruitmentCost(unitTypeId, cityTile);
+        if (!cost || !this.canAfford(cost.gold, cost.manpower)) {
+            return {
+                success: false,
+                reasons: ['Not enough resources']
+            };
+        }
+
+        this.spendResources(cost.gold, cost.manpower);
+        const queue = this.ensureCityTrainingQueue(cityTile);
+        const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
+        const recruitmentSpeed = Number(this.player?.bonuses?.recruitmentSpeed || 1);
+        const trainingTurns = getUnitTrainingTurns(unitTypeId, { barracksLevel, recruitmentSpeed });
+        const project = {
+            id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            unitTypeId,
+            turnsRemaining: trainingTurns,
+            totalTurns: trainingTurns,
+            queuedTurn: this.turn
+        };
+        queue.push(project);
+        return {
+            success: true,
+            project,
+            queueLength: queue.length
+        };
+    }
+
+    ensureCityTrainingQueue(cityTile) {
+        if (!cityTile?.cityData) return [];
+        if (!Array.isArray(cityTile.cityData.trainingQueue)) {
+            cityTile.cityData.trainingQueue = [];
+        }
+        return cityTile.cityData.trainingQueue;
+    }
+
+    processUnitTrainingTurn() {
+        if (!gameMap) return [];
+        const completed = [];
+        const playerCities = gameMap.getCityTiles('player');
+        for (const cityTile of playerCities) {
+            const queue = this.ensureCityTrainingQueue(cityTile);
+            if (!queue.length) continue;
+            // Barracks-centric pacing: each city progresses one training project per turn.
+            const active = queue[0];
+            const rawTurns = Number(active.turnsRemaining);
+            const safeTurns = Number.isFinite(rawTurns) ? rawTurns : 0;
+            active.turnsRemaining = Math.max(0, safeTurns - 1);
+            if (active.turnsRemaining > 0) continue;
+
+            const cityName = cityTile.cityData?.name || `${cityTile.x},${cityTile.y}`;
+            const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
+            if (!spawnTile) {
+                active.turnsRemaining = 0;
+                active.blocked = 'No adjacent spawn tile';
+                const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
+                active.lastBlockedReason = active.blocked;
+                active.blockedNotified = true;
+                if (queue.length > 1) {
+                    queue.push(queue.shift());
+                }
+                if (shouldNotifyBlocked) {
+                    completed.push({
+                        cityName,
+                        blocked: true,
+                        reason: active.blocked
+                    });
+                }
+                continue;
+            }
+
+            const unit = this.recruitUnit(active.unitTypeId, spawnTile, {
+                cityTile,
+                skipCost: true,
+                owner: 'player',
+                faction: this.player?.faction || this.selectedFaction || 'byzantine'
+            });
+            if (!unit) {
+                active.turnsRemaining = 0;
+                if (!active.blocked) {
+                    active.blocked = 'Recruitment failed';
+                }
+                const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
+                active.lastBlockedReason = active.blocked;
+                active.blockedNotified = true;
+                if (queue.length > 1) {
+                    queue.push(queue.shift());
+                }
+                if (shouldNotifyBlocked) {
+                    completed.push({
+                        cityName,
+                        blocked: true,
+                        reason: active.blocked
+                    });
+                }
+                continue;
+            }
+
+            queue.shift();
+            completed.push({
+                cityName,
+                unit
+            });
+        }
+        return completed;
     }
 
     getRecruitSpawnTile(cityTile, unitTypeId) {
@@ -3454,6 +3716,10 @@ class GameState {
 
         const resources = this.player?.resources || {};
         const finalCost = this.getRecruitmentCost(unitId, cityTile) || { gold: unit.cost?.gold || 0, manpower: unit.cost?.manpower || 0 };
+        const trainingTurns = getUnitTrainingTurns(unitId, {
+            barracksLevel: this.getCityBuildingLevel(cityTile, 'barracks'),
+            recruitmentSpeed: Number(this.player?.bonuses?.recruitmentSpeed || 1)
+        });
         const missingGold = Math.max(0, (finalCost.gold || 0) - (resources.gold || 0));
         const missingManpower = Math.max(0, (finalCost.manpower || 0) - (resources.manpower || 0));
         if (missingGold > 0 || missingManpower > 0) {
@@ -3469,7 +3735,17 @@ class GameState {
             reasons.push(isNaval ? 'No open adjacent water tile' : 'No open adjacent land tile');
         }
 
-        return { unitId, unit, available: reasons.length === 0, reasons, spawnTile, finalCost };
+        return {
+            unitId,
+            unit,
+            available: reasons.length === 0,
+            reasons,
+            spawnTile,
+            finalCost,
+            trainingTurns,
+            upkeep: Number(unit.upkeep || 0),
+            upgradePath: getUnitUpgradePath(unitId)
+        };
     }
 
     getRecruitmentOptions(cityTile) {
@@ -4122,6 +4398,7 @@ class GameState {
         this.turn++;
         const completedConstruction = this.processCityConstructionTurn();
         const autoStartedConstruction = this.processCityAutoBuildTurn();
+        const completedTraining = this.processUnitTrainingTurn();
         const researchProgress = this.processResearchTurn();
 
         // Generate resources
@@ -4203,6 +4480,7 @@ class GameState {
             cityProduction,
             completedConstruction,
             autoStartedConstruction,
+            completedTraining,
             researchProgress,
             dynamicNarrative
         };
@@ -4344,6 +4622,7 @@ class GameState {
             dynamicNarrativeState: this.dynamicNarrativeState,
             diplomacyState: this.diplomacyState,
             exploration: this.exploration,
+            tutorialState: this.ensureTutorialState(),
             selectedLeader: this.selectedLeader,
             selectedCentury: this.selectedCentury,
             player: this.player,
@@ -4366,7 +4645,10 @@ class GameState {
             x: tile.x,
             y: tile.y,
             owner: tile.owner || null,
-            faction: tile.faction || null
+            faction: tile.faction || null,
+            trainingQueue: Array.isArray(tile.cityData?.trainingQueue)
+                ? tile.cityData.trainingQueue.map((project) => ({ ...project }))
+                : []
         }));
     }
 
@@ -4448,6 +4730,11 @@ class GameState {
             if (saved) {
                 tile.owner = saved.owner || null;
                 if (saved.faction) tile.faction = saved.faction;
+                if (Array.isArray(saved.trainingQueue)) {
+                    tile.cityData.trainingQueue = saved.trainingQueue.map((project) => ({ ...project }));
+                    // Reuse queue sanitation to clamp numeric fields and remove malformed entries.
+                    this.ensureCityBuildingState(tile);
+                }
 
                 // Mark consumed entries so we can detect stale/unmatched save data.
                 if (saved.id && byId.get(saved.id) === saved) {
@@ -4567,8 +4854,19 @@ class GameState {
         this.exploration = (data.exploration && typeof data.exploration === 'object')
             ? data.exploration
             : this.createDefaultExplorationState();
+        const hasTutorialState = Boolean(data.tutorialState && typeof data.tutorialState === 'object');
+        this.tutorialState = hasTutorialState
+            ? data.tutorialState
+            : this.createDefaultTutorialState();
         this.initializeDiplomacyState();
         this.ensureExplorationState();
+        this.ensureTutorialState();
+        if (!hasTutorialState && this.turn > 3) {
+            // Avoid forcing onboarding on legacy saves that already progressed beyond opening turns.
+            this.tutorialState.active = false;
+            this.tutorialState.completed = true;
+            this.tutorialState.skipped = false;
+        }
         this.ensureStrategicResourceStockpile();
         if (!Array.isArray(this.player.techResearched)) {
             this.player.techResearched = [];

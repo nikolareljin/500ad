@@ -71,12 +71,14 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **City Building Tree**: Develop each city through upgradeable `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`, each with tech requirements and build times.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
-- **Unit Progression**: Experience and leveling system
+- **Unit Progression**: Experience and leveling system with role-based stat growth and veteran promotions along upgrade paths
+- **Training Queue System**: Recruitment now uses per-city training time and queue processing each turn
 - **Combat System**: Tactical layer with formations (`Line`, `Wedge`, `Shield Wall`), battle-type/terrain modifiers, effective morale-driven outcomes, and concise combat logs
 - **AI Factions with Personalities**: Enemy realms act by faction identity and personality archetype (aggressive, defensive, opportunistic, diplomatic) with different expansion/warfare/resource priorities
 - **Diplomacy & Trade System**: Negotiate truces, alliances, trade agreements, and declarations of war with per-faction trust/hostility and reputation impacts
 - **Trade Routes**: Active agreements create income routes that can be raided/disrupted by hostile pressure and war outcomes
 - **Quest & Dynamic Events**: Turn-based narrative system that triggers quests/events from time, location pressure, diplomacy status, resources, and player progress; each event has branching choices with lasting consequences
+- **Tutorial & Onboarding**: Guided early-game onboarding for movement, combat, city building, diplomacy, and turn flow with contextual hints, skip support, and replay from the in-game menu
 - **Unit Vitality UI**: Recently damaged units show a map health ring (green -> red) to highlight their current health
 - **Fortification System**: Any unit can fortify and build a permanent defensive fort on its tile
 - **Healing System**: Recover in towns, while fortified, or from adjacent support/healer units
@@ -119,6 +121,7 @@ Note: the opening position and controlled towns depend on the selected era, lead
 - **Tap/Click the Selected Unit Again**: Cancel move mode quickly (Move Mode OFF)
 - **End Turn Button**: Complete your turn and generate resources
 - **Research Button**: Open the technology tree, inspect prerequisites/unlocks, and start new projects when no research is active
+- **Tutorial & Onboarding**: Follow the guided panel in early turns; skip anytime or replay from `Game Menu -> Tutorial & Onboarding`
 
 ### Map Navigation
 - **Pan**: Click and drag anywhere on the map to move your view
@@ -400,7 +403,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.12.0** - Adds layered fog-of-war visibility (unexplored vs explored shroud), vision-range-driven reconnaissance, hidden enemy movement outside current sight, exploration discovery rewards for regions/landmarks, explicit unit move-mode toggling (`double-click`/`double-tap`), and a compact bottom unit panel on mobile for unobstructed movement input.
+**Version 1.14.0** - Adds unit upgrade paths, role-based progression scaling, per-city recruitment training queues, and era-aware AI unit composition with veteran scaling.
 
 ## License
 
