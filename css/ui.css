@@ -706,10 +706,10 @@
 .overview-card h4[data-tip]::after {
     content: attr(data-tip);
     position: absolute;
-    left: 0;
+    left: 50%;
     top: calc(100% + 6px);
-    min-width: 180px;
-    max-width: 260px;
+    width: min(260px, calc(100vw - 3rem));
+    max-width: calc(100vw - 3rem);
     padding: 0.28rem 0.4rem;
     border-radius: 6px;
     background: rgba(9, 15, 24, 0.95);
@@ -718,7 +718,7 @@
     line-height: 1.3;
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-2px);
+    transform: translate(-50%, -2px);
     transition: opacity var(--transition-fast), transform var(--transition-fast);
     z-index: 4;
     border: 1px solid rgba(212, 175, 55, 0.38);
@@ -727,7 +727,7 @@
 .overview-card h4[data-tip]:hover::after,
 .overview-card h4[data-tip]:focus-visible::after {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
 }
 
 .overview-card h4[data-tip]:focus-visible {

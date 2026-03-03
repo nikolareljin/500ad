@@ -1308,6 +1308,8 @@ class UIManager {
 
     updateCommandOverview() {
         if (!this.commandOverview || !gameState?.initialized) return;
+        // When collapsed, skip card recomputation and DOM writes until the panel is visible again.
+        if (this.overviewCollapsed) return;
         this.updateResourcesOverviewCard();
         this.updateFactionOverviewCard();
         this.updateCityOverviewCard();
