@@ -671,9 +671,10 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: 0.5rem;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: visible;
-    max-height: min(48vh, 420px);
     padding-right: 0.2rem;
 }
 
