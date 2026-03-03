@@ -114,7 +114,7 @@
         right: var(--spacing-sm);
         top: 92px;
         width: auto;
-        max-height: min(24vh, 210px);
+        max-height: min(52vh, 420px);
         padding: 0.45rem;
         gap: 0.38rem;
     }

@@ -599,7 +599,8 @@
     backdrop-filter: blur(5px);
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
     z-index: 145;
-    overflow: visible;
+    /* Enforce panel max-height; inner sections manage their own scrolling. */
+    overflow: hidden;
 }
 
 .command-overview.collapsed .overview-grid,
@@ -673,8 +674,8 @@
     gap: 0.5rem;
     flex: 1 1 auto;
     min-height: 0;
-    /* Keep tooltip popovers from getting clipped by the grid scroll container. */
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 0.2rem;
 }
 
