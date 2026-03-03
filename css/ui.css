@@ -673,8 +673,8 @@
     gap: 0.5rem;
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: visible;
+    /* Keep tooltip popovers from getting clipped by the grid scroll container. */
+    overflow: visible;
     padding-right: 0.2rem;
 }
 

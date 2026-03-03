@@ -1268,6 +1268,10 @@ class UIManager {
             toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
             if (this.commandOverview?.id) toggleBtn.setAttribute('aria-controls', this.commandOverview.id);
         }
+        if (!this.overviewCollapsed) {
+            // Refresh immediately on expand so card data is never stale.
+            this.updateCommandOverview();
+        }
     }
 
     toggleOverviewHelp() {
@@ -1338,7 +1342,16 @@ class UIManager {
         const overview = typeof gameState?.getDiplomacyOverview === 'function' ? gameState.getDiplomacyOverview() : [];
         const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route?.active).length;
         const hostile = overview.filter((row) => row?.status === 'war').length;
-        const strongest = [...overview].sort((a, b) => (b?.hostility || 0) - (a?.hostility || 0))[0];
+        let strongest = null;
+        let maxHostility = -Infinity;
+        for (const row of overview) {
+            if (!row) continue;
+            const hostility = row.hostility || 0;
+            if (hostility > maxHostility) {
+                maxHostility = hostility;
+                strongest = row;
+            }
+        }
         const lines = [
             { label: 'Known Factions', value: String(overview.length) },
             { label: 'At War', value: String(hostile) },
