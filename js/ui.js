@@ -14,6 +14,7 @@ class UIManager {
         this.selectedLeaderCard = null;
         this.tutorialPanel = null;
         this.tutorialLastHintByStep = {};
+        this.overviewCollapsed = false;
     }
 
     /**
@@ -32,6 +33,13 @@ class UIManager {
         this.modalContent = document.getElementById('modal-content');
         this.notificationContainer = document.getElementById('notification-container');
         this.turnProcessingOverlay = document.getElementById('turn-processing-overlay');
+        this.commandOverview = document.getElementById('command-overview');
+        this.overviewCards = {
+            resources: document.querySelector('#overview-resources .overview-card-body'),
+            faction: document.querySelector('#overview-faction .overview-card-body'),
+            cities: document.querySelector('#overview-cities .overview-card-body'),
+            events: document.querySelector('#overview-events .overview-card-body')
+        };
 
         // Set up event listeners
         this.setupEventListeners();
@@ -152,6 +160,39 @@ class UIManager {
 
         window.addEventListener('resize', () => {
             this.positionUnitPanel();
+        });
+
+        document.getElementById('btn-overview-toggle')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.toggleCommandOverview();
+        });
+
+        document.getElementById('btn-overview-help')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.toggleOverviewHelp();
+        });
+
+        document.querySelectorAll('[data-overview-action]').forEach((button) => {
+            button.addEventListener('click', () => {
+                audioManager.playUISound('click');
+                const action = button.getAttribute('data-overview-action');
+                switch (action) {
+                    case 'build':
+                        this.buildInSelectedCity();
+                        break;
+                    case 'recruit':
+                        this.recruitAtSelectedCity();
+                        break;
+                    case 'diplomacy':
+                        this.manageDiplomacy();
+                        break;
+                    case 'quests':
+                        this.showQuestLogModal();
+                        break;
+                    default:
+                        break;
+                }
+            });
         });
 
         // Close modal on overlay click
@@ -1199,6 +1240,167 @@ class UIManager {
         setOptionalResource('resource-iron', resources.iron);
         setOptionalResource('resource-rare', resources.rare);
         document.getElementById('turn-number').textContent = gameState.turn;
+        this.updateCommandOverview();
+    }
+
+    toggleCommandOverview() {
+        this.overviewCollapsed = !this.overviewCollapsed;
+        this.commandOverview?.classList.toggle('collapsed', this.overviewCollapsed);
+        if (this.overviewCollapsed && this.commandOverview?.classList.contains('help-visible')) {
+            // Keep visual and ARIA help states synchronized when the overview is collapsed.
+            this.commandOverview.classList.remove('help-visible');
+            const helpBtn = document.getElementById('btn-overview-help');
+            if (helpBtn) {
+                helpBtn.setAttribute('aria-pressed', 'false');
+                helpBtn.setAttribute('aria-expanded', 'false');
+                helpBtn.setAttribute('aria-label', 'Show contextual help');
+                helpBtn.title = 'Show contextual help';
+                helpBtn.setAttribute('aria-controls', 'overview-help-text');
+            }
+        }
+        const toggleBtn = document.getElementById('btn-overview-toggle');
+        if (toggleBtn) {
+            const isExpanded = !this.overviewCollapsed;
+            const label = this.overviewCollapsed ? 'Expand overview panel' : 'Collapse overview panel';
+            toggleBtn.textContent = this.overviewCollapsed ? '+' : '−';
+            toggleBtn.title = label;
+            toggleBtn.setAttribute('aria-label', label);
+            toggleBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            if (this.commandOverview?.id) toggleBtn.setAttribute('aria-controls', this.commandOverview.id);
+        }
+        if (!this.overviewCollapsed) {
+            // Refresh immediately on expand so card data is never stale.
+            this.updateCommandOverview();
+        }
+    }
+
+    toggleOverviewHelp() {
+        if (!this.commandOverview) return;
+        if (this.overviewCollapsed) {
+            const helpBtn = document.getElementById('btn-overview-help');
+            if (helpBtn) {
+                // Keep ARIA state truthful while content is intentionally hidden in collapsed mode.
+                helpBtn.setAttribute('aria-pressed', 'false');
+                helpBtn.setAttribute('aria-expanded', 'false');
+                helpBtn.setAttribute('aria-label', 'Show contextual help');
+                helpBtn.title = 'Show contextual help';
+                helpBtn.setAttribute('aria-controls', 'overview-help-text');
+            }
+            this.commandOverview.classList.remove('help-visible');
+            return;
+        }
+        const helpVisible = this.commandOverview.classList.toggle('help-visible');
+        const helpBtn = document.getElementById('btn-overview-help');
+        if (helpBtn) {
+            const label = helpVisible ? 'Hide contextual help' : 'Show contextual help';
+            helpBtn.setAttribute('aria-pressed', String(helpVisible));
+            helpBtn.setAttribute('aria-expanded', String(helpVisible));
+            helpBtn.setAttribute('aria-label', label);
+            helpBtn.title = label;
+            helpBtn.setAttribute('aria-controls', 'overview-help-text');
+        }
+    }
+
+    renderOverviewLines(lines) {
+        return lines.map((line) => `
+            <div class="overview-line">
+                <span class="overview-label">${this.escapeHtml(line.label)}</span>
+                <span class="overview-value">${this.escapeHtml(line.value)}</span>
+            </div>
+        `).join('');
+    }
+
+    updateCommandOverview() {
+        if (!this.commandOverview || !gameState?.initialized) return;
+        // When collapsed, skip card recomputation and DOM writes until the panel is visible again.
+        if (this.overviewCollapsed) return;
+        this.updateResourcesOverviewCard();
+        this.updateFactionOverviewCard();
+        this.updateCityOverviewCard();
+        this.updateEventsOverviewCard();
+    }
+
+    updateResourcesOverviewCard() {
+        const el = this.overviewCards?.resources;
+        if (!el) return;
+        const resources = gameState?.player?.resources || {};
+        const armySize = Array.isArray(gameState?.units)
+            ? gameState.units.filter((unit) => unit?.owner === 'player').length
+            : 0;
+        const lines = [
+            { label: 'Gold', value: String(resources.gold || 0) },
+            { label: 'Manpower', value: String(resources.manpower || 0) },
+            { label: 'Strategic Stockpile', value: String((resources.food || 0) + (resources.wood || 0) + (resources.stone || 0) + (resources.iron || 0) + (resources.rare || 0)) },
+            { label: 'Fielded Units', value: String(armySize) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateFactionOverviewCard() {
+        const el = this.overviewCards?.faction;
+        if (!el) return;
+        const overview = typeof gameState?.getDiplomacyOverview === 'function' ? gameState.getDiplomacyOverview() : [];
+        const activeRoutes = (gameState?.diplomacyState?.tradeRoutes || []).filter((route) => route?.active).length;
+        const hostile = overview.filter((row) => row?.status === 'war').length;
+        let strongest = null;
+        let maxHostility = -Infinity;
+        for (const row of overview) {
+            if (!row) continue;
+            const hostility = row.hostility || 0;
+            if (hostility > maxHostility) {
+                maxHostility = hostility;
+                strongest = row;
+            }
+        }
+        const lines = [
+            { label: 'Known Factions', value: String(overview.length) },
+            { label: 'At War', value: String(hostile) },
+            { label: 'Trade Routes', value: String(activeRoutes) },
+            {
+                label: 'Top Threat',
+                value: strongest
+                    ? (strongest.displayName || this.formatFactionName(strongest.factionId) || 'Unknown')
+                    : 'None'
+            }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateCityOverviewCard() {
+        const el = this.overviewCards?.cities;
+        if (!el) return;
+        const cityTiles = gameMap?.getCityTiles?.('player') || [];
+        const metrics = {
+            ownedCities: cityTiles.length,
+            constructions: cityTiles.filter((tile) => Boolean(tile?.cityData?.construction)).length,
+            queues: cityTiles.reduce((sum, tile) => sum + ((tile?.cityData?.trainingQueue || []).length || 0), 0),
+            autoBuild: cityTiles.filter((tile) => Boolean(tile?.cityData?.autoBuildEnabled)).length
+        };
+        const lines = [
+            { label: 'Owned Cities', value: String(metrics.ownedCities) },
+            { label: 'Under Construction', value: String(metrics.constructions) },
+            { label: 'Training Queue', value: String(metrics.queues) },
+            { label: 'Auto Build Enabled', value: String(metrics.autoBuild) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
+    }
+
+    updateEventsOverviewCard() {
+        const el = this.overviewCards?.events;
+        if (!el) return;
+        const overview = typeof gameState?.getDynamicNarrativeOverview === 'function'
+            ? gameState.getDynamicNarrativeOverview()
+            : { active: [], history: [] };
+        const active = Array.isArray(overview?.active) ? overview.active : [];
+        const history = Array.isArray(overview?.history) ? overview.history : [];
+        const recent = history.length > 0 ? history[history.length - 1] : null;
+        const lines = [
+            { label: 'Active Quests/Events', value: String(active.length) },
+            { label: 'History Entries', value: String(history.length) },
+            { label: 'Recent Entry', value: recent?.title ? String(recent.title).slice(0, 24) : 'None' },
+            { label: 'Current Turn', value: String(gameState?.turn || 0) }
+        ];
+        el.innerHTML = this.renderOverviewLines(lines);
     }
 
     /**

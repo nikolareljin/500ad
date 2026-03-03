@@ -69,6 +69,7 @@ Command legendary Byzantine emperors and generals through pivotal moments in Eas
 - **Research Progression**: Run one active research project at a time; costs are paid when started and completion happens over subsequent turns.
 - **Tech Unlock Integration**: Technologies now unlock specific units, city buildings, and infrastructure actions while also feeding combat, economy, and diplomacy bonuses.
 - **City Building Tree**: Develop each city through upgradeable `Farms`, `Barracks`, `Mines`, `Workshops`, `Temple`, and `Walls`, each with tech requirements and build times.
+- **Command Overview Panels**: A modular side rail summarizes resources, faction intel, city-management pressure, and active events with contextual tooltips and quick actions.
 - **Pan Navigation**: Drag to explore the massive map
 - **Top Minimap Navigation**: View the full world and jump to any region with click/drag
 - **Unit Progression**: Experience and leveling system with role-based stat growth and veteran promotions along upgrade paths
@@ -406,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.15.0** - Introduces a versioned save-game schema and compatibility layer so saves remain loadable across game and content updates.
+**Version 1.16.0** - Adds a modular Command Overview UI with resources, faction intel, city management, and events panels plus contextual help and quick actions.
 
 ## License
 
