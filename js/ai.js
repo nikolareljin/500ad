@@ -135,52 +135,59 @@ class AIManager {
     }
 
     async processTurn() {
-        console.log('Processing enemy turn...');
-        if (!gameState || !gameMap) {
-            console.warn('Enemy turn skipped: game state/map is not ready.');
-            return;
-        }
-        if (typeof gameState.refreshAIFactionState !== 'function' || typeof gameState.updateAIFactionIntelFromWorldState !== 'function') {
-            console.warn('Enemy turn skipped: AI support methods are unavailable.');
-            return;
-        }
+            console.log('Processing enemy turn...');
+            const aiTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('ai_turn') : null;
 
-        const enemyUnits = gameState.units.filter((u) => u.owner === 'enemy');
-        if (enemyUnits.length === 0) {
-            console.log('Enemy turn skipped: no enemy units available.');
-            return;
-        }
+            if (!gameState || !gameMap) {
+                console.warn('Enemy turn skipped: game state/map is not ready.');
+                return;
+            }
+            if (typeof gameState.refreshAIFactionState !== 'function' || typeof gameState.updateAIFactionIntelFromWorldState !== 'function') {
+                console.warn('Enemy turn skipped: AI support methods are unavailable.');
+                return;
+            }
 
-        gameState.refreshAIFactionState();
-        gameState.updateAIFactionIntelFromWorldState();
+            const enemyUnits = gameState.units.filter((u) => u.owner === 'enemy');
+            if (enemyUnits.length === 0) {
+                console.log('Enemy turn skipped: no enemy units available.');
+                return;
+            }
 
-        const unitsByFaction = new Map();
-        enemyUnits.forEach((unit) => {
-            const factionId = this.getFactionIdForUnit(unit);
-            if (!unitsByFaction.has(factionId)) unitsByFaction.set(factionId, []);
-            unitsByFaction.get(factionId).push(unit);
-        });
+            const refreshTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('ai_refresh_state') : null;
+            gameState.refreshAIFactionState();
+            gameState.updateAIFactionIntelFromWorldState();
+            if (refreshTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(refreshTimer);
 
-        const factionContexts = [...unitsByFaction.entries()]
-            .map(([factionId, units]) => this.buildFactionContext(factionId, units))
-            .sort((a, b) => {
-                const aThreat = a.state?.intel?.playerThreat || 0;
-                const bThreat = b.state?.intel?.playerThreat || 0;
-                return bThreat - aThreat || b.units.length - a.units.length;
+            const unitsByFaction = new Map();
+            enemyUnits.forEach((unit) => {
+                const factionId = this.getFactionIdForUnit(unit);
+                if (!unitsByFaction.has(factionId)) unitsByFaction.set(factionId, []);
+                unitsByFaction.get(factionId).push(unit);
             });
 
-        if (gameMap && enemyUnits[0]) {
-            gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
-            gameMap.requestRender();
-        }
+            const factionContexts = [...unitsByFaction.entries()]
+                .map(([factionId, units]) => this.buildFactionContext(factionId, units))
+                .sort((a, b) => {
+                    const aThreat = a.state?.intel?.playerThreat || 0;
+                    const bThreat = b.state?.intel?.playerThreat || 0;
+                    return bThreat - aThreat || b.units.length - a.units.length;
+                });
 
-        for (const context of factionContexts) {
-            const plan = this.planFactionTurn(context);
-            await this.processFactionTurn(context, plan);
-        }
+            if (gameMap && enemyUnits[0]) {
+                gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
+                gameMap.requestRender();
+            }
 
-        console.log('Enemy turn completed');
-    }
+            for (const context of factionContexts) {
+                const factionTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer(`ai_faction_${context.factionId}`) : null;
+                const plan = this.planFactionTurn(context);
+                await this.processFactionTurn(context, plan);
+                if (factionTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(factionTimer);
+            }
+
+            console.log('Enemy turn completed');
+            if (aiTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(aiTimer);
+        }
 
     async processFactionTurn(context, plan) {
         this.processFactionDiplomacy(context, plan);

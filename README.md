@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.16.0** - Adds a modular Command Overview UI with resources, faction intel, city management, and events panels plus contextual help and quick actions.
+**Version 1.17.0** - Adds comprehensive performance optimizations for large worlds including profiling tools, render caching, chunk-based updates, and AI processing improvements.
 
 ## License
 
