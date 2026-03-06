@@ -2180,7 +2180,6 @@ class UIManager {
             <h2>Game Menu</h2>
             <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem;">
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
-                <button class="menu-btn" onclick="uiManager.replayTutorial()">Tutorial & Onboarding</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
