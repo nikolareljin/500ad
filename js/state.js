@@ -562,7 +562,7 @@ class GameState {
         if (!this.tutorialState || typeof this.tutorialState !== 'object') {
             this.tutorialState = this.createDefaultTutorialState();
         }
-        // Tutorial disabled for 1.16.1 — overrides any persisted save state.
+        // Tutorial disabled for 1.16.1 — forcibly sets active/skipped regardless of persisted save state.
         this.tutorialState.active = false;
         this.tutorialState.skipped = true;
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
