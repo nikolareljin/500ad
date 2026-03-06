@@ -10,7 +10,6 @@ All notable changes to this project are documented in this file.
 - Added comprehensive performance monitoring system with profiling tools for frame timing, render operations, AI processing, and territory updates.
 - Added performance debug tools accessible via browser console (`window.enablePerformanceMonitoring()`, `window.getPerformanceReport()`).
 - Added render caching (`RenderCache`) for territory owner lookups per tile, reducing repeated computation during each frame; cache invalidates automatically on territory change.
-- Added chunk-based fog tracking (`ChunkManager`) to mark only affected map chunks dirty when fog is revealed, enabling future partial re-renders.
 - Added batch rendering for terrain, forts, roads, and resources to reduce draw calls.
 - Added spatial filtering for unit rendering to skip off-screen units.
 - Added AI processing optimizations with batch unit processing and performance timers.

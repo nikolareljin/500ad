@@ -160,70 +160,14 @@ class RenderCache {
     }
 }
 
-class ChunkManager {
-    constructor(chunkSize = 32) {
-        this.chunkSize = chunkSize;
-        this.chunks = new Map();
-        this.dirtyChunks = new Set();
-    }
-
-    getChunkKey(x, y) {
-        const chunkX = Math.floor(x / this.chunkSize);
-        const chunkY = Math.floor(y / this.chunkSize);
-        return `${chunkX},${chunkY}`;
-    }
-
-    getChunk(x, y) {
-        const key = this.getChunkKey(x, y);
-        return this.chunks.get(key);
-    }
-
-    setChunk(x, y, data) {
-        const key = this.getChunkKey(x, y);
-        this.chunks.set(key, data);
-    }
-
-    markDirty(x, y) {
-        const key = this.getChunkKey(x, y);
-        this.dirtyChunks.add(key);
-    }
-
-    getDirtyChunks() {
-        return Array.from(this.dirtyChunks);
-    }
-
-    clearDirty() {
-        this.dirtyChunks.clear();
-    }
-
-    getVisibleChunks(viewX, viewY, viewWidth, viewHeight) {
-        const chunks = [];
-        const startChunkX = Math.floor(viewX / this.chunkSize);
-        const startChunkY = Math.floor(viewY / this.chunkSize);
-        const endChunkX = Math.ceil((viewX + viewWidth) / this.chunkSize);
-        const endChunkY = Math.ceil((viewY + viewHeight) / this.chunkSize);
-
-        for (let cy = startChunkY; cy <= endChunkY; cy++) {
-            for (let cx = startChunkX; cx <= endChunkX; cx++) {
-                const key = `${cx},${cy}`;
-                chunks.push(key);
-            }
-        }
-
-        return chunks;
-    }
-}
-
 // Global instances
 const perfMonitor = new PerformanceMonitor();
 const renderCache = new RenderCache(4000);
-const chunkManager = new ChunkManager(32);
 
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
     window.perfMonitor = perfMonitor;
     window.renderCache = renderCache;
-    window.chunkManager = chunkManager;
     window.enablePerformanceMonitoring = () => perfMonitor.enable();
     window.disablePerformanceMonitoring = () => perfMonitor.disable();
     window.getPerformanceReport = () => perfMonitor.printReport();

@@ -370,6 +370,7 @@ class AIManager {
         if (target) {
             const nextStep = this.calculateNextStep(unit.position, target.position);
             if (nextStep) {
+                const oldPos = { x: unit.position.x, y: unit.position.y };
                 const moved = gameState.moveUnit(unit.id, nextStep);
                 if (!moved) {
                     // Failed move keeps the unit in place; do a single stationary re-check and exit.
@@ -378,8 +379,8 @@ class AIManager {
                     return;
                 }
                 if (this.occupiedPositions) {
-                    this.occupiedPositions.delete(`${unit.position.x},${unit.position.y}`);
-                    this.occupiedPositions.add(`${nextStep.x},${nextStep.y}`);
+                    this.occupiedPositions.delete(`${oldPos.x},${oldPos.y}`);
+                    this.occupiedPositions.add(`${unit.position.x},${unit.position.y}`);
                 }
                 nearbyTarget = this.findNearbyTarget(unit, context, plan);
                 if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
@@ -391,10 +392,11 @@ class AIManager {
             const city = context.threatenedCities[0];
             const nextStep = this.calculateNextStep(unit.position, { x: city.x, y: city.y });
             if (nextStep) {
+                const oldPos = { x: unit.position.x, y: unit.position.y };
                 const moved = gameState.moveUnit(unit.id, nextStep);
                 if (moved && this.occupiedPositions) {
-                    this.occupiedPositions.delete(`${unit.position.x},${unit.position.y}`);
-                    this.occupiedPositions.add(`${nextStep.x},${nextStep.y}`);
+                    this.occupiedPositions.delete(`${oldPos.x},${oldPos.y}`);
+                    this.occupiedPositions.add(`${unit.position.x},${unit.position.y}`);
                 }
             }
         }
