@@ -27,6 +27,12 @@ All notable changes to this project are documented in this file.
 - Added frame timing metrics to track FPS and identify performance bottlenecks.
 - Implemented viewport-based culling to skip rendering of off-screen elements.
 
+## [1.16.1] - 2026-03-05
+
+### Fixed
+- Disabled tutorial/onboarding flow for all sessions (new games and existing saves) by overriding persisted tutorial state at load time. Tutorial code remains in the codebase pending a proper implementation in issue #24.
+- Removed the "Tutorial & Onboarding" entry from the Game Menu and updated stale notification copy that referenced it.
+
 ## [1.16.0] - 2026-03-02
 
 ### Added

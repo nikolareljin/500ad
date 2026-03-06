@@ -1696,7 +1696,7 @@ class UIManager {
                 title: 'Welcome to 500 A.D.',
                 description: 'This short onboarding covers movement, combat, city building, diplomacy, and turn flow.',
                 requiredAction: null,
-                hint: 'You can skip now and replay anytime from Game Menu.'
+                hint: 'You can skip the tutorial at any time.'
             },
             {
                 id: 'move',
@@ -1790,7 +1790,7 @@ class UIManager {
         state.active = false;
         state.skipped = true;
         this.updateTutorialPanelVisibility();
-        this.showNotification('Tutorial skipped. Replay it anytime from Game Menu.', 'info');
+        this.showNotification('Tutorial skipped.', 'info');
     }
 
     completeTutorial() {
@@ -1800,7 +1800,7 @@ class UIManager {
         state.completed = true;
         state.skipped = false;
         this.updateTutorialPanelVisibility();
-        this.showNotification('Tutorial complete. You can replay it from Game Menu.', 'success');
+        this.showNotification('Tutorial complete.', 'success');
     }
 
     advanceTutorialStep(delta) {
@@ -2180,7 +2180,6 @@ class UIManager {
             <h2>Game Menu</h2>
             <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem;">
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
-                <button class="menu-btn" onclick="uiManager.replayTutorial()">Tutorial & Onboarding</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
