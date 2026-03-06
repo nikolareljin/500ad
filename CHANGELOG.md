@@ -9,21 +9,23 @@ All notable changes to this project are documented in this file.
 ### Added
 - Added comprehensive performance monitoring system with profiling tools for frame timing, render operations, AI processing, and territory updates.
 - Added performance debug tools accessible via browser console (`window.enablePerformanceMonitoring()`, `window.getPerformanceReport()`).
-- Added render caching infrastructure with LRU eviction for frequently accessed rendering data.
-- Added chunk-based rendering system for efficient viewport-based tile updates.
+- Added render caching (`RenderCache`) for territory owner lookups per tile, reducing repeated computation during each frame; cache invalidates automatically on territory change.
+- Added chunk-based fog tracking (`ChunkManager`) to mark only affected map chunks dirty when fog is revealed, enabling future partial re-renders.
 - Added batch rendering for terrain, forts, roads, and resources to reduce draw calls.
 - Added spatial filtering for unit rendering to skip off-screen units.
 - Added AI processing optimizations with batch unit processing and performance timers.
+- Added `window.getRenderCacheStats()` debug helper alongside existing monitoring tools.
 
 ### Changed
-- Optimized map rendering with viewport buffering and batched draw operations for better frame rates on large maps.
+- Optimized map rendering with viewport buffering and three-pass batched draw order (terrain → overlays → fog) for correct rendering with better frame rates on large maps.
 - Optimized AI turn processing with faction-level performance tracking and batched unit operations.
 - Improved visible tile calculation with small buffer zone for smoother panning experience.
 - Enhanced unit filtering to process only visible units during rendering.
+- Replaced O(n) per-step unit collision check in AI with a pre-built position `Set` per faction turn, reducing AI turn complexity from O(n²) to O(n).
 
 ### Performance
-- Reduced rendering overhead by batching similar draw operations together.
-- Improved AI turn performance with optimized unit processing batches.
+- Reduced rendering overhead by batching similar draw operations together and caching per-tile territory results.
+- Improved AI turn performance with O(1) position collision checks via pre-built Set, and per-faction timers.
 - Added frame timing metrics to track FPS and identify performance bottlenecks.
 - Implemented viewport-based culling to skip rendering of off-screen elements.
 

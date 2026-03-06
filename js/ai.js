@@ -201,10 +201,17 @@ class AIManager {
             return bFront - aFront;
         });
 
+        // Build position set once for O(1) collision checks in calculateNextStep.
+        this.occupiedPositions = new Set(
+            gameState.units.map((u) => `${u.position.x},${u.position.y}`)
+        );
+
         for (const unit of sortedUnits) {
             await this.processUnit(unit, context, plan);
             await new Promise((resolve) => setTimeout(resolve, this.thinkingDelay));
         }
+
+        this.occupiedPositions = null;
     }
 
     processFactionDiplomacy(context, plan) {
@@ -555,8 +562,11 @@ class AIManager {
             nextY += Math.sign(dy);
         }
 
-        const occupied = gameState.units.some((u) => u.position.x === nextX && u.position.y === nextY);
-        if (occupied) {
+        // Use pre-built position set for O(1) collision check instead of O(n) units.some().
+        const posSet = this.occupiedPositions;
+        const isOccupied = (x, y) => posSet ? posSet.has(`${x},${y}`) : gameState.units.some((u) => u.position.x === x && u.position.y === y);
+
+        if (isOccupied(nextX, nextY)) {
             if (nextX !== current.x) {
                 nextX = current.x;
                 nextY += Math.sign(dy) || (Math.random() > 0.5 ? 1 : -1);
@@ -572,6 +582,13 @@ class AIManager {
         const tile = gameMap.getTile(nextX, nextY);
         if (!tile) return null;
         if (tile.terrain === 'water') return null;
+
+        // Update the set so subsequent units in this turn see the new position.
+        if (posSet) {
+            posSet.delete(`${current.x},${current.y}`);
+            posSet.add(`${nextX},${nextY}`);
+        }
+
         return { x: nextX, y: nextY };
     }
 }

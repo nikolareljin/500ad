@@ -210,7 +210,7 @@ class ChunkManager {
         const endChunkX = Math.ceil((viewX + viewWidth) / this.chunkSize);
         const endChunkY = Math.ceil((viewY + viewHeight) / this.chunkSize);
 
-        for (let cy = startChunkX; cy <= endChunkY; cy++) {
+        for (let cy = startChunkY; cy <= endChunkY; cy++) {
             for (let cx = startChunkX; cx <= endChunkX; cx++) {
                 const key = `${cx},${cy}`;
                 chunks.push(key);
@@ -221,13 +221,18 @@ class ChunkManager {
     }
 }
 
-// Global performance monitor instance
+// Global instances
 const perfMonitor = new PerformanceMonitor();
+const renderCache = new RenderCache(4000);
+const chunkManager = new ChunkManager(32);
 
 // Expose to window for debugging
 if (typeof window !== 'undefined') {
     window.perfMonitor = perfMonitor;
+    window.renderCache = renderCache;
+    window.chunkManager = chunkManager;
     window.enablePerformanceMonitoring = () => perfMonitor.enable();
     window.disablePerformanceMonitoring = () => perfMonitor.disable();
     window.getPerformanceReport = () => perfMonitor.printReport();
+    window.getRenderCacheStats = () => renderCache.getStats();
 }

@@ -911,6 +911,7 @@ class GameMap {
 
     markTerritoryDirty() {
         this.territoryControlDirty = true;
+        if (typeof renderCache !== 'undefined') renderCache.clear();
     }
 
     rebuildTerritoryControl() {
@@ -1051,6 +1052,7 @@ class GameMap {
                         if (this.fogOfWar[ny][nx]) {
                             this.fogOfWar[ny][nx] = false;
                             newlyExplored.push({ x: nx, y: ny });
+                            if (typeof chunkManager !== 'undefined') chunkManager.markDirty(nx, ny);
                         }
                         for (let cdy = -1; cdy <= 1; cdy++) {
                             for (let cdx = -1; cdx <= 1; cdx++) {
@@ -1448,8 +1450,13 @@ class GameMap {
                 this.ctx.strokeRect(px, py, tileSize, tileSize);
             }
 
-            // Draw territory control overlay.
-            const controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y);
+            // Draw territory control overlay (cache result to avoid repeated lookup per frame).
+            const cacheKey = `to:${x},${y}`;
+            let controlOwner = typeof renderCache !== 'undefined' ? renderCache.get(cacheKey) : null;
+            if (controlOwner === null) {
+                controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y) || '';
+                if (typeof renderCache !== 'undefined') renderCache.set(cacheKey, controlOwner);
+            }
             if (!isFogged && controlOwner && tile.terrain !== 'water') {
                 if (controlOwner === 'player') {
                     this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
