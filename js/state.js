@@ -544,8 +544,8 @@ class GameState {
 
     createDefaultTutorialState() {
         return {
-            active: true,
-            skipped: false,
+            active: false,
+            skipped: true,
             completed: false,
             stepIndex: 0,
             progress: {
