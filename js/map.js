@@ -1376,9 +1376,6 @@ class GameMap {
         const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1 + buffer);
         const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1 + buffer);
 
-        // Track visible tile count for performance metrics
-        const visibleTiles = (endX - startX) * (endY - startY);
-        
         if (this.referenceMapReady && this.referenceMapImage) {
             const crop = this.referenceMapCrop;
             const sx = this.referenceMapImage.width * crop.x;
@@ -1434,8 +1431,8 @@ class GameMap {
             }
         }
 
-        // Render terrain in batches
-        for (const { tile, x, y, isFogged, tileVisible } of tilesToRender) {
+        // Pass 1: terrain, grid, territory, buildings
+        for (const { tile, x, y, isFogged } of tilesToRender) {
             const px = x * tileSize;
             const py = y * tileSize;
             const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
@@ -1485,26 +1482,9 @@ class GameMap {
                     this.ctx.strokeRect(cx - size, cy - size * 0.8, size * 2, size * 1.6);
                 }
             }
-
-            // Gray fog of war for undiscovered areas with softened boundaries.
-            if (!tileVisible) {
-                if (isFogged) {
-                    const fogAlpha = this.getFogAlpha(x, y);
-                    if (fogAlpha > 0) {
-                        this.ctx.fillStyle = `rgba(122, 126, 136, ${fogAlpha})`;
-                        this.ctx.fillRect(px, py, tileSize, tileSize);
-                    }
-                } else {
-                    // Explored-but-not-currently-visible shroud.
-                    this.ctx.fillStyle = 'rgba(88, 92, 102, 0.14)';
-                    this.ctx.fillRect(px, py, tileSize, tileSize);
-                }
-            }
         }
-        
-        if (terrainTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(terrainTimer);
 
-        // Render forts
+        // Pass 2: forts, roads, resources (batched by type, rendered before fog)
         for (const { tile, x, y } of fortsToRender) {
             const px = x * tileSize;
             const py = y * tileSize;
@@ -1527,19 +1507,34 @@ class GameMap {
             this.ctx.stroke();
         }
 
-        // Render roads
         for (const { tile, x, y } of roadsToRender) {
-            const px = x * tileSize;
-            const py = y * tileSize;
-            this.drawRoad(tile, px, py, tileSize);
+            this.drawRoad(tile, x * tileSize, y * tileSize, tileSize);
         }
 
-        // Render resources
         for (const { tile, x, y } of resourcesToRender) {
-            const px = x * tileSize;
-            const py = y * tileSize;
-            this.drawResourceNode(tile, px, py, tileSize);
+            this.drawResourceNode(tile, x * tileSize, y * tileSize, tileSize);
         }
+
+        // Pass 3: fog/shroud on top of all tile content
+        for (const { x, y, isFogged, tileVisible } of tilesToRender) {
+            if (!tileVisible) {
+                const px = x * tileSize;
+                const py = y * tileSize;
+                if (isFogged) {
+                    const fogAlpha = this.getFogAlpha(x, y);
+                    if (fogAlpha > 0) {
+                        this.ctx.fillStyle = `rgba(122, 126, 136, ${fogAlpha})`;
+                        this.ctx.fillRect(px, py, tileSize, tileSize);
+                    }
+                } else {
+                    // Explored-but-not-currently-visible shroud.
+                    this.ctx.fillStyle = 'rgba(88, 92, 102, 0.14)';
+                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                }
+            }
+        }
+
+        if (terrainTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(terrainTimer);
 
         // Draw river overlays after terrain and fog pass.
         this.drawRivers(startX, startY, endX, endY, tileSize);
