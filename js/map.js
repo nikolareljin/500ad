@@ -1479,8 +1479,10 @@ class GameMap {
                 if (tile.building === 'capital') {
                     this.ctx.beginPath();
                     this.ctx.moveTo(cx, cy - size);
-                    this.ctx.lineTo(cx + size, cy + size);
-                    this.ctx.lineTo(cx - size, cy + size);
+                    this.ctx.lineTo(cx + size * 0.85, cy - size * 0.2);
+                    this.ctx.lineTo(cx + size * 0.65, cy + size);
+                    this.ctx.lineTo(cx - size * 0.65, cy + size);
+                    this.ctx.lineTo(cx - size * 0.85, cy - size * 0.2);
                     this.ctx.closePath();
                     this.ctx.fill();
                     this.ctx.stroke();
