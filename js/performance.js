@@ -117,7 +117,9 @@ class RenderCache {
         if (this.cache.has(key)) {
             this.hits++;
             const entry = this.cache.get(key);
-            entry.lastAccess = Date.now();
+            // Keep LRU order by moving hits to the end of insertion order.
+            this.cache.delete(key);
+            this.cache.set(key, entry);
             return entry.value;
         }
         this.misses++;
@@ -125,27 +127,18 @@ class RenderCache {
     }
 
     set(key, value) {
-        if (this.cache.size >= this.maxSize) {
+        const exists = this.cache.has(key);
+        if (exists) {
+            this.cache.delete(key);
+        } else if (this.cache.size >= this.maxSize) {
             this.evictOldest();
         }
-        this.cache.set(key, {
-            value,
-            lastAccess: Date.now()
-        });
+        this.cache.set(key, { value });
     }
 
     evictOldest() {
-        let oldestKey = null;
-        let oldestTime = Infinity;
-        
-        for (const [key, entry] of this.cache.entries()) {
-            if (entry.lastAccess < oldestTime) {
-                oldestTime = entry.lastAccess;
-                oldestKey = key;
-            }
-        }
-        
-        if (oldestKey) {
+        const oldestKey = this.cache.keys().next().value;
+        if (oldestKey !== undefined) {
             this.cache.delete(oldestKey);
         }
     }

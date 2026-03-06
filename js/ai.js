@@ -377,6 +377,10 @@ class AIManager {
                     if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
                     return;
                 }
+                if (this.occupiedPositions) {
+                    this.occupiedPositions.delete(`${unit.position.x},${unit.position.y}`);
+                    this.occupiedPositions.add(`${nextStep.x},${nextStep.y}`);
+                }
                 nearbyTarget = this.findNearbyTarget(unit, context, plan);
                 if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
                 return;
@@ -386,7 +390,13 @@ class AIManager {
         if (plan.primaryFocus === 'defense' && context.threatenedCities.length > 0) {
             const city = context.threatenedCities[0];
             const nextStep = this.calculateNextStep(unit.position, { x: city.x, y: city.y });
-            if (nextStep) gameState.moveUnit(unit.id, nextStep);
+            if (nextStep) {
+                const moved = gameState.moveUnit(unit.id, nextStep);
+                if (moved && this.occupiedPositions) {
+                    this.occupiedPositions.delete(`${unit.position.x},${unit.position.y}`);
+                    this.occupiedPositions.add(`${nextStep.x},${nextStep.y}`);
+                }
+            }
         }
     }
 
@@ -585,12 +595,6 @@ class AIManager {
         const tile = gameMap.getTile(nextX, nextY);
         if (!tile) return null;
         if (tile.terrain === 'water') return null;
-
-        // Update the set so subsequent units in this turn see the new position.
-        if (posSet) {
-            posSet.delete(`${current.x},${current.y}`);
-            posSet.add(`${nextX},${nextY}`);
-        }
 
         return { x: nextX, y: nextY };
     }

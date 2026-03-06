@@ -1052,7 +1052,6 @@ class GameMap {
                         if (this.fogOfWar[ny][nx]) {
                             this.fogOfWar[ny][nx] = false;
                             newlyExplored.push({ x: nx, y: ny });
-                            if (typeof chunkManager !== 'undefined') chunkManager.markDirty(nx, ny);
                         }
                         for (let cdy = -1; cdy <= 1; cdy++) {
                             for (let cdx = -1; cdx <= 1; cdx++) {
@@ -1451,21 +1450,23 @@ class GameMap {
             }
 
             // Draw territory control overlay (cache result to avoid repeated lookup per frame).
-            const cacheKey = `to:${x},${y}`;
-            let controlOwner = typeof renderCache !== 'undefined' ? renderCache.get(cacheKey) : null;
-            if (controlOwner === null) {
-                controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y) || '';
-                if (typeof renderCache !== 'undefined') renderCache.set(cacheKey, controlOwner);
-            }
-            if (!isFogged && controlOwner && tile.terrain !== 'water') {
-                if (controlOwner === 'player') {
-                    this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
-                } else if (controlOwner === 'enemy') {
-                    this.ctx.fillStyle = 'rgba(139, 0, 0, 0.28)';
-                } else {
-                    this.ctx.fillStyle = 'rgba(56, 114, 84, 0.24)';
+            if (!isFogged && tile.terrain !== 'water') {
+                const cacheKey = `to:${x},${y}`;
+                let controlOwner = typeof renderCache !== 'undefined' ? renderCache.get(cacheKey) : null;
+                if (controlOwner === null) {
+                    controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y) || '';
+                    if (typeof renderCache !== 'undefined') renderCache.set(cacheKey, controlOwner);
                 }
-                this.ctx.fillRect(px, py, tileSize, tileSize);
+                if (controlOwner) {
+                    if (controlOwner === 'player') {
+                        this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
+                    } else if (controlOwner === 'enemy') {
+                        this.ctx.fillStyle = 'rgba(139, 0, 0, 0.28)';
+                    } else {
+                        this.ctx.fillStyle = 'rgba(56, 114, 84, 0.24)';
+                    }
+                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                }
             }
 
             // Draw city/building icons
@@ -1552,13 +1553,15 @@ class GameMap {
         
         // Draw units (only visible ones) - optimized with spatial filtering
         if (gameState && gameState.units) {
-            const visibleUnits = gameState.units.filter(unit => 
-                unit.position.x >= startX && unit.position.x < endX &&
-                unit.position.y >= startY && unit.position.y < endY &&
-                (unit.owner === 'player' || this.isTileVisible(unit.position.x, unit.position.y))
-            );
-            
-            visibleUnits.forEach(unit => this.drawUnit(unit));
+            for (const unit of gameState.units) {
+                if (
+                    unit.position.x >= startX && unit.position.x < endX &&
+                    unit.position.y >= startY && unit.position.y < endY &&
+                    (unit.owner === 'player' || this.isTileVisible(unit.position.x, unit.position.y))
+                ) {
+                    this.drawUnit(unit);
+                }
+            }
         }
         
         if (unitsTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(unitsTimer);
