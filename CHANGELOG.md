@@ -7,7 +7,7 @@ All notable changes to this project are documented in this file.
 ## [1.16.1] - 2026-03-05
 
 ### Fixed
-- Disabled tutorial/onboarding flow that was prematurely committed to `main` outside of a release branch. Tutorial remains in the codebase but is inactive until issue #24 ships a proper implementation.
+- Set the tutorial/onboarding flow that was prematurely committed to `main` outside of a release branch to be disabled by default for new games. Tutorial remains in the codebase but may still be active in existing saves until issue #24 ships a proper implementation.
 
 ## [1.16.0] - 2026-03-02
 
