@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.16.0** - Adds a modular Command Overview UI with resources, faction intel, city management, and events panels plus contextual help and quick actions.
+**Version 1.16.1** - Patch release that disables the tutorial/onboarding flow by default for new games (existing saves may still have it enabled) pending a dedicated release for issue #24.
 
 ## License
 
