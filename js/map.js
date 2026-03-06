@@ -1468,7 +1468,7 @@ class GameMap {
             }
         }
 
-        // Pass 2: forts, roads, resources (batched by type, rendered before fog)
+        // Pass 2: forts, roads, resources rendered in a separate overlay pass before fog.
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
                 const tile = this.tiles[y][x];

@@ -20,11 +20,11 @@ All notable changes to this project are documented in this file.
 - Optimized AI turn processing with faction-level performance tracking and batched unit operations.
 - Improved visible tile calculation with small buffer zone for smoother panning experience.
 - Enhanced unit filtering to process only visible units during rendering.
-- Replaced O(n) per-step unit collision check in AI with a pre-built position `Set` per faction turn, reducing AI turn complexity from O(n²) to O(n).
+- Refactored AI unit collision checks to use a position `Set` for faster lookups and reduced per-step overhead.
 
 ### Performance
 - Reduced rendering overhead by batching similar draw operations together and caching per-tile territory results.
-- Improved AI turn performance with O(1) position collision checks via pre-built Set, and per-faction timers.
+- Improved AI turn performance with more efficient position collision checks using `Set`-based lookups and per-faction timers.
 - Added frame timing metrics to track FPS and identify performance bottlenecks.
 - Implemented viewport-based culling to skip rendering of off-screen elements.
 

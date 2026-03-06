@@ -204,11 +204,12 @@ class AIManager {
             return bFront - aFront;
         });
 
+        // Build once per faction turn and keep it in sync via move/combat updates.
+        this.occupiedPositions = new Set(
+            gameState.units.map((u) => `${u.position.x},${u.position.y}`)
+        );
+
         for (const unit of sortedUnits) {
-            // Rebuild before each unit action so combat casualties stay in sync with occupancy.
-            this.occupiedPositions = new Set(
-                gameState.units.map((u) => `${u.position.x},${u.position.y}`)
-            );
             await this.processUnit(unit, context, plan);
             await new Promise((resolve) => setTimeout(resolve, this.thinkingDelay));
         }
