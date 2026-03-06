@@ -7,7 +7,8 @@ All notable changes to this project are documented in this file.
 ## [1.16.1] - 2026-03-05
 
 ### Fixed
-- Set the tutorial/onboarding flow that was prematurely committed to `main` outside of a release branch to be disabled by default for new games. Tutorial remains in the codebase but may still be active in existing saves until issue #24 ships a proper implementation.
+- Disabled tutorial/onboarding flow for all sessions (new games and existing saves) by overriding persisted tutorial state at load time. Tutorial code remains in the codebase pending a proper implementation in issue #24.
+- Removed the "Tutorial & Onboarding" entry from the Game Menu and updated stale notification copy that referenced it.
 
 ## [1.16.0] - 2026-03-02
 
