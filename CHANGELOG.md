@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.17.0] - 2026-03-05
+
+### Added
+- Added comprehensive performance monitoring system with profiling tools for frame timing, render operations, AI processing, and territory updates.
+- Added performance debug tools accessible via browser console (`window.enablePerformanceMonitoring()`, `window.getPerformanceReport()`).
+- Added render caching (`RenderCache`) for territory owner lookups per tile, reducing repeated computation during each frame; cache invalidates automatically on territory change.
+- Added batch rendering for terrain, forts, roads, and resources to reduce draw calls.
+- Added spatial filtering for unit rendering to skip off-screen units.
+- Added AI processing optimizations with batch unit processing and performance timers.
+- Added `window.getRenderCacheStats()` debug helper alongside existing monitoring tools.
+
+### Changed
+- Optimized map rendering with viewport buffering and three-pass batched draw order (terrain → overlays → fog) for correct rendering with better frame rates on large maps.
+- Optimized AI turn processing with faction-level performance tracking and batched unit operations.
+- Improved visible tile calculation with small buffer zone for smoother panning experience.
+- Enhanced unit filtering to process only visible units during rendering.
+- Refactored AI unit collision checks to use a position `Set` for faster lookups and reduced per-step overhead.
+
+### Performance
+- Reduced rendering overhead by batching similar draw operations together and caching per-tile territory results.
+- Improved AI turn performance with more efficient position collision checks using `Set`-based lookups and per-faction timers.
+- Added frame timing metrics to track FPS and identify performance bottlenecks.
+- Implemented viewport-based culling to skip rendering of off-screen elements.
+
 ## [1.16.1] - 2026-03-05
 
 ### Fixed

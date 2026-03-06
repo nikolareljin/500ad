@@ -911,6 +911,7 @@ class GameMap {
 
     markTerritoryDirty() {
         this.territoryControlDirty = true;
+        if (typeof renderCache !== 'undefined') renderCache.clear();
     }
 
     rebuildTerritoryControl() {
@@ -1347,8 +1348,15 @@ class GameMap {
      */
     render() {
         if (!this.ctx) return;
+        
+        // Performance monitoring
+        const frameTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('frame') : null;
+        const renderTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('render') : null;
+        
         if (this.territoryControlDirty) {
+            const territoryTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('territory_rebuild') : null;
             this.rebuildTerritoryControl();
+            if (territoryTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(territoryTimer);
         }
 
         // Clear canvas
@@ -1361,12 +1369,13 @@ class GameMap {
         // Apply camera transformation (pan only)
         this.ctx.translate(-this.camera.x, -this.camera.y);
 
-        // Calculate visible tile range
+        // Calculate visible tile range with small buffer for smooth panning
         const tileSize = MAP_CONFIG.tileSize;
-        const startX = Math.max(0, Math.floor(this.camera.x / tileSize));
-        const startY = Math.max(0, Math.floor(this.camera.y / tileSize));
-        const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1);
-        const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1);
+        const buffer = 2; // Extra tiles to render beyond viewport
+        const startX = Math.max(0, Math.floor(this.camera.x / tileSize) - buffer);
+        const startY = Math.max(0, Math.floor(this.camera.y / tileSize) - buffer);
+        const endX = Math.min(this.width, Math.ceil((this.camera.x + this.canvas.width) / tileSize) + 1 + buffer);
+        const endY = Math.min(this.height, Math.ceil((this.camera.y + this.canvas.height) / tileSize) + 1 + buffer);
 
         if (this.referenceMapReady && this.referenceMapImage) {
             const crop = this.referenceMapCrop;
@@ -1390,16 +1399,16 @@ class GameMap {
             this.ctx.globalAlpha = 1;
         }
 
-        // Render visible tiles
+        const terrainTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('terrain_render') : null;
+        
+        // Pass 1: terrain, grid, territory, buildings
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
                 const tile = this.tiles[y][x];
                 if (!tile) continue;
-
+                const isFogged = this.isFoggedTile(x, y);
                 const px = x * tileSize;
                 const py = y * tileSize;
-                const isFogged = this.isFoggedTile(x, y);
-
                 const terrainColor = tile.baseColor || TERRAIN_TYPES[tile.terrain].color;
 
                 // Draw terrain
@@ -1413,17 +1422,24 @@ class GameMap {
                     this.ctx.strokeRect(px, py, tileSize, tileSize);
                 }
 
-                // Draw territory control overlay.
-                const controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y);
-                if (!isFogged && controlOwner && tile.terrain !== 'water') {
-                    if (controlOwner === 'player') {
-                        this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
-                    } else if (controlOwner === 'enemy') {
-                        this.ctx.fillStyle = 'rgba(139, 0, 0, 0.28)';
-                    } else {
-                        this.ctx.fillStyle = 'rgba(56, 114, 84, 0.24)';
+                // Draw territory control overlay (cache result to avoid repeated lookup per frame).
+                if (!isFogged && tile.terrain !== 'water') {
+                    const cacheKey = `to:${x},${y}`;
+                    let controlOwner = typeof renderCache !== 'undefined' ? renderCache.get(cacheKey) : null;
+                    if (controlOwner === null) {
+                        controlOwner = tile.owner || this.getTerritoryOwnerAt(x, y) || '';
+                        if (typeof renderCache !== 'undefined') renderCache.set(cacheKey, controlOwner);
                     }
-                    this.ctx.fillRect(px, py, tileSize, tileSize);
+                    if (controlOwner) {
+                        if (controlOwner === 'player') {
+                            this.ctx.fillStyle = 'rgba(107, 44, 145, 0.28)';
+                        } else if (controlOwner === 'enemy') {
+                            this.ctx.fillStyle = 'rgba(139, 0, 0, 0.28)';
+                        } else {
+                            this.ctx.fillStyle = 'rgba(56, 114, 84, 0.24)';
+                        }
+                        this.ctx.fillRect(px, py, tileSize, tileSize);
+                    }
                 }
 
                 // Draw city/building icons
@@ -1437,8 +1453,10 @@ class GameMap {
                     if (tile.building === 'capital') {
                         this.ctx.beginPath();
                         this.ctx.moveTo(cx, cy - size);
-                        this.ctx.lineTo(cx + size, cy + size);
-                        this.ctx.lineTo(cx - size, cy + size);
+                        this.ctx.lineTo(cx + size * 0.85, cy - size * 0.2);
+                        this.ctx.lineTo(cx + size * 0.65, cy + size);
+                        this.ctx.lineTo(cx - size * 0.65, cy + size);
+                        this.ctx.lineTo(cx - size * 0.85, cy - size * 0.2);
                         this.ctx.closePath();
                         this.ctx.fill();
                         this.ctx.stroke();
@@ -1447,8 +1465,19 @@ class GameMap {
                         this.ctx.strokeRect(cx - size, cy - size * 0.8, size * 2, size * 1.6);
                     }
                 }
+            }
+        }
 
-                if (!isFogged && tile.fort && tile.terrain !== 'water') {
+        // Pass 2: forts, roads, resources rendered in a separate overlay pass before fog.
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                const tile = this.tiles[y][x];
+                if (!tile || tile.terrain === 'water') continue;
+                if (this.isFoggedTile(x, y)) continue;
+                const px = x * tileSize;
+                const py = y * tileSize;
+
+                if (tile.fort) {
                     const cx = px + tileSize / 2;
                     const cy = py + tileSize / 2;
                     const size = tileSize * 0.25;
@@ -1468,17 +1497,25 @@ class GameMap {
                     this.ctx.stroke();
                 }
 
-                if (!isFogged && tile.road && tile.terrain !== 'water') {
+                if (tile.road) {
                     this.drawRoad(tile, px, py, tileSize);
                 }
-
-                if (tile.resourceNode && tile.terrain !== 'water' && !isFogged) {
+                if (tile.resourceNode) {
                     this.drawResourceNode(tile, px, py, tileSize);
                 }
+            }
+        }
 
-                // Gray fog of war for undiscovered areas with softened boundaries.
+        // Pass 3: fog/shroud on top of all tile content
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                const tile = this.tiles[y][x];
+                if (!tile) continue;
                 const tileVisible = this.isTileVisible(x, y);
                 if (!tileVisible) {
+                    const px = x * tileSize;
+                    const py = y * tileSize;
+                    const isFogged = this.isFoggedTile(x, y);
                     if (isFogged) {
                         const fogAlpha = this.getFogAlpha(x, y);
                         if (fogAlpha > 0) {
@@ -1494,19 +1531,27 @@ class GameMap {
             }
         }
 
+        if (terrainTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(terrainTimer);
+
         // Draw river overlays after terrain and fog pass.
         this.drawRivers(startX, startY, endX, endY, tileSize);
 
-        // Draw units (only visible ones)
+        const unitsTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('units_render') : null;
+        
+        // Draw units (only visible ones) - optimized with spatial filtering
         if (gameState && gameState.units) {
-            gameState.units.forEach(unit => {
-                if (unit.position.x >= startX && unit.position.x < endX &&
-                    unit.position.y >= startY && unit.position.y < endY) {
-                    if (unit.owner !== 'player' && !this.isTileVisible(unit.position.x, unit.position.y)) return;
+            for (const unit of gameState.units) {
+                if (
+                    unit.position.x >= startX && unit.position.x < endX &&
+                    unit.position.y >= startY && unit.position.y < endY &&
+                    (unit.owner === 'player' || this.isTileVisible(unit.position.x, unit.position.y))
+                ) {
                     this.drawUnit(unit);
                 }
-            });
+            }
         }
+        
+        if (unitsTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(unitsTimer);
 
         // Draw city labels/production/wonders after units for readability.
         this.drawCityLabels(startX, startY, endX, endY, tileSize);
@@ -1526,6 +1571,14 @@ class GameMap {
 
         // Draw UI overlay
         this.drawUI();
+        
+        if (renderTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(renderTimer);
+        if (frameTimer && typeof perfMonitor !== 'undefined') {
+            const frameDuration = perfMonitor.endTimer(frameTimer);
+            if (typeof frameDuration === 'number') {
+                perfMonitor.recordFrame(frameDuration);
+            }
+        }
     }
 
     requestRender() {

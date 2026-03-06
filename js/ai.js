@@ -136,6 +136,7 @@ class AIManager {
 
     async processTurn() {
         console.log('Processing enemy turn...');
+
         if (!gameState || !gameMap) {
             console.warn('Enemy turn skipped: game state/map is not ready.');
             return;
@@ -151,35 +152,44 @@ class AIManager {
             return;
         }
 
-        gameState.refreshAIFactionState();
-        gameState.updateAIFactionIntelFromWorldState();
+        const aiTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('ai_turn') : null;
+        try {
+            const refreshTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer('ai_refresh_state') : null;
+            gameState.refreshAIFactionState();
+            gameState.updateAIFactionIntelFromWorldState();
+            if (refreshTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(refreshTimer);
 
-        const unitsByFaction = new Map();
-        enemyUnits.forEach((unit) => {
-            const factionId = this.getFactionIdForUnit(unit);
-            if (!unitsByFaction.has(factionId)) unitsByFaction.set(factionId, []);
-            unitsByFaction.get(factionId).push(unit);
-        });
-
-        const factionContexts = [...unitsByFaction.entries()]
-            .map(([factionId, units]) => this.buildFactionContext(factionId, units))
-            .sort((a, b) => {
-                const aThreat = a.state?.intel?.playerThreat || 0;
-                const bThreat = b.state?.intel?.playerThreat || 0;
-                return bThreat - aThreat || b.units.length - a.units.length;
+            const unitsByFaction = new Map();
+            enemyUnits.forEach((unit) => {
+                const factionId = this.getFactionIdForUnit(unit);
+                if (!unitsByFaction.has(factionId)) unitsByFaction.set(factionId, []);
+                unitsByFaction.get(factionId).push(unit);
             });
 
-        if (gameMap && enemyUnits[0]) {
-            gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
-            gameMap.requestRender();
-        }
+            const factionContexts = [...unitsByFaction.entries()]
+                .map(([factionId, units]) => this.buildFactionContext(factionId, units))
+                .sort((a, b) => {
+                    const aThreat = a.state?.intel?.playerThreat || 0;
+                    const bThreat = b.state?.intel?.playerThreat || 0;
+                    return bThreat - aThreat || b.units.length - a.units.length;
+                });
 
-        for (const context of factionContexts) {
-            const plan = this.planFactionTurn(context);
-            await this.processFactionTurn(context, plan);
-        }
+            if (gameMap && enemyUnits[0]) {
+                gameMap.centerOn(enemyUnits[0].position.x, enemyUnits[0].position.y);
+                gameMap.requestRender();
+            }
 
-        console.log('Enemy turn completed');
+            for (const context of factionContexts) {
+                const factionTimer = typeof perfMonitor !== 'undefined' ? perfMonitor.startTimer(`ai_faction_${context.factionId}`) : null;
+                const plan = this.planFactionTurn(context);
+                await this.processFactionTurn(context, plan);
+                if (factionTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(factionTimer);
+            }
+
+            console.log('Enemy turn completed');
+        } finally {
+            if (aiTimer && typeof perfMonitor !== 'undefined') perfMonitor.endTimer(aiTimer);
+        }
     }
 
     async processFactionTurn(context, plan) {
@@ -194,10 +204,17 @@ class AIManager {
             return bFront - aFront;
         });
 
+        // Build once per faction turn and keep it in sync via move/combat updates.
+        this.occupiedPositions = new Set(
+            gameState.units.map((u) => `${u.position.x},${u.position.y}`)
+        );
+
         for (const unit of sortedUnits) {
             await this.processUnit(unit, context, plan);
             await new Promise((resolve) => setTimeout(resolve, this.thinkingDelay));
         }
+
+        this.occupiedPositions = null;
     }
 
     processFactionDiplomacy(context, plan) {
@@ -353,12 +370,17 @@ class AIManager {
         if (target) {
             const nextStep = this.calculateNextStep(unit.position, target.position);
             if (nextStep) {
+                const oldPos = { x: unit.position.x, y: unit.position.y };
                 const moved = gameState.moveUnit(unit.id, nextStep);
                 if (!moved) {
                     // Failed move keeps the unit in place; do a single stationary re-check and exit.
                     nearbyTarget = this.findNearbyTarget(unit, context, plan);
                     if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
                     return;
+                }
+                if (this.occupiedPositions) {
+                    this.occupiedPositions.delete(`${oldPos.x},${oldPos.y}`);
+                    this.occupiedPositions.add(`${unit.position.x},${unit.position.y}`);
                 }
                 nearbyTarget = this.findNearbyTarget(unit, context, plan);
                 if (nearbyTarget) this.executeAttack(unit, nearbyTarget);
@@ -369,12 +391,21 @@ class AIManager {
         if (plan.primaryFocus === 'defense' && context.threatenedCities.length > 0) {
             const city = context.threatenedCities[0];
             const nextStep = this.calculateNextStep(unit.position, { x: city.x, y: city.y });
-            if (nextStep) gameState.moveUnit(unit.id, nextStep);
+            if (nextStep) {
+                const oldPos = { x: unit.position.x, y: unit.position.y };
+                const moved = gameState.moveUnit(unit.id, nextStep);
+                if (moved && this.occupiedPositions) {
+                    this.occupiedPositions.delete(`${oldPos.x},${oldPos.y}`);
+                    this.occupiedPositions.add(`${unit.position.x},${unit.position.y}`);
+                }
+            }
         }
     }
 
     executeAttack(unit, target) {
         console.log(`AI(${unit.faction || 'enemy'}): ${unit.name} attacking ${target.name}`);
+        const attackerPos = { x: unit.position.x, y: unit.position.y };
+        const defenderPos = { x: target.position.x, y: target.position.y };
         const defenderTile = gameMap.getTile(target.position.x, target.position.y);
         const terrain = defenderTile?.terrain || 'plains';
         const battleType = defenderTile?.cityData
@@ -386,6 +417,14 @@ class AIManager {
         });
         if (result.success && window.uiManager) {
             window.uiManager.showCombatResult(result);
+        }
+        if (this.occupiedPositions && result) {
+            if (result.attackerDied) {
+                this.occupiedPositions.delete(`${attackerPos.x},${attackerPos.y}`);
+            }
+            if (result.defenderDied) {
+                this.occupiedPositions.delete(`${defenderPos.x},${defenderPos.y}`);
+            }
         }
     }
 
@@ -548,8 +587,11 @@ class AIManager {
             nextY += Math.sign(dy);
         }
 
-        const occupied = gameState.units.some((u) => u.position.x === nextX && u.position.y === nextY);
-        if (occupied) {
+        // Use pre-built position set for O(1) collision check instead of O(n) units.some().
+        const posSet = this.occupiedPositions;
+        const isOccupied = (x, y) => posSet ? posSet.has(`${x},${y}`) : gameState.units.some((u) => u.position.x === x && u.position.y === y);
+
+        if (isOccupied(nextX, nextY)) {
             if (nextX !== current.x) {
                 nextX = current.x;
                 nextY += Math.sign(dy) || (Math.random() > 0.5 ? 1 : -1);
@@ -565,6 +607,7 @@ class AIManager {
         const tile = gameMap.getTile(nextX, nextY);
         if (!tile) return null;
         if (tile.terrain === 'water') return null;
+
         return { x: nextX, y: nextY };
     }
 }
