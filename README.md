@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.17.0** - Adds comprehensive performance optimizations for large worlds including profiling tools, render caching, chunk-based updates, and AI processing improvements.
+**Version 1.17.0** - Adds comprehensive performance optimizations for large worlds including profiling tools, render caching, viewport-buffered batched rendering, and AI processing improvements.
 
 ## License
 

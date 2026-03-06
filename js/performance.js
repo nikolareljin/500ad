@@ -29,7 +29,7 @@ class PerformanceMonitor {
     }
 
     endTimer(timer) {
-        if (!this.enabled || !timer) return;
+        if (!this.enabled || !timer) return null;
         const duration = performance.now() - timer.start;
         
         if (!this.metrics[timer.label]) {
@@ -48,6 +48,7 @@ class PerformanceMonitor {
         metric.min = Math.min(metric.min, duration);
         metric.max = Math.max(metric.max, duration);
         metric.avg = metric.total / metric.count;
+        return duration;
     }
 
     recordFrame(duration) {
@@ -59,7 +60,11 @@ class PerformanceMonitor {
     }
 
     getMetrics() {
-        return { ...this.metrics };
+        const copy = {};
+        for (const [label, metric] of Object.entries(this.metrics)) {
+            copy[label] = { ...metric };
+        }
+        return copy;
     }
 
     getFrameStats() {

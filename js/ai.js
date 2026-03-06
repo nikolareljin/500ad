@@ -204,12 +204,11 @@ class AIManager {
             return bFront - aFront;
         });
 
-        // Build position set once for O(1) collision checks in calculateNextStep.
-        this.occupiedPositions = new Set(
-            gameState.units.map((u) => `${u.position.x},${u.position.y}`)
-        );
-
         for (const unit of sortedUnits) {
+            // Rebuild before each unit action so combat casualties stay in sync with occupancy.
+            this.occupiedPositions = new Set(
+                gameState.units.map((u) => `${u.position.x},${u.position.y}`)
+            );
             await this.processUnit(unit, context, plan);
             await new Promise((resolve) => setTimeout(resolve, this.thinkingDelay));
         }
@@ -404,6 +403,8 @@ class AIManager {
 
     executeAttack(unit, target) {
         console.log(`AI(${unit.faction || 'enemy'}): ${unit.name} attacking ${target.name}`);
+        const attackerPos = { x: unit.position.x, y: unit.position.y };
+        const defenderPos = { x: target.position.x, y: target.position.y };
         const defenderTile = gameMap.getTile(target.position.x, target.position.y);
         const terrain = defenderTile?.terrain || 'plains';
         const battleType = defenderTile?.cityData
@@ -415,6 +416,14 @@ class AIManager {
         });
         if (result.success && window.uiManager) {
             window.uiManager.showCombatResult(result);
+        }
+        if (this.occupiedPositions && result) {
+            if (result.attackerDied) {
+                this.occupiedPositions.delete(`${attackerPos.x},${attackerPos.y}`);
+            }
+            if (result.defenderDied) {
+                this.occupiedPositions.delete(`${defenderPos.x},${defenderPos.y}`);
+            }
         }
     }
 
