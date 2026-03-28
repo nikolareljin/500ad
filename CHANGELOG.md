@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.18.0] - 2026-03-27
+
+### Added
+- Added a persistent achievements system (`js/achievements.js`) with 22 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.
+- Added an Achievements panel accessible from the action bar (`🏆 Achievements` button) and from the Game Menu, showing all achievements grouped by category with locked/unlocked state.
+- Added achievement toast notifications that appear when a new achievement is unlocked during play.
+- Added achievement persistence in `localStorage` independently of save slots, so progress survives across campaigns.
+- Added achievement tracking hooks into battle resolution, city capture, road building, truce establishment, campaign victory, and end-of-turn sync.
+- Added `achievement` notification style with gold glow for visual distinction from standard notifications.
+
+### Changed
+- Updated Game Menu to include an Achievements shortcut alongside Save and Settings.
+- Updated `checkWinLossConditions` to record campaign wins for the `Glory of Constantinople` achievement.
+- Updated `resolveBattleOnMove` to record battle wins (with naval and Greek Fire type detection) for combat achievements.
+- Updated `captureTerritory` to record city captures for expansion achievements.
+- Updated `applyDiplomacyAction` to record truce establishments for diplomacy achievements.
+- Updated `applyUnitBuildAction` to record road builds for the Master Engineer achievement.
+- Updated `deserialize` to sync achievement stats when loading a saved game.
+
 ## [1.17.0] - 2026-03-05
 
 ### Added

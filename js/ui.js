@@ -148,6 +148,11 @@ class UIManager {
             this.showQuestLogModal();
         });
 
+        document.getElementById('btn-achievements')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.showAchievementsModal();
+        });
+
         document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.attackWithSelectedUnit();
@@ -1126,6 +1131,61 @@ class UIManager {
                 this.showQuestLogModal();
             });
         });
+    }
+
+    showAchievementsModal() {
+        if (typeof achievementManager === 'undefined') return;
+
+        achievementManager.syncFromGameState();
+
+        const byCategory = achievementManager.getByCategory();
+        const unlocked = achievementManager.getUnlockedCount();
+        const total = achievementManager.getTotalCount();
+
+        const categoryLabels = {
+            combat: '⚔️ Combat',
+            expansion: '🏰 Expansion',
+            technology: '📚 Technology',
+            economy: '💰 Economy',
+            diplomacy: '🕊️ Diplomacy',
+            progression: '📅 Progression',
+            victory: '👑 Victory'
+        };
+
+        const categorySections = Object.entries(byCategory).map(([cat, items]) => {
+            const cards = items.map(a => `
+                <div class="achievement-card ${a.unlocked ? 'unlocked' : 'locked'}" title="${this.escapeHtml(a.description)}">
+                    <div class="achievement-icon">${a.icon}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-title">${this.escapeHtml(a.title)}</div>
+                        <div class="achievement-desc">${this.escapeHtml(a.description)}</div>
+                        ${a.unlocked ? '<div class="achievement-badge">✓ Unlocked</div>' : ''}
+                    </div>
+                </div>
+            `).join('');
+            return `
+                <div class="achievements-category">
+                    <div class="achievements-category-title">${categoryLabels[cat] || cat}</div>
+                    <div class="achievements-grid">${cards}</div>
+                </div>
+            `;
+        }).join('');
+
+        const content = `
+            <div class="achievements-panel">
+                <div class="achievements-header">
+                    <h2 style="font-family:var(--font-display);color:var(--imperial-gold);">🏆 Achievements</h2>
+                    <span class="achievements-progress">${unlocked} / ${total} unlocked</span>
+                </div>
+                ${categorySections}
+                <div style="margin-top:1rem;">
+                    <button class="menu-btn" id="btn-close-achievements">Close</button>
+                </div>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.modalContent?.querySelector('#btn-close-achievements')?.addEventListener('click', () => this.closeModal());
     }
 
     showChoiceModal(title, options, onSelect) {
@@ -2181,6 +2241,7 @@ class UIManager {
             <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem;">
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
+                <button class="menu-btn" onclick="uiManager.showAchievementsModal()">🏆 Achievements</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
             </div>

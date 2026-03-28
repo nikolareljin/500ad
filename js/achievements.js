@@ -1,0 +1,437 @@
+/**
+ * Achievements System
+ * Tracks player accomplishments and awards milestone badges.
+ * Achievements persist in localStorage independently of save slots.
+ */
+
+// ─── Achievement Definitions ────────────────────────────────────────────────
+
+const ACHIEVEMENT_DEFS = [
+    // ── Combat ──────────────────────────────────────────────────────────────
+    {
+        id: 'first_blood',
+        title: 'First Blood',
+        description: 'Win your first battle.',
+        icon: '⚔️',
+        category: 'combat',
+        condition: (s) => s.battlesWon >= 1
+    },
+    {
+        id: 'veteran_commander',
+        title: 'Veteran Commander',
+        description: 'Win 25 battles.',
+        icon: '🛡️',
+        category: 'combat',
+        condition: (s) => s.battlesWon >= 25
+    },
+    {
+        id: 'warlord',
+        title: 'Warlord',
+        description: 'Win 100 battles.',
+        icon: '🗡️',
+        category: 'combat',
+        condition: (s) => s.battlesWon >= 100
+    },
+    {
+        id: 'greek_fire',
+        title: 'Greek Fire',
+        description: 'Win a battle using a Greek Fire unit.',
+        icon: '🔥',
+        category: 'combat',
+        condition: (s) => s.greekFireVictories >= 1
+    },
+    {
+        id: 'naval_supremacy',
+        title: 'Naval Supremacy',
+        description: 'Win 10 naval battles.',
+        icon: '⚓',
+        category: 'combat',
+        condition: (s) => s.navalBattlesWon >= 10
+    },
+
+    // ── Expansion ────────────────────────────────────────────────────────────
+    {
+        id: 'first_conquest',
+        title: 'First Conquest',
+        description: 'Capture your first city.',
+        icon: '🏰',
+        category: 'expansion',
+        condition: (s) => s.citiesCaptured >= 1
+    },
+    {
+        id: 'empire_builder',
+        title: 'Empire Builder',
+        description: 'Control 10 cities simultaneously.',
+        icon: '🏛️',
+        category: 'expansion',
+        condition: (s) => s.maxCitiesHeld >= 10
+    },
+    {
+        id: 'reconqueror',
+        title: 'Reconqueror',
+        description: 'Recapture a city previously lost to enemies.',
+        icon: '🔄',
+        category: 'expansion',
+        condition: (s) => s.citiesRecaptured >= 1
+    },
+    {
+        id: 'silk_road',
+        title: 'Silk Road',
+        description: 'Control 3 cities in the eastern regions (x > 200).',
+        icon: '🐪',
+        category: 'expansion',
+        condition: (s) => s.easternCitiesHeld >= 3
+    },
+
+    // ── Technology ───────────────────────────────────────────────────────────
+    {
+        id: 'scholar',
+        title: 'Scholar',
+        description: 'Research your first technology.',
+        icon: '📚',
+        category: 'technology',
+        condition: (s) => s.techResearched >= 1
+    },
+    {
+        id: 'renaissance',
+        title: 'Byzantine Renaissance',
+        description: 'Research 10 technologies.',
+        icon: '🔬',
+        category: 'technology',
+        condition: (s) => s.techResearched >= 10
+    },
+    {
+        id: 'master_engineer',
+        title: 'Master Engineer',
+        description: 'Build 5 roads.',
+        icon: '🛤️',
+        category: 'technology',
+        condition: (s) => s.roadsBuilt >= 5
+    },
+
+    // ── Economy ──────────────────────────────────────────────────────────────
+    {
+        id: 'merchant_prince',
+        title: 'Merchant Prince',
+        description: 'Accumulate 10,000 gold.',
+        icon: '💰',
+        category: 'economy',
+        condition: (s) => s.goldEarned >= 10000
+    },
+    {
+        id: 'trade_empire',
+        title: 'Trade Empire',
+        description: 'Establish 3 active trade routes.',
+        icon: '🤝',
+        category: 'economy',
+        condition: (s) => s.maxTradeRoutes >= 3
+    },
+    {
+        id: 'granary',
+        title: 'Granary of the East',
+        description: 'Accumulate 500 food stockpile.',
+        icon: '🌾',
+        category: 'economy',
+        condition: (s) => s.maxFoodStockpile >= 500
+    },
+
+    // ── Diplomacy ────────────────────────────────────────────────────────────
+    {
+        id: 'peacemaker',
+        title: 'Peacemaker',
+        description: 'Establish your first truce.',
+        icon: '🕊️',
+        category: 'diplomacy',
+        condition: (s) => s.trucesEstablished >= 1
+    },
+    {
+        id: 'alliance',
+        title: 'Alliance of Nations',
+        description: 'Form 2 alliances simultaneously.',
+        icon: '🤲',
+        category: 'diplomacy',
+        condition: (s) => s.maxAlliances >= 2
+    },
+
+    // ── Progression ──────────────────────────────────────────────────────────
+    {
+        id: 'survivor',
+        title: 'Survivor',
+        description: 'Reach turn 50.',
+        icon: '⏳',
+        category: 'progression',
+        condition: (s) => s.maxTurnReached >= 50
+    },
+    {
+        id: 'century',
+        title: 'A Century of Rule',
+        description: 'Reach turn 100.',
+        icon: '📅',
+        category: 'progression',
+        condition: (s) => s.maxTurnReached >= 100
+    },
+    {
+        id: 'veteran_unit',
+        title: 'Elite Corps',
+        description: 'Level up a unit to level 5.',
+        icon: '🌟',
+        category: 'progression',
+        condition: (s) => s.maxUnitLevel >= 5
+    },
+    {
+        id: 'quest_complete',
+        title: 'Quest Fulfilled',
+        description: 'Complete your first quest.',
+        icon: '📜',
+        category: 'progression',
+        condition: (s) => s.questsCompleted >= 1
+    },
+    {
+        id: 'all_quests',
+        title: 'Chronicler',
+        description: 'Complete 10 quests.',
+        icon: '📖',
+        category: 'progression',
+        condition: (s) => s.questsCompleted >= 10
+    },
+
+    // ── Victory ──────────────────────────────────────────────────────────────
+    {
+        id: 'glory_of_constantinople',
+        title: 'Glory of Constantinople',
+        description: 'Win a campaign.',
+        icon: '👑',
+        category: 'victory',
+        condition: (s) => s.campaignsWon >= 1
+    }
+];
+
+// ─── AchievementManager ─────────────────────────────────────────────────────
+
+class AchievementManager {
+    constructor() {
+        this._storageKey = '500ad_achievements';
+        // Unlocked achievement ids (persisted globally, not per-save)
+        this.unlocked = new Set();
+        // Per-session stats snapshot used for condition evaluation
+        this.stats = this._defaultStats();
+        this._load();
+    }
+
+    _defaultStats() {
+        return {
+            battlesWon: 0,
+            navalBattlesWon: 0,
+            greekFireVictories: 0,
+            citiesCaptured: 0,
+            citiesRecaptured: 0,
+            maxCitiesHeld: 0,
+            easternCitiesHeld: 0,
+            techResearched: 0,
+            roadsBuilt: 0,
+            goldEarned: 0,
+            maxFoodStockpile: 0,
+            maxTradeRoutes: 0,
+            trucesEstablished: 0,
+            maxAlliances: 0,
+            maxTurnReached: 0,
+            maxUnitLevel: 0,
+            questsCompleted: 0,
+            campaignsWon: 0
+        };
+    }
+
+    // ── Persistence ──────────────────────────────────────────────────────────
+
+    _load() {
+        try {
+            const raw = localStorage.getItem(this._storageKey);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (Array.isArray(data.unlocked)) {
+                this.unlocked = new Set(data.unlocked.filter(id => typeof id === 'string'));
+            }
+            if (data.stats && typeof data.stats === 'object') {
+                this.stats = { ...this._defaultStats(), ...data.stats };
+            }
+        } catch (e) {
+            console.warn('Achievements: failed to load', e);
+        }
+    }
+
+    _save() {
+        try {
+            localStorage.setItem(this._storageKey, JSON.stringify({
+                unlocked: [...this.unlocked],
+                stats: this.stats
+            }));
+        } catch (e) {
+            console.warn('Achievements: failed to save', e);
+        }
+    }
+
+    // ── Stats update helpers ─────────────────────────────────────────────────
+
+    /**
+     * Sync live game-state derived stats and check for new unlocks.
+     * Call this after any significant game event.
+     */
+    syncFromGameState() {
+        if (typeof gameState === 'undefined' || !gameState.initialized) return;
+
+        const gs = gameState;
+
+        // Turn
+        this.stats.maxTurnReached = Math.max(this.stats.maxTurnReached, gs.turn || 0);
+
+        // Technologies
+        const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
+        this.stats.techResearched = Math.max(this.stats.techResearched, techCount);
+
+        // Gold earned (track cumulative via resource total as a proxy)
+        const currentGold = gs.player?.resources?.gold || 0;
+        this.stats.goldEarned = Math.max(this.stats.goldEarned, currentGold);
+
+        // Food stockpile
+        const currentFood = gs.player?.resources?.food || 0;
+        this.stats.maxFoodStockpile = Math.max(this.stats.maxFoodStockpile, currentFood);
+
+        // Cities held
+        const cityCount = gs.player?.territories?.length || 0;
+        this.stats.maxCitiesHeld = Math.max(this.stats.maxCitiesHeld, cityCount);
+
+        // Eastern cities (x > 200 on the 320-wide map)
+        if (typeof gameMap !== 'undefined' && gameMap) {
+            const playerCities = gameMap.getCityTiles('player') || [];
+            const easternCount = playerCities.filter(t => t.x > 200).length;
+            this.stats.easternCitiesHeld = Math.max(this.stats.easternCitiesHeld, easternCount);
+        }
+
+        // Unit max level
+        const maxLevel = (gs.units || [])
+            .filter(u => u.owner === 'player')
+            .reduce((m, u) => Math.max(m, u.level || 1), 0);
+        this.stats.maxUnitLevel = Math.max(this.stats.maxUnitLevel, maxLevel);
+
+        // Trade routes
+        const tradeRoutes = gs.diplomacyState?.tradeRoutes?.filter(r => r.active)?.length || 0;
+        this.stats.maxTradeRoutes = Math.max(this.stats.maxTradeRoutes, tradeRoutes);
+
+        // Alliances
+        const alliances = Object.values(gs.diplomacyState?.factions || {})
+            .filter(f => f.status === 'alliance').length;
+        this.stats.maxAlliances = Math.max(this.stats.maxAlliances, alliances);
+
+        // Quests completed
+        const questsDone = (gs.dynamicNarrativeState?.history || [])
+            .filter(e => e.resolved && !e.expired).length;
+        this.stats.questsCompleted = Math.max(this.stats.questsCompleted, questsDone);
+
+        this._checkAll();
+        this._save();
+    }
+
+    /** Record a battle win. Pass the winning unit for type-specific checks. */
+    recordBattleWon(winnerUnit = null) {
+        this.stats.battlesWon++;
+        if (winnerUnit?.type === 'naval') this.stats.navalBattlesWon++;
+        if (winnerUnit?.typeId && String(winnerUnit.typeId).includes('greek_fire')) {
+            this.stats.greekFireVictories++;
+        }
+        this._checkAll();
+        this._save();
+    }
+
+    /** Record a city capture. Pass the tile for recapture detection. */
+    recordCityCapture(tile = null) {
+        this.stats.citiesCaptured++;
+        // Recapture: tile was previously enemy-owned and is now player-owned
+        if (tile?._wasPlayerOwned) this.stats.citiesRecaptured++;
+        this._checkAll();
+        this._save();
+    }
+
+    /** Record a road built. */
+    recordRoadBuilt() {
+        this.stats.roadsBuilt++;
+        this._checkAll();
+        this._save();
+    }
+
+    /** Record a truce established. */
+    recordTruceEstablished() {
+        this.stats.trucesEstablished++;
+        this._checkAll();
+        this._save();
+    }
+
+    /** Record a campaign win. */
+    recordCampaignWon() {
+        this.stats.campaignsWon++;
+        this._checkAll();
+        this._save();
+    }
+
+    // ── Unlock logic ─────────────────────────────────────────────────────────
+
+    _checkAll() {
+        for (const def of ACHIEVEMENT_DEFS) {
+            if (this.unlocked.has(def.id)) continue;
+            try {
+                if (def.condition(this.stats)) {
+                    this._unlock(def);
+                }
+            } catch (e) {
+                // Silently skip bad condition
+            }
+        }
+    }
+
+    _unlock(def) {
+        if (this.unlocked.has(def.id)) return;
+        this.unlocked.add(def.id);
+        console.log(`Achievement unlocked: ${def.title}`);
+        this._showToast(def);
+    }
+
+    _showToast(def) {
+        if (typeof uiManager === 'undefined') return;
+        // Use existing notification system with a special achievement type
+        const msg = `🏆 Achievement: ${def.icon} ${def.title}`;
+        uiManager.showNotification(msg, 'achievement');
+    }
+
+    // ── Queries ──────────────────────────────────────────────────────────────
+
+    getAll() {
+        return ACHIEVEMENT_DEFS.map(def => ({
+            ...def,
+            unlocked: this.unlocked.has(def.id)
+        }));
+    }
+
+    getUnlockedCount() {
+        return this.unlocked.size;
+    }
+
+    getTotalCount() {
+        return ACHIEVEMENT_DEFS.length;
+    }
+
+    /** Group achievements by category for the panel. */
+    getByCategory() {
+        const categories = {};
+        for (const def of ACHIEVEMENT_DEFS) {
+            if (!categories[def.category]) categories[def.category] = [];
+            categories[def.category].push({
+                ...def,
+                unlocked: this.unlocked.has(def.id)
+            });
+        }
+        return categories;
+    }
+}
+
+// Global singleton
+const achievementManager = new AchievementManager();
+window.achievementManager = achievementManager;

@@ -1374,6 +1374,7 @@ class GameState {
             this.adjustReputation(3);
             factionState.trust = Math.min(100, (factionState.trust ?? 35) + 10);
             if (aiState?.diplomacy) aiState.diplomacy.player = Math.max(-50, (aiState.diplomacy.player || 0) - 16);
+            if (typeof achievementManager !== 'undefined') achievementManager.recordTruceEstablished();
             return { success: true, message: `${factionName} accepted a truce.` };
         }
 
@@ -2554,6 +2555,10 @@ class GameState {
                 tile.fort.owner = attacker.owner;
                 tile.fort.health = Math.max(20, Math.floor((tile.fort.maxHealth || 90) * 0.45));
             }
+            // Record battle win for achievements
+            if (attacker.owner === 'player' && typeof achievementManager !== 'undefined') {
+                achievementManager.recordBattleWon(attacker);
+            }
             this.captureTerritory(attacker, destination);
         }
 
@@ -3163,6 +3168,9 @@ class GameState {
                 const infra = tile.cityData.infrastructure || (tile.cityData.infrastructure = {});
                 infra.roads = Math.min((infra.roads || 0) + 1, 8);
                 this.expandRoadNetworkFromCity(tile);
+            }
+            if (unit.owner === 'player' && typeof achievementManager !== 'undefined') {
+                achievementManager.recordRoadBuilt();
             }
         }
 
@@ -4369,6 +4377,13 @@ class GameState {
         gameMap.markTerritoryDirty();
         this.refreshPlayerVisibility({ grantRewards: false });
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
+
+        // Record city capture for achievements
+        if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
+            achievementManager.recordCityCapture(tile);
+            achievementManager.syncFromGameState();
+        }
+
         this.checkWinLossConditions();
     }
 
@@ -4466,6 +4481,11 @@ class GameState {
 
         // Check win/loss
         this.checkWinLossConditions();
+
+        // Sync achievements at end of each turn
+        if (typeof achievementManager !== 'undefined') {
+            achievementManager.syncFromGameState();
+        }
 
         return {
             turn: this.turn,
@@ -4601,6 +4621,7 @@ class GameState {
         if (enemyUnits.length === 0 && this.turn > 5) {
             // Only win after some turns to avoid immediate win if no enemies spawned yet
             if (window.uiManager) uiManager.showGameOver(true);
+            if (typeof achievementManager !== 'undefined') achievementManager.recordCampaignWon();
             return 'win';
         }
 
@@ -4923,6 +4944,11 @@ class GameState {
         this.updateAIFactionIntelFromWorldState();
         this.refreshPlayerVisibility({ grantRewards: false });
         this.initialized = true;
+
+        // Sync achievements from loaded save state
+        if (typeof achievementManager !== 'undefined') {
+            achievementManager.syncFromGameState();
+        }
 
         return true;
     }
