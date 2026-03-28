@@ -288,7 +288,7 @@ class AchievementManager {
         const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
         this.stats.techResearched = Math.max(this.stats.techResearched, techCount);
 
-        // Gold earned (track cumulative via resource total as a proxy)
+        // Max gold held (peak gold resource total, NOT cumulative lifetime earnings)
         const currentGold = gs.player?.resources?.gold || 0;
         this.stats.goldEarned = Math.max(this.stats.goldEarned, currentGold);
 
