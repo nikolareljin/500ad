@@ -7,7 +7,7 @@ All notable changes to this project are documented in this file.
 ## [1.18.0] - 2026-03-27
 
 ### Added
-- Added a persistent achievements system (`js/achievements.js`) with 22 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.
+- Added a persistent achievements system (`js/achievements.js`) with 23 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.
 - Added an Achievements panel accessible from the action bar (`🏆 Achievements` button) and from the Game Menu, showing all achievements grouped by category with locked/unlocked state.
 - Added achievement toast notifications that appear when a new achievement is unlocked during play.
 - Added achievement persistence in `localStorage` independently of save slots, so progress survives across campaigns.

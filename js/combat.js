@@ -383,6 +383,14 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
     combatLog.push(`Damage exchange: ${attacker.name} dealt ${attackerDamage}, ${defender.name} dealt ${defenderDamage}.`);
     combatLog.push(`Outcome: ${outcome.replace(/_/g, ' ')}.`);
 
+    if (
+        outcome === 'attacker_victory'
+        && attacker.owner === 'player'
+        && typeof achievementManager !== 'undefined'
+    ) {
+        achievementManager.recordBattleWon(attacker);
+    }
+
     return {
         success: true,
         battleType,

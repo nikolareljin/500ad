@@ -528,6 +528,7 @@ class GameState {
         this.selectedScenario = SCENARIOS.empire;
         this.aiFactions = {};
         this.aiEvents = [];
+        this.gameOverState = null;
         this.diplomacyState = { reputation: 0, factions: {}, tradeRoutes: [] };
         this.exploration = this.createDefaultExplorationState();
         this.tutorialState = this.createDefaultTutorialState();
@@ -2555,10 +2556,6 @@ class GameState {
                 tile.fort.owner = attacker.owner;
                 tile.fort.health = Math.max(20, Math.floor((tile.fort.maxHealth || 90) * 0.45));
             }
-            // Record battle win for achievements
-            if (attacker.owner === 'player' && typeof achievementManager !== 'undefined') {
-                achievementManager.recordBattleWon(attacker);
-            }
             this.captureTerritory(attacker, destination);
         }
 
@@ -4307,6 +4304,7 @@ class GameState {
         const oldOwner = tile.owner;
         const oldFaction = tile.faction || tile.cityData?.historicalCivilization || null;
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
+        tile._wasPlayerOwned = Boolean(tile._wasPlayerOwned || oldOwner === 'player');
 
         // Neutral towns can join peacefully or resist based on diplomacy.
         if ((oldOwner === 'neutral' || oldOwner === null) && unit.owner === 'player') {
@@ -4380,7 +4378,7 @@ class GameState {
 
         // Record city capture for achievements
         if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
-            achievementManager.recordCityCapture(tile);
+            achievementManager.recordCityCapture(tile, oldOwner);
             achievementManager.syncFromGameState();
         }
 
@@ -4595,6 +4593,10 @@ class GameState {
      * Check Win/Loss conditions
      */
     checkWinLossConditions() {
+        if (this.gameOverState) {
+            return this.gameOverState;
+        }
+
         const playerUnits = this.units.filter(u => u.owner === 'player');
         const enemyUnits = this.units.filter(u => u.owner === 'enemy');
 
@@ -4614,7 +4616,8 @@ class GameState {
                     uiManager.showGameOver(false);
                 }
             }
-            return 'loss';
+            this.gameOverState = 'loss';
+            return this.gameOverState;
         }
 
         // Win: All enemy units destroyed (simplified)
@@ -4622,7 +4625,8 @@ class GameState {
             // Only win after some turns to avoid immediate win if no enemies spawned yet
             if (window.uiManager) uiManager.showGameOver(true);
             if (typeof achievementManager !== 'undefined') achievementManager.recordCampaignWon();
-            return 'win';
+            this.gameOverState = 'win';
+            return this.gameOverState;
         }
 
         return null;
@@ -4850,6 +4854,8 @@ class GameState {
             console.error('Map must be initialized before loading save data');
             return false;
         }
+
+        this.gameOverState = null;
 
         if (data.worldGenerationConfig && typeof window !== 'undefined' && typeof window.setWorldGenerationConfig === 'function') {
             const currentGenerationConfig = (gameMap?.getGenerationConfigSnapshot?.()

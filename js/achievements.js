@@ -215,6 +215,7 @@ class AchievementManager {
         this.unlocked = new Set();
         // Per-session stats snapshot used for condition evaluation
         this.stats = this._defaultStats();
+        this._cityLookupById = null;
         this._load();
     }
 
@@ -280,6 +281,7 @@ class AchievementManager {
         if (typeof gameState === 'undefined' || !gameState.initialized) return;
 
         const gs = gameState;
+        const playerTerritories = Array.isArray(gs.player?.territories) ? gs.player.territories : [];
 
         // Turn
         this.stats.maxTurnReached = Math.max(this.stats.maxTurnReached, gs.turn || 0);
@@ -301,11 +303,12 @@ class AchievementManager {
         this.stats.maxCitiesHeld = Math.max(this.stats.maxCitiesHeld, cityCount);
 
         // Eastern cities (x > 200 on the 320-wide map)
-        if (typeof gameMap !== 'undefined' && gameMap) {
-            const playerCities = gameMap.getCityTiles('player') || [];
-            const easternCount = playerCities.filter(t => t.x > 200).length;
-            this.stats.easternCitiesHeld = Math.max(this.stats.easternCitiesHeld, easternCount);
-        }
+        const cityLookup = this._getCityLookupById();
+        const easternCount = playerTerritories.reduce((count, cityId) => {
+            const city = cityLookup.get(cityId);
+            return count + (city && typeof city.x === 'number' && city.x > 200 ? 1 : 0);
+        }, 0);
+        this.stats.easternCitiesHeld = Math.max(this.stats.easternCitiesHeld, easternCount);
 
         // Unit max level
         const maxLevel = (gs.units || [])
@@ -343,10 +346,11 @@ class AchievementManager {
     }
 
     /** Record a city capture. Pass the tile for recapture detection. */
-    recordCityCapture(tile = null) {
+    recordCityCapture(tile = null, oldOwner = null) {
         this.stats.citiesCaptured++;
-        // Recapture: tile was previously enemy-owned and is now player-owned
-        if (tile?._wasPlayerOwned) this.stats.citiesRecaptured++;
+        if (oldOwner === 'player' || tile?._wasPlayerOwned) {
+            this.stats.citiesRecaptured++;
+        }
         this._checkAll();
         this._save();
     }
@@ -429,6 +433,22 @@ class AchievementManager {
             });
         }
         return categories;
+    }
+
+    _getCityLookupById() {
+        if (this._cityLookupById instanceof Map) {
+            return this._cityLookupById;
+        }
+        const lookup = new Map();
+        if (typeof HISTORIC_TOWNS !== 'undefined' && Array.isArray(HISTORIC_TOWNS)) {
+            HISTORIC_TOWNS.forEach((town) => {
+                if (town?.id) {
+                    lookup.set(town.id, town);
+                }
+            });
+        }
+        this._cityLookupById = lookup;
+        return lookup;
     }
 }
 
