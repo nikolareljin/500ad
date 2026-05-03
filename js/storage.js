@@ -238,6 +238,16 @@ class StorageManager {
     }
 
     /**
+     * Auto-save deferred past the current frame to avoid blocking the main thread
+     * on visibilitychange events (JSON.stringify on large state can freeze 50-200ms).
+     */
+    autoSaveAsync() {
+        setTimeout(() => {
+            try { this.saveGame(0); } catch (e) { console.warn('Async auto-save failed:', e); }
+        }, 0);
+    }
+
+    /**
      * Export save data as JSON
      */
     exportSave(slotNumber) {

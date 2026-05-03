@@ -194,7 +194,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         // Auto-save when leaving
         if (gameState.initialized && storageManager.settings.autoSave) {
-            storageManager.autoSave();
+            storageManager.autoSaveAsync();
         }
     }
 });

@@ -8,6 +8,7 @@ class AudioManager {
         this.musicVolume = 0.5;
         this.sfxVolume = 0.7;
         this.currentMusic = null;
+        this.currentContext = null;
         this.sounds = {};
         this.musicTracks = {};
         this.initialized = false;
@@ -108,22 +109,21 @@ class AudioManager {
      * Play sound effect
      */
     playSound(soundName) {
-        if (!this.initialized) return;
+        // SFX assets not yet available — intentional no-op.
+        // Uncomment and wire src when assets/audio/sfx/${soundName}.mp3 files exist.
+    }
 
-        console.log(`Playing sound: ${soundName}`);
-
-        // Create audio element for sound effect
-        const audio = new Audio();
-        audio.volume = this.sfxVolume;
-
-        // You would set audio.src to actual sound file here
-        // audio.src = `assets/audio/sfx/${soundName}.mp3`;
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.log('Sound play prevented:', error);
-            });
+    /**
+     * Switch music context (ambient or combat).
+     * Only triggers a track change when the context actually changes.
+     */
+    setContext(contextName) {
+        if (contextName === 'combat' && this.currentContext !== 'combat') {
+            this.currentContext = 'combat';
+            this.playMusic('battle_theme');
+        } else if (contextName === 'ambient' && this.currentContext !== 'ambient') {
+            this.currentContext = 'ambient';
+            this.playMusic('500ad_ambient');
         }
     }
 

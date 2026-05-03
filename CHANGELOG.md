@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.19.0] - 2026-05-03
+
+### Added
+- Re-enabled tutorial and onboarding experience (#24): new campaigns now open with the interactive step-by-step tutorial (move, combat, build, diplomacy, end turn). Existing saves that already skipped or completed the tutorial are unaffected.
+- Added "Replay Tutorial" entry to the in-game Game Menu so players can revisit the tutorial at any time.
+- Added music context transitions for the sound system (#22): battle theme plays automatically when combat begins (player or AI-initiated) and the ambient track resumes after the enemy turn completes.
+- Added `AudioManager.setContext()` for centralized music-track state management, preventing redundant track switches.
+
+### Fixed
+- Fixed `playSound()` generating browser media errors on every call by removing a dead `Audio()` element that was instantiated without a source attribute.
+- Fixed unbounded notification DOM accumulation during AI turns with many simultaneous combats; notifications are now capped at 5 simultaneous entries to prevent DOM buildup.
+- Fixed synchronous auto-save on tab-switch (`visibilitychange`) causing a main-thread freeze; `autoSaveAsync()` now defers `JSON.stringify` past the current frame, eliminating compositor jank on low-memory devices.
+
+### Changed
+- Updated tutorial default state so new games offer the tutorial immediately without requiring a manual trigger; players with existing saves are not affected.
+
 ## [1.18.0] - 2026-03-27
 
 ### Added

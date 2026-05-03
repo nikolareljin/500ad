@@ -648,6 +648,7 @@ class UIManager {
                 }
             }
             this.onTutorialAction('endTurn');
+            audioManager.setContext('ambient');
         } finally {
             this.showTurnProcessing(false);
         }
@@ -1248,6 +1249,7 @@ class UIManager {
             return;
         }
 
+        audioManager.setContext('combat');
         const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
         const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
             attemptRetreat: true,
@@ -1982,15 +1984,17 @@ class UIManager {
      * Show notification
      */
     showNotification(message, type = 'info') {
+        if (!this.notificationContainer) return;
+        const MAX_NOTIFICATIONS = 5;
+        const existing = this.notificationContainer.querySelectorAll('.notification');
+        if (existing.length >= MAX_NOTIFICATIONS) {
+            existing[0].remove();
+        }
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
-        this.notificationContainer?.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        this.notificationContainer.appendChild(notification);
+        setTimeout(() => { notification.remove(); }, 3000);
     }
 
     /**
@@ -2242,6 +2246,7 @@ class UIManager {
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showAchievementsModal()">🏆 Achievements</button>
+                <button class="menu-btn" onclick="uiManager.replayTutorial()">Replay Tutorial</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
             </div>
