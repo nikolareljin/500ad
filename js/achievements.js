@@ -238,7 +238,8 @@ class AchievementManager {
             maxTurnReached: 0,
             maxUnitLevel: 0,
             questsCompleted: 0,
-            campaignsWon: 0
+            campaignsWon: 0,
+            playerHeldCityIds: []
         };
     }
 
@@ -259,6 +260,12 @@ class AchievementManager {
                     loaded.maxGoldHeld = loaded.goldEarned;
                 }
                 delete loaded.goldEarned;
+                // Ensure playerHeldCityIds is always an array of strings
+                if (!Array.isArray(loaded.playerHeldCityIds)) {
+                    loaded.playerHeldCityIds = [];
+                } else {
+                    loaded.playerHeldCityIds = loaded.playerHeldCityIds.filter(id => typeof id === 'string');
+                }
                 this.stats = { ...this._defaultStats(), ...loaded };
             }
         } catch (e) {
@@ -292,9 +299,9 @@ class AchievementManager {
         // Turn
         this.stats.maxTurnReached = Math.max(this.stats.maxTurnReached, gs.turn || 0);
 
-        // Technologies
+        // Technologies — subtract 4 empire-start techs always seeded at game init
         const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
-        this.stats.techResearched = Math.max(this.stats.techResearched, techCount);
+        this.stats.techResearched = Math.max(this.stats.techResearched, Math.max(0, techCount - 4));
 
         // Peak gold ever held (NOT cumulative earnings — condition checks this snapshot)
         const currentGold = gs.player?.resources?.gold || 0;
@@ -309,12 +316,27 @@ class AchievementManager {
         this.stats.maxCitiesHeld = Math.max(this.stats.maxCitiesHeld, cityCount);
 
         // Eastern cities (x > 200 on the 320-wide map)
+        // Founded city IDs use format 'founded_${x}_${y}_${turn}' — parse x when lookup misses
         const cityLookup = this._getCityLookupById();
         const easternCount = playerTerritories.reduce((count, cityId) => {
             const city = cityLookup.get(cityId);
-            return count + (city && typeof city.x === 'number' && city.x > 200 ? 1 : 0);
+            if (city) {
+                return count + (typeof city.x === 'number' && city.x > 200 ? 1 : 0);
+            }
+            if (String(cityId).startsWith('founded_')) {
+                const x = Number(String(cityId).split('_')[1]);
+                return count + (Number.isFinite(x) && x > 200 ? 1 : 0);
+            }
+            return count;
         }, 0);
         this.stats.easternCitiesHeld = Math.max(this.stats.easternCitiesHeld, easternCount);
+
+        // Accumulate city IDs ever held by the player (for recapture detection across save/load)
+        for (const cityId of playerTerritories) {
+            if (!this.stats.playerHeldCityIds.includes(cityId)) {
+                this.stats.playerHeldCityIds.push(cityId);
+            }
+        }
 
         // Unit max level
         const maxLevel = (gs.units || [])
@@ -331,9 +353,9 @@ class AchievementManager {
             .filter(f => f.status === 'alliance').length;
         this.stats.maxAlliances = Math.max(this.stats.maxAlliances, alliances);
 
-        // Quests completed
+        // Quests completed — history entries use status:'resolved'|'expired', not boolean flags
         const questsDone = (gs.dynamicNarrativeState?.history || [])
-            .filter(e => e.resolved && !e.expired).length;
+            .filter(e => e.status === 'resolved').length;
         this.stats.questsCompleted = Math.max(this.stats.questsCompleted, questsDone);
 
         this._checkAll();
@@ -354,8 +376,12 @@ class AchievementManager {
     /** Record a city capture. Pass the tile for recapture detection. */
     recordCityCapture(tile = null, oldOwner = null) {
         this.stats.citiesCaptured++;
-        if (oldOwner === 'player' || tile?._wasPlayerOwned) {
+        const cityId = tile?.cityData?.id || null;
+        if (cityId && this.stats.playerHeldCityIds.includes(cityId)) {
             this.stats.citiesRecaptured++;
+        }
+        if (cityId && !this.stats.playerHeldCityIds.includes(cityId)) {
+            this.stats.playerHeldCityIds.push(cityId);
         }
         this._checkAll();
         this._save();

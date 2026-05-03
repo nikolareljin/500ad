@@ -4093,6 +4093,7 @@ class GameState {
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
             production.gold += 1;
             this.expandRoadNetworkFromCity(cityTile);
+            if (typeof achievementManager !== 'undefined') achievementManager.recordRoadBuilt();
         } else if (actionId === 'establish_monastery') {
             cityTile.cityData.monastery = true;
             this.player.resources.prestige += 6;
