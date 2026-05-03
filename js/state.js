@@ -764,6 +764,7 @@ class GameState {
         this.ensureStrategicResourceStockpile();
 
         this.turn = 1;
+        this.gameOverState = null;
         this.units = [];
         this.buildings = [];
         this.aiFactions = {};
