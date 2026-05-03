@@ -116,7 +116,7 @@ const ACHIEVEMENT_DEFS = [
         description: 'Accumulate 10,000 gold.',
         icon: '💰',
         category: 'economy',
-        condition: (s) => s.goldEarned >= 10000
+        condition: (s) => s.maxGoldHeld >= 10000
     },
     {
         id: 'trade_empire',
@@ -230,7 +230,7 @@ class AchievementManager {
             easternCitiesHeld: 0,
             techResearched: 0,
             roadsBuilt: 0,
-            goldEarned: 0,
+            maxGoldHeld: 0,
             maxFoodStockpile: 0,
             maxTradeRoutes: 0,
             trucesEstablished: 0,
@@ -253,7 +253,13 @@ class AchievementManager {
                 this.unlocked = new Set(data.unlocked.filter(id => typeof id === 'string'));
             }
             if (data.stats && typeof data.stats === 'object') {
-                this.stats = { ...this._defaultStats(), ...data.stats };
+                const loaded = { ...data.stats };
+                // Migrate old key name → new key; keep whichever value is larger
+                if ('goldEarned' in loaded && !('maxGoldHeld' in loaded)) {
+                    loaded.maxGoldHeld = loaded.goldEarned;
+                }
+                delete loaded.goldEarned;
+                this.stats = { ...this._defaultStats(), ...loaded };
             }
         } catch (e) {
             console.warn('Achievements: failed to load', e);
@@ -290,9 +296,9 @@ class AchievementManager {
         const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
         this.stats.techResearched = Math.max(this.stats.techResearched, techCount);
 
-        // Max gold held (peak gold resource total, NOT cumulative lifetime earnings)
+        // Peak gold ever held (NOT cumulative earnings — condition checks this snapshot)
         const currentGold = gs.player?.resources?.gold || 0;
-        this.stats.goldEarned = Math.max(this.stats.goldEarned, currentGold);
+        this.stats.maxGoldHeld = Math.max(this.stats.maxGoldHeld, currentGold);
 
         // Food stockpile
         const currentFood = gs.player?.resources?.food || 0;
@@ -338,7 +344,7 @@ class AchievementManager {
     recordBattleWon(winnerUnit = null) {
         this.stats.battlesWon++;
         if (winnerUnit?.type === 'naval') this.stats.navalBattlesWon++;
-        if (winnerUnit?.typeId && String(winnerUnit.typeId).includes('greek_fire')) {
+        if (winnerUnit?.bonuses?.greekFire || (winnerUnit?.typeId && String(winnerUnit.typeId).includes('greekfire'))) {
             this.stats.greekFireVictories++;
         }
         this._checkAll();
