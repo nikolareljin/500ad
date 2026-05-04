@@ -27,6 +27,15 @@ else
   exit 1
 fi
 
+if check_port "$PORT" "$HOST"; then
+  STALE_PID=$(lsof -ti TCP:"$PORT" 2>/dev/null || true)
+  if [[ -n "$STALE_PID" ]]; then
+    log_info "Port ${PORT} in use (PID ${STALE_PID}). Killing stale server..."
+    kill "$STALE_PID" 2>/dev/null || true
+    sleep 0.3
+  fi
+fi
+
 log_info "Starting 500 A.D. local server at ${URL}"
 (
   cd "$ROOT_DIR"
