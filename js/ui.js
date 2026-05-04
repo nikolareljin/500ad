@@ -496,6 +496,25 @@ class UIManager {
         this.selectedLeaderCard = leader;
     }
 
+    getUnitPortraitPath(unit) {
+        const faction = unit?.faction || unit?.owner || '';
+        const typeId = unit?.typeId || '';
+        const UNIT_PORTRAITS = {
+            'arab:camel_riders':    'arab_unit_camel_riders_circle.png',
+            'bulgar:skutatoi':      'bulgar_unit_infantry_circle.png',
+            'bulgar:mountain_infantry': 'bulgar_unit_infantry_circle.png',
+            'byzantine:skutatoi':   'byzantine_unit_skutatoi_circle.png',
+            'byzantine:cataphract': 'byzantine_unit_cataphract.png',
+            'byzantine:varangian':  'byzantine_varangian_guard.png',
+            'frank:skutatoi':       'ostrogoth_unit_infantry_circle.png',
+            'tribal:skutatoi':      'ostrogoth_unit_infantry_circle.png',
+            'sassanid:kavallarioi': 'sassanid_unit_cavalry_circle.png',
+            'sassanid:horsearchers': 'sassanid_unit_cavalry_circle.png',
+        };
+        const file = UNIT_PORTRAITS[`${faction}:${typeId}`];
+        return file ? `assets/images/units/thumbs/${file}` : null;
+    }
+
     getLeaderPortraitPath(leader) {
         const file = leader?.portrait;
         if (!file) return null;
@@ -675,6 +694,7 @@ class UIManager {
             return;
         }
 
+        const playerFaction = gameState.player?.faction || gameState.selectedFaction || 'byzantine';
         const choices = gameState.getRecruitmentOptions(tile)
             .map((entry) => ({
                 id: entry.unitId,
@@ -685,7 +705,8 @@ class UIManager {
                 detail: entry.available
                     ? (entry.upgradePath?.length ? `Upgrades to: ${entry.upgradePath.map((id) => getUnitById(id)?.name || id).join(', ')}` : 'Available')
                     : entry.reasons.join(' • '),
-                disabled: !entry.available
+                disabled: !entry.available,
+                imgSrc: this.getUnitPortraitPath({ faction: playerFaction, typeId: entry.unitId })
             }));
 
         this.showChoiceModal(
@@ -1195,6 +1216,7 @@ class UIManager {
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
             <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
+                ${option.imgSrc ? `<img src="${option.imgSrc}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.4rem;" onerror="this.remove();">` : ''}
                 <span class="btn-text">${option.title}</span>
                 <small class="choice-btn-subtitle">${option.subtitle || ''}</small>
                 ${option.detail ? `<small class="choice-btn-detail${option.disabled ? ' choice-btn-detail-disabled' : ''}">${option.detail}</small>` : ''}
@@ -1496,6 +1518,7 @@ class UIManager {
         if (portrait) {
             const unitType = getUnitById(unit.typeId);
             const symbol = unit.symbol || unitType?.symbol || '⚔️';
+            const portraitPath = this.getUnitPortraitPath(unit);
 
             portrait.textContent = '';
             const container = document.createElement('div');
@@ -1504,8 +1527,17 @@ class UIManager {
 
             const iconSpan = document.createElement('span');
             iconSpan.className = 'unit-portrait-icon';
-            iconSpan.textContent = symbol;
-            if (symbol.length > 2) iconSpan.style.fontSize = '1.8rem';
+            if (portraitPath) {
+                const img = document.createElement('img');
+                img.src = portraitPath;
+                img.alt = unit.name;
+                img.style.cssText = 'width:48px;height:48px;border-radius:50%;object-fit:cover;';
+                img.onerror = () => { img.remove(); iconSpan.textContent = symbol; };
+                iconSpan.appendChild(img);
+            } else {
+                iconSpan.textContent = symbol;
+                if (symbol.length > 2) iconSpan.style.fontSize = '1.8rem';
+            }
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'unit-portrait-name';
