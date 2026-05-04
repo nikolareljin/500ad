@@ -680,7 +680,7 @@ class UIManager {
                 id: entry.unitId,
                 title: `${entry.unit?.name || entry.unitId}`,
                 subtitle: entry.finalCost
-                    ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m • ${entry.trainingTurns || 1} turn(s) • upkeep ${entry.upkeep || 0}`
+                    ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m • ${entry.trainingTurns === 0 ? 'Immediate' : `${entry.trainingTurns} turn(s)`} • upkeep ${entry.upkeep || 0}`
                     : '',
                 detail: entry.available
                     ? (entry.upgradePath?.length ? `Upgrades to: ${entry.upgradePath.map((id) => getUnitById(id)?.name || id).join(', ')}` : 'Available')
@@ -719,8 +719,10 @@ class UIManager {
                 this.updateHUD();
                 gameMap.requestRender();
                 const unit = getUnitById(unitId);
-                const turns = queued.project?.totalTurns || 1;
-                this.showNotification(`${unit?.name || unitId} training started at ${tile.cityData.name} (${turns} turn${turns === 1 ? '' : 's'})`, 'success');
+                const msg = queued.instantSpawn
+                    ? `${unit?.name || unitId} recruited immediately at ${tile.cityData.name}`
+                    : (() => { const t = queued.project?.totalTurns || 1; return `${unit?.name || unitId} training started at ${tile.cityData.name} (${t} turn${t === 1 ? '' : 's'})`; })();
+                this.showNotification(msg, 'success');
             }
         );
     }
@@ -746,7 +748,7 @@ class UIManager {
         const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
         const hasCity = Boolean(tile?.cityData);
         const cityName = tile.cityData?.name || `Tile ${tile.x},${tile.y}`;
-        const buildModeLabel = autoBuildEnabled ? 'AUTO' : 'MANUAL';
+        const buildModeLabel = autoBuildEnabled ? 'AUTO' : 'MANUAL OVERRIDE';
 
         const cityBuildingChoices = hasCity ? gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
@@ -759,11 +761,11 @@ class UIManager {
         })) : [];
         const automationChoice = {
             id: 'city_auto_toggle',
-            title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
-            subtitle: `Current Build Mode: ${buildModeLabel}`,
+            title: autoBuildEnabled ? '⚙ Automate: ON — tap to override manually' : '⚙ Manual Override — tap to resume auto',
+            subtitle: `Mode: ${buildModeLabel}`,
             detail: autoBuildEnabled
-                ? 'AUTO mode: city can start one building-tree upgrade each turn by priority'
-                : 'MANUAL mode: no auto-starts; you choose city projects yourself'
+                ? 'City auto-starts best building upgrade each turn. Pick a project below to override.'
+                : 'Manual override active — city waits for your choice. Tap to resume auto.'
         };
         const infrastructureChoices = gameState.getBuildActionOptions(tile).map((entry) => ({
             id: `infra:${entry.actionId}`,
@@ -777,7 +779,7 @@ class UIManager {
             : infrastructureChoices;
 
         this.showChoiceModal(
-            `Build in ${cityName} • Mode: ${buildModeLabel}`,
+            `Build in ${cityName} • ${buildModeLabel}`,
             choices,
             (choiceId) => {
                 if (choiceId === 'city_auto_toggle') {
@@ -788,7 +790,9 @@ class UIManager {
                     }
                     current.autoBuildEnabled = !current.autoBuildEnabled;
                     this.showNotification(
-                        `${cityName}: Build Mode ${current.autoBuildEnabled ? 'AUTO' : 'MANUAL'}`,
+                        current.autoBuildEnabled
+                            ? `${cityName}: Auto-build resumed`
+                            : `${cityName}: Manual override — auto-build paused`,
                         'info'
                     );
                     this.updateHUD();

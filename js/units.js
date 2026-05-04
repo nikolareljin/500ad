@@ -620,7 +620,7 @@ const UNIT_TYPES = {
             era: ['early', 'middle', 'late'],
             cost: {
                 gold: 210,
-                manpower: 85
+                manpower: 65
             },
             upkeep: 12,
             stats: {
@@ -768,29 +768,34 @@ function getUnitTrainingTurns(unitTypeId, context = {}) {
     const unit = getUnitById(unitTypeId);
     if (!unit) return 0;
     const baseByType = {
-        infantry: 1,
-        cavalry: 2,
-        special: 2,
-        naval: 3
+        infantry: 0,
+        cavalry: 1,
+        special: 1,
+        naval: 2
     };
     const baseByCategory = {
-        elite: 3,
-        superheavy: 3,
-        siege: 3,
-        support: 2,
+        // basic infantry categories: immediate recruit
+        light: 0,
+        heavy: 0,
+        ranged: 0,
+        // advanced
+        elite: 2,
+        superheavy: 2,
+        siege: 2,
+        support: 1,
         scout: 1,
         economic: 1,
-        transport: 2,
-        warship: 3
+        transport: 1,
+        warship: 2
     };
     const base = Number.isFinite(unit.trainingTurns)
         ? unit.trainingTurns
-        : (baseByCategory[unit.category] || baseByType[unit.type] || 2);
+        : (baseByCategory[unit.category] ?? baseByType[unit.type] ?? 2);
     const barracksLevel = Math.max(0, Number(context.barracksLevel || 0));
     const recruitmentSpeed = Math.max(1, Number(context.recruitmentSpeed || 1));
     const barracksReduction = Math.min(0.35, barracksLevel * 0.12);
     const leaderReduction = Math.min(0.4, (recruitmentSpeed - 1) * 0.35);
-    return Math.max(1, Math.round(base * (1 - barracksReduction - leaderReduction)));
+    return Math.max(0, Math.round(base * (1 - barracksReduction - leaderReduction)));
 }
 
 function applyUnitPromotion(unit, targetTypeId) {

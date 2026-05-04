@@ -32,7 +32,12 @@ if check_port "$PORT" "$HOST"; then
   if [[ -n "$STALE_PID" ]]; then
     log_info "Port ${PORT} in use (PID ${STALE_PID}). Killing stale server..."
     kill "$STALE_PID" 2>/dev/null || true
-    sleep 0.3
+    for _ in $(seq 1 30); do
+      if ! check_port "$PORT" "$HOST" 2>/dev/null; then
+        break
+      fi
+      sleep 0.2
+    done
   fi
 fi
 

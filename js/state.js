@@ -947,7 +947,7 @@ class GameState {
             cityData.construction = null;
         }
         if (typeof cityData.autoBuildEnabled !== 'boolean') {
-            cityData.autoBuildEnabled = false;
+            cityData.autoBuildEnabled = true;
         }
         if (!Array.isArray(cityData.trainingQueue)) {
             cityData.trainingQueue = [];
@@ -3206,8 +3206,8 @@ class GameState {
                 { type: 'civil_engineers', count: 1 }
             ]
             : [
-                { type: 'skutatoi', count: 3 },
-                { type: 'kavallarioi', count: 2 },
+                { type: 'skutatoi', count: 2 },
+                { type: 'kavallarioi', count: 1 },
                 { type: 'archers', count: 2 },
                 { type: 'civil_engineers', count: 1 }
             ];
@@ -3515,10 +3515,31 @@ class GameState {
         }
 
         this.spendResources(cost.gold, cost.manpower);
-        const queue = this.ensureCityTrainingQueue(cityTile);
         const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
         const recruitmentSpeed = Number(this.player?.bonuses?.recruitmentSpeed || 1);
         const trainingTurns = getUnitTrainingTurns(unitTypeId, { barracksLevel, recruitmentSpeed });
+
+        if (trainingTurns === 0) {
+            const spawnTile = this.getRecruitSpawnTile(cityTile, unitTypeId);
+            if (!spawnTile) {
+                return { success: false, reasons: ['No adjacent spawn tile'] };
+            }
+            const unit = this.recruitUnit(unitTypeId, spawnTile, {
+                cityTile,
+                skipCost: true,
+                owner: 'player',
+                faction: this.player?.faction || this.selectedFaction || 'byzantine'
+            });
+            if (!unit) return { success: false, reasons: ['Recruitment failed'] };
+            return {
+                success: true,
+                instantSpawn: true,
+                unit,
+                project: { unitTypeId, turnsRemaining: 0, totalTurns: 0 }
+            };
+        }
+
+        const queue = this.ensureCityTrainingQueue(cityTile);
         const project = {
             id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             unitTypeId,
@@ -3619,22 +3640,22 @@ class GameState {
         if (!unitType) return null;
 
         const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
-        const offsets = [
-            { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
-            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-        ];
 
-        for (const offset of offsets) {
-            const x = cityTile.x + offset.x;
-            const y = cityTile.y + offset.y;
-            const mapTile = gameMap.getTile(x, y);
-            if (!mapTile) continue;
-            if (wantsWater && mapTile.terrain !== 'water') continue;
-            if (!wantsWater && mapTile.terrain === 'water') continue;
-
-            const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
-            if (occupied) continue;
-            return { x, y };
+        for (let radius = 1; radius <= 3; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+                    const x = cityTile.x + dx;
+                    const y = cityTile.y + dy;
+                    const mapTile = gameMap.getTile(x, y);
+                    if (!mapTile) continue;
+                    if (wantsWater && mapTile.terrain !== 'water') continue;
+                    if (!wantsWater && mapTile.terrain === 'water') continue;
+                    const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
+                    if (occupied) continue;
+                    return { x, y };
+                }
+            }
         }
 
         return null;
@@ -3679,7 +3700,7 @@ class GameState {
                 requireInfra('agriculture', 2, 'Agriculture');
                 break;
             case 'explorer':
-                requireInfra('roads', 2, 'Roads');
+                requireInfra('roads', 1, 'Roads');
                 break;
             case 'spy':
                 if ((infra.roads || 0) < 3 && !researched.has('monastic_scholarship')) reasons.push('Requires Roads 3 or Monastic Scholarship');
