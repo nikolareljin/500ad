@@ -95,10 +95,10 @@ const ACHIEVEMENT_DEFS = [
     {
         id: 'renaissance',
         title: 'Byzantine Renaissance',
-        description: 'Research 10 technologies.',
+        description: 'Research all 7 available technologies.',
         icon: '🔬',
         category: 'technology',
-        condition: (s) => s.techResearched >= 10
+        condition: (s) => s.totalTechResearched >= 7
     },
     {
         id: 'master_engineer',
@@ -206,6 +206,8 @@ const ACHIEVEMENT_DEFS = [
     }
 ];
 
+const EMPIRE_START_TECH_IDS = new Set(['military_logistics', 'naval_architecture', 'cavalry_tactics', 'irrigation_systems']);
+
 // ─── AchievementManager ─────────────────────────────────────────────────────
 
 class AchievementManager {
@@ -229,6 +231,7 @@ class AchievementManager {
             maxCitiesHeld: 0,
             easternCitiesHeld: 0,
             techResearched: 0,
+            totalTechResearched: 0,
             roadsBuilt: 0,
             maxGoldHeld: 0,
             maxFoodStockpile: 0,
@@ -299,9 +302,18 @@ class AchievementManager {
         // Turn
         this.stats.maxTurnReached = Math.max(this.stats.maxTurnReached, gs.turn || 0);
 
-        // Technologies — subtract 4 empire-start techs always seeded at game init
-        const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
-        this.stats.techResearched = Math.max(this.stats.techResearched, Math.max(0, techCount - 4));
+        // Technologies
+        const techIds = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched : [];
+        const techCount = techIds.length;
+
+        // Total techs ever held (including free start techs) — used for Byzantine Renaissance
+        this.stats.totalTechResearched = Math.max(this.stats.totalTechResearched, techCount);
+
+        // Player-actively-researched techs (excluding free scenario start techs) — used for Scholar
+        const freeTechCount = gs.selectedScenario === 'managing_empire'
+            ? techIds.filter(id => EMPIRE_START_TECH_IDS.has(id)).length
+            : 0;
+        this.stats.techResearched = Math.max(this.stats.techResearched, Math.max(0, techCount - freeTechCount));
 
         // Peak gold ever held (NOT cumulative earnings — condition checks this snapshot)
         const currentGold = gs.player?.resources?.gold || 0;
@@ -384,6 +396,33 @@ class AchievementManager {
             this.stats.playerHeldCityIds.push(cityId);
         }
         this._checkAll();
+        this._save();
+    }
+
+    /** Record a city joining peacefully (not a conquest — no citiesCaptured increment). */
+    recordCityJoined(tile = null) {
+        const cityId = tile?.cityData?.id || null;
+        if (cityId && !this.stats.playerHeldCityIds.includes(cityId)) {
+            this.stats.playerHeldCityIds.push(cityId);
+            this._save();
+        }
+    }
+
+    /** Update peak gold and food peaks immediately on resource gain. */
+    syncResourcePeak() {
+        if (typeof gameState === 'undefined' || !gameState.initialized) return;
+        const resources = gameState.player?.resources || {};
+        let changed = false;
+        const gold = Number(resources.gold) || 0;
+        const food = Number(resources.food) || 0;
+        if (gold > this.stats.maxGoldHeld) { this.stats.maxGoldHeld = gold; changed = true; }
+        if (food > this.stats.maxFoodStockpile) { this.stats.maxFoodStockpile = food; changed = true; }
+        if (changed) { this._checkAll(); this._save(); }
+    }
+
+    /** Reset per-campaign transient state. Call at the start of each new campaign. */
+    resetForNewCampaign() {
+        this.stats.playerHeldCityIds = [];
         this._save();
     }
 

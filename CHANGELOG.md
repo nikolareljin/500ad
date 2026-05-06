@@ -8,6 +8,12 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - Fixed stale training queue reference in `processUnitTrainingTurn`: re-fetch queue after `recruitUnit` since `ensureCityBuildingState` replaces the array in-place, making the prior local ref stale and breaking `queue.shift()` on unit completion.
+- Fixed `Byzantine Renaissance` achievement being unreachable: threshold was `>= 10` but only 7 technologies exist; now checks `totalTechResearched >= 7` (all techs in the tree).
+- Fixed `Scholar` achievement not unlocking in non-empire scenarios: the free-start-tech deduction was hard-coded to 4 (empire only); now computed per scenario from actual seeded tech IDs.
+- Fixed `playerHeldCityIds` persisting across campaigns, causing fresh-run city captures to be mis-counted as recaptures; `resetForNewCampaign()` now clears the list in `initializeGame`.
+- Fixed peaceful neutral-town joins incorrectly incrementing `citiesCaptured`; `First Conquest` now only fires for military captures.
+- Fixed `Merchant Prince` and `Granary of the East` achievements missing mid-turn resource peaks: `syncResourcePeak()` is now called from `addResources` and `addStrategicResources` on every positive gain.
+- Fixed `Elite Corps` achievement being lost when a unit levels up mid-combat and then dies before the next turn sync: `maxUnitLevel` is now updated immediately after `checkLevelUp` returns true in `executeBattle`.
 
 ### Added
 - Added a persistent achievements system (`js/achievements.js`) with 23 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.

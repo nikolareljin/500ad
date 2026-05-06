@@ -797,6 +797,8 @@ class GameState {
         gameMap.markTerritoryDirty();
         gameMap.requestRender();
 
+        if (typeof achievementManager !== 'undefined') achievementManager.resetForNewCampaign();
+
         this.initialized = true;
         return true;
     }
@@ -3387,6 +3389,8 @@ class GameState {
         this.player.resources.gold = Math.max(0, this.player.resources.gold);
         this.player.resources.manpower = Math.max(0, this.player.resources.manpower);
         this.player.resources.prestige = Math.max(0, this.player.resources.prestige);
+
+        if (gold > 0 && typeof achievementManager !== 'undefined') achievementManager.syncResourcePeak();
     }
 
     ensureStrategicResourceStockpile() {
@@ -3408,11 +3412,14 @@ class GameState {
     addStrategicResources(resourceDeltas = {}) {
         if (!this.player) return;
         this.ensureStrategicResourceStockpile();
+        let foodAdded = false;
         STRATEGIC_RESOURCE_KEYS.forEach((key) => {
             const delta = Number(resourceDeltas[key] || 0);
             if (!Number.isFinite(delta) || delta === 0) return;
             this.player.resources[key] = Math.max(0, Math.floor(this.player.resources[key] + delta));
+            if (key === 'food' && delta > 0) foodAdded = true;
         });
+        if (foodAdded && typeof achievementManager !== 'undefined') achievementManager.syncResourcePeak();
     }
 
     getCityTerrainAccess(cityTile) {
@@ -4348,6 +4355,11 @@ class GameState {
                         'success'
                     );
                 }
+                // Peaceful join — track for recapture but don't count as a conquest
+                if (typeof achievementManager !== 'undefined') {
+                    achievementManager.recordCityJoined(tile);
+                    achievementManager.syncFromGameState();
+                }
             } else {
                 tile.owner = 'enemy';
                 tile.faction = tile.faction || 'tribal';
@@ -4379,6 +4391,11 @@ class GameState {
             if (window.uiManager && unit.owner === 'player') {
                 uiManager.showNotification(`Captured ${tile.cityData.name}`, 'success');
             }
+            // Military capture — count as conquest
+            if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
+                achievementManager.recordCityCapture(tile, oldOwner);
+                achievementManager.syncFromGameState();
+            }
         }
 
         this.recordAIWorldEvent('city_captured', {
@@ -4402,12 +4419,6 @@ class GameState {
         gameMap.markTerritoryDirty();
         this.refreshPlayerVisibility({ grantRewards: false });
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
-
-        // Record city capture for achievements
-        if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
-            achievementManager.recordCityCapture(tile, oldOwner);
-            achievementManager.syncFromGameState();
-        }
 
         this.checkWinLossConditions();
     }

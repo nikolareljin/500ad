@@ -350,11 +350,15 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
 
     if (!attackerDied) {
         attacker.experience += defenderDied ? 24 : 10;
-        checkLevelUp(attacker);
+        if (checkLevelUp(attacker) && attacker.owner === 'player' && typeof achievementManager !== 'undefined') {
+            achievementManager.stats.maxUnitLevel = Math.max(achievementManager.stats.maxUnitLevel, attacker.level || 1);
+        }
     }
     if (!defenderDied && !attackerDied) {
         defender.experience += 6;
-        checkLevelUp(defender);
+        if (checkLevelUp(defender) && defender.owner === 'player' && typeof achievementManager !== 'undefined') {
+            achievementManager.stats.maxUnitLevel = Math.max(achievementManager.stats.maxUnitLevel, defender.level || 1);
+        }
     }
 
     if (defenderDied) {
