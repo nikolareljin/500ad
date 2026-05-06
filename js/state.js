@@ -3568,7 +3568,7 @@ class GameState {
         const completed = [];
         const playerCities = gameMap.getCityTiles('player');
         for (const cityTile of playerCities) {
-            const queue = this.ensureCityTrainingQueue(cityTile);
+            let queue = this.ensureCityTrainingQueue(cityTile);
             if (!queue.length) continue;
             // Barracks-centric pacing: each city progresses one training project per turn.
             const active = queue[0];
@@ -3604,6 +3604,10 @@ class GameState {
                 owner: 'player',
                 faction: this.player?.faction || this.selectedFaction || 'byzantine'
             });
+            // recruitUnit → getCityBuildingLevel → ensureCityBuildingState replaces
+            // cityTile.cityData.trainingQueue with a new array. Re-fetch so structural
+            // ops (shift/push) act on the live array, not the stale local reference.
+            queue = this.ensureCityTrainingQueue(cityTile);
             if (!unit) {
                 active.turnsRemaining = 0;
                 if (!active.blocked) {

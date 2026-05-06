@@ -6,6 +6,9 @@ All notable changes to this project are documented in this file.
 
 ## [1.18.0] - 2026-03-27
 
+### Fixed
+- Fixed stale training queue reference in `processUnitTrainingTurn`: re-fetch queue after `recruitUnit` since `ensureCityBuildingState` replaces the array in-place, making the prior local ref stale and breaking `queue.shift()` on unit completion.
+
 ### Added
 - Added a persistent achievements system (`js/achievements.js`) with 23 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.
 - Added an Achievements panel accessible from the action bar (`🏆 Achievements` button) and from the Game Menu, showing all achievements grouped by category with locked/unlocked state.
