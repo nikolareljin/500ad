@@ -28,10 +28,10 @@ else
 fi
 
 if check_port "$PORT" "$HOST"; then
-  STALE_PID=$(lsof -ti TCP:"$PORT" 2>/dev/null || true)
-  if [[ -n "$STALE_PID" ]]; then
-    log_info "Port ${PORT} in use (PID ${STALE_PID}). Killing stale server..."
-    kill "$STALE_PID" 2>/dev/null || true
+  mapfile -t STALE_PIDS < <(lsof -ti TCP:"$PORT" 2>/dev/null || true)
+  if ((${#STALE_PIDS[@]} > 0)); then
+    log_info "Port ${PORT} in use (PID ${STALE_PIDS[*]}). Killing stale server..."
+    kill "${STALE_PIDS[@]}" 2>/dev/null || true
     for _ in $(seq 1 30); do
       if ! check_port "$PORT" "$HOST" 2>/dev/null; then
         break

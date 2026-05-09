@@ -949,7 +949,7 @@ class GameState {
             cityData.construction = null;
         }
         if (typeof cityData.autoBuildEnabled !== 'boolean') {
-            cityData.autoBuildEnabled = true;
+            cityData.autoBuildEnabled = false;
         }
         if (!Array.isArray(cityData.trainingQueue)) {
             cityData.trainingQueue = [];
@@ -3521,7 +3521,6 @@ class GameState {
             };
         }
 
-        this.spendResources(cost.gold, cost.manpower);
         const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
         const recruitmentSpeed = Number(this.player?.bonuses?.recruitmentSpeed || 1);
         const trainingTurns = getUnitTrainingTurns(unitTypeId, { barracksLevel, recruitmentSpeed });
@@ -3531,13 +3530,19 @@ class GameState {
             if (!spawnTile) {
                 return { success: false, reasons: ['No adjacent spawn tile'] };
             }
+            if (!this.spendResources(cost.gold, cost.manpower)) {
+                return { success: false, reasons: ['Not enough resources'] };
+            }
             const unit = this.recruitUnit(unitTypeId, spawnTile, {
                 cityTile,
                 skipCost: true,
                 owner: 'player',
                 faction: this.player?.faction || this.selectedFaction || 'byzantine'
             });
-            if (!unit) return { success: false, reasons: ['Recruitment failed'] };
+            if (!unit) {
+                this.addResources(cost.gold, cost.manpower);
+                return { success: false, reasons: ['Recruitment failed'] };
+            }
             return {
                 success: true,
                 instantSpawn: true,
@@ -3546,6 +3551,9 @@ class GameState {
             };
         }
 
+        if (!this.spendResources(cost.gold, cost.manpower)) {
+            return { success: false, reasons: ['Not enough resources'] };
+        }
         const queue = this.ensureCityTrainingQueue(cityTile);
         const project = {
             id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -4074,7 +4082,8 @@ class GameState {
                 kind: 'town',
                 population: 4,
                 production: { food: 2, industry: 1, gold: 1 },
-                infrastructure: { roads: 1, agriculture: 1, industry: 1 }
+                infrastructure: { roads: 1, agriculture: 1, industry: 1 },
+                autoBuildEnabled: true
             };
             colonizer.currentMovement = 0;
             colonizer.fortified = false;
