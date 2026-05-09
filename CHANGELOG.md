@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 - Fixed peaceful neutral-town joins incorrectly incrementing `citiesCaptured`; `First Conquest` now only fires for military captures.
 - Fixed `Merchant Prince` and `Granary of the East` achievements missing mid-turn resource peaks: `syncResourcePeak()` is now called from `addResources` and `addStrategicResources` on every positive gain.
 - Fixed `Elite Corps` achievement being lost when a unit levels up mid-combat and then dies before the next turn sync: level-ups now record, unlock-check, and persist `maxUnitLevel` immediately.
+- Fixed `Reconqueror` missing recaptures of starting cities by seeding per-campaign held-city tracking from the initial player territories.
 
 ### Added
 - Added a persistent achievements system (`js/achievements.js`) with 23 achievements across 7 categories: Combat, Expansion, Technology, Economy, Diplomacy, Progression, and Victory.

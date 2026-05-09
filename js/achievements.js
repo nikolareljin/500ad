@@ -432,8 +432,10 @@ class AchievementManager {
     }
 
     /** Reset per-campaign transient state. Call at the start of each new campaign. */
-    resetForNewCampaign() {
-        this.stats.playerHeldCityIds = [];
+    resetForNewCampaign(startingTerritories = []) {
+        this.stats.playerHeldCityIds = Array.isArray(startingTerritories)
+            ? startingTerritories.filter((cityId) => typeof cityId === 'string')
+            : [];
         this._save();
     }
 

@@ -797,7 +797,7 @@ class GameState {
         gameMap.markTerritoryDirty();
         gameMap.requestRender();
 
-        if (typeof achievementManager !== 'undefined') achievementManager.resetForNewCampaign();
+        if (typeof achievementManager !== 'undefined') achievementManager.resetForNewCampaign(this.player.territories);
 
         this.initialized = true;
         return true;
