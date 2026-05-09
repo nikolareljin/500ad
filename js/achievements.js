@@ -420,6 +420,17 @@ class AchievementManager {
         if (changed) { this._checkAll(); this._save(); }
     }
 
+    /** Record the highest level reached by a player unit immediately after level-up. */
+    recordUnitLevel(unitOrLevel) {
+        const level = typeof unitOrLevel === 'number'
+            ? unitOrLevel
+            : Number(unitOrLevel?.level || 0);
+        if (!Number.isFinite(level) || level <= this.stats.maxUnitLevel) return;
+        this.stats.maxUnitLevel = level;
+        this._checkAll();
+        this._save();
+    }
+
     /** Reset per-campaign transient state. Call at the start of each new campaign. */
     resetForNewCampaign() {
         this.stats.playerHeldCityIds = [];

@@ -4347,7 +4347,6 @@ class GameState {
         const oldOwner = tile.owner;
         const oldFaction = tile.faction || tile.cityData?.historicalCivilization || null;
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
-        tile._wasPlayerOwned = Boolean(tile._wasPlayerOwned || oldOwner === 'player');
 
         // Neutral towns can join peacefully or resist based on diplomacy.
         if ((oldOwner === 'neutral' || oldOwner === null) && unit.owner === 'player') {
