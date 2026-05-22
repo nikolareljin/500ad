@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 - Fixed stale training queue reference in `processUnitTrainingTurn`: re-fetch queue after `recruitUnit` since `ensureCityBuildingState` replaces the array in-place, making the prior local ref stale and breaking `queue.shift()` on unit completion.
-- Fixed `Byzantine Renaissance` achievement being unreachable: threshold was `>= 10` but only 7 technologies exist; now checks `totalTechResearched >= 7` (all techs in the tree).
+- Fixed `Byzantine Renaissance` achievement being unreachable: threshold was a stale hard-coded `>= 10`; now derived from `Object.keys(TECHNOLOGY_TREE).length` so it always matches the current tech-tree size.
 - Fixed `Scholar` achievement not unlocking in non-empire scenarios: the free-start-tech deduction was hard-coded to 4 (empire only); now computed per scenario from actual seeded tech IDs.
 - Fixed `playerHeldCityIds` persisting across campaigns, causing fresh-run city captures to be mis-counted as recaptures; `resetForNewCampaign()` now clears the list in `initializeGame`.
 - Fixed peaceful neutral-town joins incorrectly incrementing `citiesCaptured`; `First Conquest` now only fires for military captures.
