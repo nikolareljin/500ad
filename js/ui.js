@@ -3,6 +3,22 @@
  * Handles all UI interactions and screen transitions
  */
 
+// Module-level mapping of `<faction>:<typeId>` to portrait filename.
+// Hoisted out of getUnitPortraitPath() so it isn't re-allocated on every call
+// (the method runs on UI hot paths: recruitment modal + unit panel refresh).
+const UNIT_PORTRAITS = {
+    'arab:camel_riders':        'arab_unit_camel_riders_circle.png',
+    'bulgar:skutatoi':          'bulgar_unit_infantry_circle.png',
+    'bulgar:mountain_infantry': 'bulgar_unit_infantry_circle.png',
+    'byzantine:skutatoi':       'byzantine_unit_skutatoi_circle.png',
+    'byzantine:cataphract':     'byzantine_unit_cataphract.png',
+    'byzantine:varangian':      'byzantine_varangian_guard.png',
+    'frank:skutatoi':           'ostrogoth_unit_infantry_circle.png',
+    'tribal:skutatoi':          'ostrogoth_unit_infantry_circle.png',
+    'sassanid:kavallarioi':     'sassanid_unit_cavalry_circle.png',
+    'sassanid:horsearchers':    'sassanid_unit_cavalry_circle.png',
+};
+
 class UIManager {
     constructor() {
         this.currentScreen = 'loading';
@@ -146,6 +162,11 @@ class UIManager {
         document.getElementById('btn-quests')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.showQuestLogModal();
+        });
+
+        document.getElementById('btn-achievements')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.showAchievementsModal();
         });
 
         document.getElementById('btn-attack-unit')?.addEventListener('click', () => {
@@ -491,6 +512,13 @@ class UIManager {
         this.selectedLeaderCard = leader;
     }
 
+    getUnitPortraitPath(unit) {
+        const faction = unit?.faction || unit?.owner || '';
+        const typeId = unit?.typeId || '';
+        const file = UNIT_PORTRAITS[`${faction}:${typeId}`];
+        return file ? `assets/images/units/thumbs/${file}` : null;
+    }
+
     getLeaderPortraitPath(leader) {
         const file = leader?.portrait;
         if (!file) return null;
@@ -670,17 +698,19 @@ class UIManager {
             return;
         }
 
+        const playerFaction = gameState.player?.faction || gameState.selectedFaction || 'byzantine';
         const choices = gameState.getRecruitmentOptions(tile)
             .map((entry) => ({
                 id: entry.unitId,
                 title: `${entry.unit?.name || entry.unitId}`,
                 subtitle: entry.finalCost
-                    ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m • ${entry.trainingTurns || 1} turn(s) • upkeep ${entry.upkeep || 0}`
+                    ? `${entry.finalCost.gold}g / ${entry.finalCost.manpower}m • ${entry.trainingTurns === 0 ? 'Immediate' : `${entry.trainingTurns} turn(s)`} • upkeep ${entry.upkeep || 0}`
                     : '',
                 detail: entry.available
                     ? (entry.upgradePath?.length ? `Upgrades to: ${entry.upgradePath.map((id) => getUnitById(id)?.name || id).join(', ')}` : 'Available')
                     : entry.reasons.join(' • '),
-                disabled: !entry.available
+                disabled: !entry.available,
+                imgSrc: this.getUnitPortraitPath({ faction: playerFaction, typeId: entry.unitId })
             }));
 
         this.showChoiceModal(
@@ -697,7 +727,7 @@ class UIManager {
                     const unit = getUnitById(unitId);
                     const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
                     this.showNotification(
-                        isNaval ? 'No valid adjacent water tile for naval recruitment' : 'No open adjacent land tile for recruitment',
+                        isNaval ? 'No valid nearby water tile for naval recruitment' : 'No open nearby land tile for recruitment',
                         'error'
                     );
                     return;
@@ -714,8 +744,10 @@ class UIManager {
                 this.updateHUD();
                 gameMap.requestRender();
                 const unit = getUnitById(unitId);
-                const turns = queued.project?.totalTurns || 1;
-                this.showNotification(`${unit?.name || unitId} training started at ${tile.cityData.name} (${turns} turn${turns === 1 ? '' : 's'})`, 'success');
+                const msg = queued.instantSpawn
+                    ? `${unit?.name || unitId} recruited immediately at ${tile.cityData.name}`
+                    : (() => { const t = queued.project?.totalTurns || 1; return `${unit?.name || unitId} training started at ${tile.cityData.name} (${t} turn${t === 1 ? '' : 's'})`; })();
+                this.showNotification(msg, 'success');
             }
         );
     }
@@ -741,7 +773,7 @@ class UIManager {
         const autoBuildEnabled = Boolean(cityData?.autoBuildEnabled);
         const hasCity = Boolean(tile?.cityData);
         const cityName = tile.cityData?.name || `Tile ${tile.x},${tile.y}`;
-        const buildModeLabel = autoBuildEnabled ? 'AUTO' : 'MANUAL';
+        const buildModeLabel = autoBuildEnabled ? 'AUTO' : 'MANUAL OVERRIDE';
 
         const cityBuildingChoices = hasCity ? gameState.getCityBuildingOptions(tile).map((entry) => ({
             id: `city_building:${entry.id}`,
@@ -754,11 +786,11 @@ class UIManager {
         })) : [];
         const automationChoice = {
             id: 'city_auto_toggle',
-            title: autoBuildEnabled ? 'Auto Build: ON' : 'Auto Build: OFF',
-            subtitle: `Current Build Mode: ${buildModeLabel}`,
+            title: autoBuildEnabled ? '⚙ Automate: ON — tap to override manually' : '⚙ Manual Override — tap to resume auto',
+            subtitle: `Mode: ${buildModeLabel}`,
             detail: autoBuildEnabled
-                ? 'AUTO mode: city can start one building-tree upgrade each turn by priority'
-                : 'MANUAL mode: no auto-starts; you choose city projects yourself'
+                ? 'City auto-starts best building upgrade each turn. Pick a project below to override.'
+                : 'Manual override active — city waits for your choice. Tap to resume auto.'
         };
         const infrastructureChoices = gameState.getBuildActionOptions(tile).map((entry) => ({
             id: `infra:${entry.actionId}`,
@@ -772,7 +804,7 @@ class UIManager {
             : infrastructureChoices;
 
         this.showChoiceModal(
-            `Build in ${cityName} • Mode: ${buildModeLabel}`,
+            `Build in ${cityName} • ${buildModeLabel}`,
             choices,
             (choiceId) => {
                 if (choiceId === 'city_auto_toggle') {
@@ -783,7 +815,9 @@ class UIManager {
                     }
                     current.autoBuildEnabled = !current.autoBuildEnabled;
                     this.showNotification(
-                        `${cityName}: Build Mode ${current.autoBuildEnabled ? 'AUTO' : 'MANUAL'}`,
+                        current.autoBuildEnabled
+                            ? `${cityName}: Auto-build resumed`
+                            : `${cityName}: Manual override — auto-build paused`,
                         'info'
                     );
                     this.updateHUD();
@@ -1128,9 +1162,65 @@ class UIManager {
         });
     }
 
+    showAchievementsModal() {
+        if (typeof achievementManager === 'undefined') return;
+
+        achievementManager.syncFromGameState();
+
+        const byCategory = achievementManager.getByCategory();
+        const unlocked = achievementManager.getUnlockedCount();
+        const total = achievementManager.getTotalCount();
+
+        const categoryLabels = {
+            combat: '⚔️ Combat',
+            expansion: '🏰 Expansion',
+            technology: '📚 Technology',
+            economy: '💰 Economy',
+            diplomacy: '🕊️ Diplomacy',
+            progression: '📅 Progression',
+            victory: '👑 Victory'
+        };
+
+        const categorySections = Object.entries(byCategory).map(([cat, items]) => {
+            const cards = items.map(a => `
+                <div class="achievement-card ${a.unlocked ? 'unlocked' : 'locked'}" title="${this.escapeHtml(a.description)}">
+                    <div class="achievement-icon">${a.icon}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-title">${this.escapeHtml(a.title)}</div>
+                        <div class="achievement-desc">${this.escapeHtml(a.description)}</div>
+                        ${a.unlocked ? '<div class="achievement-badge">✓ Unlocked</div>' : ''}
+                    </div>
+                </div>
+            `).join('');
+            return `
+                <div class="achievements-category">
+                    <div class="achievements-category-title">${categoryLabels[cat] || cat}</div>
+                    <div class="achievements-grid">${cards}</div>
+                </div>
+            `;
+        }).join('');
+
+        const content = `
+            <div class="achievements-panel">
+                <div class="achievements-header">
+                    <h2 style="font-family:var(--font-display);color:var(--imperial-gold);">🏆 Achievements</h2>
+                    <span class="achievements-progress">${unlocked} / ${total} unlocked</span>
+                </div>
+                ${categorySections}
+                <div style="margin-top:1rem;">
+                    <button class="menu-btn" id="btn-close-achievements">Close</button>
+                </div>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.modalContent?.querySelector('#btn-close-achievements')?.addEventListener('click', () => this.closeModal());
+    }
+
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
             <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
+                ${option.imgSrc ? `<img src="${option.imgSrc}" alt="" class="choice-btn-img" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.4rem;">` : ''}
                 <span class="btn-text">${option.title}</span>
                 <small class="choice-btn-subtitle">${option.subtitle || ''}</small>
                 ${option.detail ? `<small class="choice-btn-detail${option.disabled ? ' choice-btn-detail-disabled' : ''}">${option.detail}</small>` : ''}
@@ -1148,6 +1238,11 @@ class UIManager {
         `;
 
         this.showModal(content);
+        // CSP-safe equivalent of inline onerror="this.remove();" on each
+        // option image — drop the <img> if the asset fails to load.
+        this.modalContent?.querySelectorAll('img.choice-btn-img').forEach((img) => {
+            img.addEventListener('error', () => img.remove(), { once: true });
+        });
         this.modalContent?.querySelectorAll('.choice-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 if (btn.disabled) return;
@@ -1432,6 +1527,7 @@ class UIManager {
         if (portrait) {
             const unitType = getUnitById(unit.typeId);
             const symbol = unit.symbol || unitType?.symbol || '⚔️';
+            const portraitPath = this.getUnitPortraitPath(unit);
 
             portrait.textContent = '';
             const container = document.createElement('div');
@@ -1440,8 +1536,17 @@ class UIManager {
 
             const iconSpan = document.createElement('span');
             iconSpan.className = 'unit-portrait-icon';
-            iconSpan.textContent = symbol;
-            if (symbol.length > 2) iconSpan.style.fontSize = '1.8rem';
+            if (portraitPath) {
+                const img = document.createElement('img');
+                img.src = portraitPath;
+                img.alt = unit.name;
+                img.style.cssText = 'width:48px;height:48px;border-radius:50%;object-fit:cover;';
+                img.onerror = () => { img.remove(); iconSpan.textContent = symbol; };
+                iconSpan.appendChild(img);
+            } else {
+                iconSpan.textContent = symbol;
+                if (symbol.length > 2) iconSpan.style.fontSize = '1.8rem';
+            }
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'unit-portrait-name';
@@ -2181,6 +2286,7 @@ class UIManager {
             <div style="display:flex;flex-direction:column;gap:1rem;padding:1rem;">
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
+                <button class="menu-btn" onclick="uiManager.showAchievementsModal()">🏆 Achievements</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
             </div>

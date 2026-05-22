@@ -889,6 +889,7 @@ class GameMap {
                         agriculture: town.type === 'capital' ? 2 : 1,
                         industry: town.type === 'capital' ? 2 : 1
                     },
+                    autoBuildEnabled: true,
                     wonder: CITY_WONDERS[town.id] || null
                 };
                 // Don't set owner here, state.js will handle that based on scenario
