@@ -1830,6 +1830,33 @@ class GameState {
             });
         }
 
+        // Modded narrative events
+        if (typeof modManager !== 'undefined') {
+            const modEvents = modManager.getEnabledEvents();
+            for (const event of modEvents) {
+                if (this.isDynamicTemplateOnCooldown(event.id, event.cooldown || 5)) {
+                    continue;
+                }
+                if (event.triggerCondition) {
+                    try {
+                        if (!evaluateModCondition(event.triggerCondition, this)) continue;
+                    } catch (e) {
+                        console.error('Error evaluating condition for mod event:', event.id, e);
+                        continue;
+                    }
+                }
+                candidates.push({
+                    priority: event.priority || 10,
+                    id: event.id,
+                    type: event.type || 'quest',
+                    triggerTags: event.triggerTags || ['mod'],
+                    title: event.title,
+                    description: event.description,
+                    choices: event.choices || []
+                });
+            }
+        }
+
         return candidates.sort((a, b) => b.priority - a.priority);
     }
 

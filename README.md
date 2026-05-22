@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.18.0** - Introduces an achievements and milestones system that tracks player progress, rewards key strategic accomplishments, and surfaces historical challenges as in-game objectives.
+**Version 1.20.0** - Introduces an achievements and milestones system that tracks player progress, rewards key strategic accomplishments, and surfaces historical challenges as in-game objectives.
 
 ## License
 

@@ -24,6 +24,11 @@ class Game {
         // Initialize UI
         uiManager.initialize();
 
+        // Initialize Mod Manager
+        if (typeof modManager !== 'undefined') {
+            modManager.initialize();
+        }
+
         // Initialize audio
         await audioManager.initialize();
 
