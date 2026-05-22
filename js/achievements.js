@@ -215,7 +215,8 @@ class AchievementManager {
         this._storageKey = '500ad_achievements';
         // Unlocked achievement ids (persisted globally, not per-save)
         this.unlocked = new Set();
-        // Per-session stats snapshot used for condition evaluation
+        // Lifetime stats used for condition evaluation; persisted to localStorage
+        // alongside `unlocked` and accumulated across sessions/campaigns.
         this.stats = this._defaultStats();
         this._cityLookupById = null;
         this._load();

@@ -3,6 +3,22 @@
  * Handles all UI interactions and screen transitions
  */
 
+// Module-level mapping of `<faction>:<typeId>` to portrait filename.
+// Hoisted out of getUnitPortraitPath() so it isn't re-allocated on every call
+// (the method runs on UI hot paths: recruitment modal + unit panel refresh).
+const UNIT_PORTRAITS = {
+    'arab:camel_riders':        'arab_unit_camel_riders_circle.png',
+    'bulgar:skutatoi':          'bulgar_unit_infantry_circle.png',
+    'bulgar:mountain_infantry': 'bulgar_unit_infantry_circle.png',
+    'byzantine:skutatoi':       'byzantine_unit_skutatoi_circle.png',
+    'byzantine:cataphract':     'byzantine_unit_cataphract.png',
+    'byzantine:varangian':      'byzantine_varangian_guard.png',
+    'frank:skutatoi':           'ostrogoth_unit_infantry_circle.png',
+    'tribal:skutatoi':          'ostrogoth_unit_infantry_circle.png',
+    'sassanid:kavallarioi':     'sassanid_unit_cavalry_circle.png',
+    'sassanid:horsearchers':    'sassanid_unit_cavalry_circle.png',
+};
+
 class UIManager {
     constructor() {
         this.currentScreen = 'loading';
@@ -499,18 +515,6 @@ class UIManager {
     getUnitPortraitPath(unit) {
         const faction = unit?.faction || unit?.owner || '';
         const typeId = unit?.typeId || '';
-        const UNIT_PORTRAITS = {
-            'arab:camel_riders':    'arab_unit_camel_riders_circle.png',
-            'bulgar:skutatoi':      'bulgar_unit_infantry_circle.png',
-            'bulgar:mountain_infantry': 'bulgar_unit_infantry_circle.png',
-            'byzantine:skutatoi':   'byzantine_unit_skutatoi_circle.png',
-            'byzantine:cataphract': 'byzantine_unit_cataphract.png',
-            'byzantine:varangian':  'byzantine_varangian_guard.png',
-            'frank:skutatoi':       'ostrogoth_unit_infantry_circle.png',
-            'tribal:skutatoi':      'ostrogoth_unit_infantry_circle.png',
-            'sassanid:kavallarioi': 'sassanid_unit_cavalry_circle.png',
-            'sassanid:horsearchers': 'sassanid_unit_cavalry_circle.png',
-        };
         const file = UNIT_PORTRAITS[`${faction}:${typeId}`];
         return file ? `assets/images/units/thumbs/${file}` : null;
     }

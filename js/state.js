@@ -3660,6 +3660,17 @@ class GameState {
 
         const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
 
+        // Build a one-shot Set of occupied "x,y" strings so each candidate-tile
+        // check is O(1) instead of O(unitCount). Called from turn processing
+        // and recruitment option evaluation, so the scan dominates otherwise.
+        const occupied = new Set();
+        for (const u of this.units) {
+            const pos = u.position;
+            if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+                occupied.add(`${pos.x},${pos.y}`);
+            }
+        }
+
         for (let radius = 1; radius <= 3; radius++) {
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -3670,8 +3681,7 @@ class GameState {
                     if (!mapTile) continue;
                     if (wantsWater && mapTile.terrain !== 'water') continue;
                     if (!wantsWater && mapTile.terrain === 'water') continue;
-                    const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
-                    if (occupied) continue;
+                    if (occupied.has(`${x},${y}`)) continue;
                     return { x, y };
                 }
             }
