@@ -27,7 +27,7 @@ else
 fi
 
 REQUESTED_PORT="$PORT"
-for _ in $(seq 1 50); do
+for ((i = 0; i < 50; i++)); do
   if ! check_port "$PORT" "$HOST" 2>/dev/null; then
     break
   fi
@@ -59,7 +59,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-for _ in $(seq 1 50); do
+for ((i = 0; i < 50; i++)); do
   if check_port "$PORT" "$HOST"; then
     break
   fi

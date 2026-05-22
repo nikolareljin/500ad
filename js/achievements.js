@@ -95,10 +95,14 @@ const ACHIEVEMENT_DEFS = [
     {
         id: 'renaissance',
         title: 'Byzantine Renaissance',
-        description: 'Research all 7 available technologies.',
+        description: 'Research every available technology.',
         icon: '🔬',
         category: 'technology',
-        condition: (s) => s.totalTechResearched >= 7
+        // Threshold derived from the tech tree itself so it stays correct as
+        // technologies are added or removed. TECHNOLOGY_TREE is defined in
+        // state.js, which loads after this file; the lambda is only invoked
+        // at runtime, so the lookup is safe.
+        condition: (s) => s.totalTechResearched >= Object.keys(TECHNOLOGY_TREE).length
     },
     {
         id: 'master_engineer',
