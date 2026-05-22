@@ -223,6 +223,9 @@ class AchievementManager {
         // alongside `unlocked` and accumulated across sessions/campaigns.
         this.stats = this._defaultStats();
         this._cityLookupById = null;
+        // Track achievement ids whose condition has already thrown once, so
+        // _checkAll() logs each failure exactly once per session.
+        this._conditionErrorsLogged = new Set();
         this._load();
     }
 
@@ -247,7 +250,9 @@ class AchievementManager {
             maxUnitLevel: 0,
             questsCompleted: 0,
             campaignsWon: 0,
-            playerHeldCityIds: []
+            // Set in memory for O(1) membership checks; serialized to an array
+            // in _save() and rebuilt from the array in _load().
+            playerHeldCityIds: new Set()
         };
     }
 
@@ -272,12 +277,15 @@ class AchievementManager {
                     loaded.maxGoldHeld = Math.max(prev, old);
                     delete loaded.goldEarned;
                 }
-                // Ensure playerHeldCityIds is always an array of strings
-                if (!Array.isArray(loaded.playerHeldCityIds)) {
-                    loaded.playerHeldCityIds = [];
-                } else {
-                    loaded.playerHeldCityIds = loaded.playerHeldCityIds.filter(id => typeof id === 'string');
-                }
+                // Rebuild playerHeldCityIds as a Set of strings (it lives on
+                // disk as an array). Tolerate the legacy in-memory shape too.
+                const rawHeld = loaded.playerHeldCityIds;
+                const heldSource = Array.isArray(rawHeld)
+                    ? rawHeld
+                    : (rawHeld instanceof Set ? [...rawHeld] : []);
+                loaded.playerHeldCityIds = new Set(
+                    heldSource.filter(id => typeof id === 'string')
+                );
                 this.stats = { ...this._defaultStats(), ...loaded };
             }
         } catch (e) {
@@ -287,9 +295,15 @@ class AchievementManager {
 
     _save() {
         try {
+            // JSON can't represent Set; serialize playerHeldCityIds as an array.
+            const heldIds = this.stats.playerHeldCityIds;
+            const statsToSave = {
+                ...this.stats,
+                playerHeldCityIds: heldIds instanceof Set ? [...heldIds] : (Array.isArray(heldIds) ? heldIds : [])
+            };
             localStorage.setItem(this._storageKey, JSON.stringify({
                 unlocked: [...this.unlocked],
-                stats: this.stats
+                stats: statsToSave
             }));
         } catch (e) {
             console.warn('Achievements: failed to save', e);
@@ -354,9 +368,7 @@ class AchievementManager {
 
         // Accumulate city IDs ever held by the player (for recapture detection across save/load)
         for (const cityId of playerTerritories) {
-            if (!this.stats.playerHeldCityIds.includes(cityId)) {
-                this.stats.playerHeldCityIds.push(cityId);
-            }
+            this.stats.playerHeldCityIds.add(cityId);
         }
 
         // Unit max level
@@ -398,11 +410,12 @@ class AchievementManager {
     recordCityCapture(tile = null, oldOwner = null) {
         this.stats.citiesCaptured++;
         const cityId = tile?.cityData?.id || null;
-        if (cityId && this.stats.playerHeldCityIds.includes(cityId)) {
-            this.stats.citiesRecaptured++;
-        }
-        if (cityId && !this.stats.playerHeldCityIds.includes(cityId)) {
-            this.stats.playerHeldCityIds.push(cityId);
+        if (cityId) {
+            if (this.stats.playerHeldCityIds.has(cityId)) {
+                this.stats.citiesRecaptured++;
+            } else {
+                this.stats.playerHeldCityIds.add(cityId);
+            }
         }
         this._checkAll();
         this._save();
@@ -411,8 +424,8 @@ class AchievementManager {
     /** Record a city joining peacefully (not a conquest — no citiesCaptured increment). */
     recordCityJoined(tile = null) {
         const cityId = tile?.cityData?.id || null;
-        if (cityId && !this.stats.playerHeldCityIds.includes(cityId)) {
-            this.stats.playerHeldCityIds.push(cityId);
+        if (cityId && !this.stats.playerHeldCityIds.has(cityId)) {
+            this.stats.playerHeldCityIds.add(cityId);
             this._save();
         }
     }
@@ -442,9 +455,10 @@ class AchievementManager {
 
     /** Reset per-campaign transient state. Call at the start of each new campaign. */
     resetForNewCampaign(startingTerritories = []) {
-        this.stats.playerHeldCityIds = Array.isArray(startingTerritories)
+        const seed = Array.isArray(startingTerritories)
             ? startingTerritories.filter((cityId) => typeof cityId === 'string')
             : [];
+        this.stats.playerHeldCityIds = new Set(seed);
         this._save();
     }
 
@@ -479,7 +493,13 @@ class AchievementManager {
                     this._unlock(def);
                 }
             } catch (e) {
-                // Silently skip bad condition
+                // Surface the failure once per achievement id so a broken
+                // condition or unexpected stats shape is discoverable from
+                // the console without spamming on every check cycle.
+                if (!this._conditionErrorsLogged.has(def.id)) {
+                    this._conditionErrorsLogged.add(def.id);
+                    console.warn(`Achievement condition threw for "${def.id}":`, e);
+                }
             }
         }
     }

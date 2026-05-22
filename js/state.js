@@ -3528,7 +3528,12 @@ class GameState {
         if (trainingTurns === 0) {
             const spawnTile = this.getRecruitSpawnTile(cityTile, unitTypeId);
             if (!spawnTile) {
-                return { success: false, reasons: ['No nearby spawn tile'] };
+                const unitType = getUnitById(unitTypeId);
+                const isNaval = unitType?.type === 'naval' || unitType?.category === 'transport';
+                return {
+                    success: false,
+                    reasons: [isNaval ? 'No open nearby water tile' : 'No open nearby land tile']
+                };
             }
             if (!this.spendResources(cost.gold, cost.manpower)) {
                 return { success: false, reasons: ['Not enough resources'] };
@@ -3596,7 +3601,9 @@ class GameState {
             const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
             if (!spawnTile) {
                 active.turnsRemaining = 0;
-                active.blocked = 'No nearby spawn tile';
+                const activeUnitType = getUnitById(active.unitTypeId);
+                const isNaval = activeUnitType?.type === 'naval' || activeUnitType?.category === 'transport';
+                active.blocked = isNaval ? 'No open nearby water tile' : 'No open nearby land tile';
                 const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
                 active.lastBlockedReason = active.blocked;
                 active.blockedNotified = true;

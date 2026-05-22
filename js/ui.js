@@ -1220,7 +1220,7 @@ class UIManager {
     showChoiceModal(title, options, onSelect) {
         const items = options.map((option) => `
             <button class="menu-btn choice-btn${option.disabled ? ' choice-btn-disabled' : ''}" data-choice="${option.id}" ${option.disabled ? 'disabled aria-disabled="true"' : ''}>
-                ${option.imgSrc ? `<img src="${option.imgSrc}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.4rem;" onerror="this.remove();">` : ''}
+                ${option.imgSrc ? `<img src="${option.imgSrc}" alt="" class="choice-btn-img" style="width:32px;height:32px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:0.4rem;">` : ''}
                 <span class="btn-text">${option.title}</span>
                 <small class="choice-btn-subtitle">${option.subtitle || ''}</small>
                 ${option.detail ? `<small class="choice-btn-detail${option.disabled ? ' choice-btn-detail-disabled' : ''}">${option.detail}</small>` : ''}
@@ -1238,6 +1238,11 @@ class UIManager {
         `;
 
         this.showModal(content);
+        // CSP-safe equivalent of inline onerror="this.remove();" on each
+        // option image — drop the <img> if the asset fails to load.
+        this.modalContent?.querySelectorAll('img.choice-btn-img').forEach((img) => {
+            img.addEventListener('error', () => img.remove(), { once: true });
+        });
         this.modalContent?.querySelectorAll('.choice-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 if (btn.disabled) return;
