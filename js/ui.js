@@ -727,7 +727,7 @@ class UIManager {
                     const unit = getUnitById(unitId);
                     const isNaval = unit?.type === 'naval' || unit?.category === 'transport';
                     this.showNotification(
-                        isNaval ? 'No valid adjacent water tile for naval recruitment' : 'No open adjacent land tile for recruitment',
+                        isNaval ? 'No valid nearby water tile for naval recruitment' : 'No open nearby land tile for recruitment',
                         'error'
                     );
                     return;

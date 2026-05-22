@@ -3789,7 +3789,7 @@ class GameState {
         const spawnTile = this.getRecruitSpawnTile(cityTile, unitId);
         if (!spawnTile) {
             const isNaval = unit.type === 'naval' || unit.category === 'transport';
-            reasons.push(isNaval ? 'No open adjacent water tile' : 'No open adjacent land tile');
+            reasons.push(isNaval ? 'No open nearby water tile' : 'No open nearby land tile');
         }
 
         return {

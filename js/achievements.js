@@ -263,11 +263,15 @@ class AchievementManager {
             }
             if (data.stats && typeof data.stats === 'object') {
                 const loaded = { ...data.stats };
-                // Migrate old key name → new key; keep whichever value is larger
-                if ('goldEarned' in loaded && !('maxGoldHeld' in loaded)) {
-                    loaded.maxGoldHeld = loaded.goldEarned;
+                // Migrate old key name → new key. If both keys are present
+                // (partial migration from an earlier session), keep whichever
+                // value is larger so we never regress the lifetime peak.
+                if ('goldEarned' in loaded) {
+                    const prev = Number(loaded.maxGoldHeld) || 0;
+                    const old = Number(loaded.goldEarned) || 0;
+                    loaded.maxGoldHeld = Math.max(prev, old);
+                    delete loaded.goldEarned;
                 }
-                delete loaded.goldEarned;
                 // Ensure playerHeldCityIds is always an array of strings
                 if (!Array.isArray(loaded.playerHeldCityIds)) {
                     loaded.playerHeldCityIds = [];
