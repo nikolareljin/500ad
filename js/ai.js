@@ -411,7 +411,8 @@ class AIManager {
         const battleType = defenderTile?.cityData
             ? 'siege'
             : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
-        if (typeof audioManager !== 'undefined') audioManager.setContext('combat');
+        // Combat-music switch is centralized inside executeBattle(); no
+        // explicit setContext call needed at the call site.
         const result = executeBattle(unit.id, target.id, terrain, battleType, {
             attemptRetreat: true,
             retreatSide: 'defender'

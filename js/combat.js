@@ -307,6 +307,14 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
         return { success: false, message: 'Target out of range' };
     }
 
+    // Centralized combat-music switch: every code path that resolves a battle
+    // (player attack, AI attack, move-initiated engagement) goes through here,
+    // so this is the single place to flip to the battle theme. Doing it after
+    // the range check ensures failed attacks don't change the music context.
+    if (typeof audioManager !== 'undefined') {
+        audioManager.setContext('combat');
+    }
+
     const attackerSnapshot = {
         id: attackerId,
         name: attacker.name || 'Attacker',

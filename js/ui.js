@@ -1249,8 +1249,10 @@ class UIManager {
             return;
         }
 
-        audioManager.setContext('combat');
         const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
+        // executeBattle() centralizes the combat-music switch after its
+        // range check, so we don't flip the audio context here for
+        // out-of-range/invalid attempts that exit early without combat.
         const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
             attemptRetreat: true,
             retreatSide: 'defender'

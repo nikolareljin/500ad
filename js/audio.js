@@ -93,7 +93,11 @@ class AudioManager {
         const canLoad = await this.canLoadAsset(src);
         if (!canLoad) {
             console.log(`Music file not available: ${src}`);
-            if (this.currentMusic === audio) this.currentMusic = null;
+            // Nothing is playing now (we paused the previous track above and
+            // never started the new one). Clear both fields so a subsequent
+            // setContext() call isn't suppressed by stale state.
+            this.currentMusic = null;
+            this.currentContext = null;
             return;
         }
 
@@ -134,7 +138,10 @@ class AudioManager {
     setContext(contextName) {
         const track = MUSIC_CONTEXT_TRACKS[contextName];
         if (!track) return;
-        if (this.currentContext === contextName) return;
+        // No-op only when the requested context is already active AND music
+        // is actually playing — otherwise we still need to (re)start the
+        // track so a previously-paused or never-loaded context can recover.
+        if (this.currentContext === contextName && this.currentMusic) return;
         // playMusic() updates this.currentContext via MUSIC_TRACK_CONTEXTS.
         this.playMusic(track);
     }
