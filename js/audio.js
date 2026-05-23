@@ -3,6 +3,15 @@
  * Background music and sound effects system
  */
 
+// Maps a music-context label to the track that represents it.
+const MUSIC_CONTEXT_TRACKS = {
+    combat: 'battle_theme',
+    ambient: '500ad_ambient'
+};
+// Inverse lookup: derive the context a track belongs to (if any).
+const MUSIC_TRACK_CONTEXTS = Object.entries(MUSIC_CONTEXT_TRACKS)
+    .reduce((acc, [ctx, track]) => { acc[track] = ctx; return acc; }, {});
+
 class AudioManager {
     constructor() {
         this.musicVolume = 0.5;
@@ -64,6 +73,11 @@ class AudioManager {
             this.initialize();
         }
 
+        // Keep currentContext in sync with whatever track is actually playing,
+        // so external playMusic() calls (e.g. main-menu / new-game flows) don't
+        // leave a stale context that would no-op a later setContext('combat').
+        this.currentContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
+
         // Stop current music
         if (this.currentMusic) {
             this.currentMusic.pause();
@@ -118,13 +132,11 @@ class AudioManager {
      * Only triggers a track change when the context actually changes.
      */
     setContext(contextName) {
-        if (contextName === 'combat' && this.currentContext !== 'combat') {
-            this.currentContext = 'combat';
-            this.playMusic('battle_theme');
-        } else if (contextName === 'ambient' && this.currentContext !== 'ambient') {
-            this.currentContext = 'ambient';
-            this.playMusic('500ad_ambient');
-        }
+        const track = MUSIC_CONTEXT_TRACKS[contextName];
+        if (!track) return;
+        if (this.currentContext === contextName) return;
+        // playMusic() updates this.currentContext via MUSIC_TRACK_CONTEXTS.
+        this.playMusic(track);
     }
 
     /**
@@ -132,6 +144,9 @@ class AudioManager {
      */
     stopMusic() {
         this.musicRequestToken++;
+        // Clear context so the next setContext() call won't be incorrectly
+        // suppressed by a stale value.
+        this.currentContext = null;
         if (this.currentMusic) {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;
