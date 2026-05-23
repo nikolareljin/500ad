@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.19.0** - Introduces an achievements and milestones system that tracks player progress, rewards key strategic accomplishments, and surfaces historical challenges as in-game objectives.
+**Version 1.19.0** - Re-enables the interactive onboarding tutorial for new campaigns, adds dynamic music-context transitions (battle theme on combat, ambient on resume), and caps simultaneous in-game notifications so the HUD stays responsive during busy AI turns.
 
 ## License
 

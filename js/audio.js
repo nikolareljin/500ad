@@ -73,11 +73,6 @@ class AudioManager {
             this.initialize();
         }
 
-        // Keep currentContext in sync with whatever track is actually playing,
-        // so external playMusic() calls (e.g. main-menu / new-game flows) don't
-        // leave a stale context that would no-op a later setContext('combat').
-        this.currentContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
-
         // Stop current music
         if (this.currentMusic) {
             this.currentMusic.pause();
@@ -109,6 +104,11 @@ class AudioManager {
         audio.src = src;
 
         this.currentMusic = audio;
+        // Commit context only once the track is confirmed loadable and is
+        // still the most recently requested one — setting it earlier would
+        // leave a stale context if the asset check failed or a newer call
+        // superseded this one, causing later setContext() calls to no-op.
+        this.currentContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
 
         // Play with promise handling for mobile
         const playPromise = audio.play();

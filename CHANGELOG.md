@@ -15,7 +15,6 @@ All notable changes to this project are documented in this file.
 ### Fixed
 - Fixed `playSound()` generating browser media errors on every call by removing a dead `Audio()` element that was instantiated without a source attribute.
 - Fixed unbounded notification DOM accumulation during AI turns with many simultaneous combats; notifications are now capped at 5 simultaneous entries to prevent DOM buildup.
-- Fixed synchronous auto-save on tab-switch (`visibilitychange`) causing a main-thread freeze; `autoSaveAsync()` now defers `JSON.stringify` past the current frame, eliminating compositor jank on low-memory devices.
 
 ### Changed
 - Updated tutorial default state so new games offer the tutorial immediately without requiring a manual trigger; players with existing saves are not affected.

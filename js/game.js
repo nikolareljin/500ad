@@ -192,9 +192,11 @@ document.addEventListener('contextmenu', (e) => {
 // Handle visibility change (pause when tab is hidden)
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        // Auto-save when leaving
+        // Auto-save must be synchronous here — once the tab is hidden, browsers
+        // throttle/defer setTimeout, and a tab-discard before the callback runs
+        // would lose the latest turn (mobile lifecycle suspension is aggressive).
         if (gameState.initialized && storageManager.settings.autoSave) {
-            storageManager.autoSaveAsync();
+            storageManager.autoSave();
         }
     }
 });
