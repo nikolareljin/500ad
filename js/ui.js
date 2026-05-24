@@ -648,7 +648,12 @@ class UIManager {
                 }
             }
             this.onTutorialAction('endTurn');
-            audioManager.setContext('ambient');
+            // Skip ambient restore once a game-over modal is up — showGameOver()
+            // calls stopMusic() to silence audio on win/loss, and a blind
+            // setContext here would resume ambient music behind the modal.
+            if (!gameState.gameOverState) {
+                audioManager.setContext('ambient');
+            }
         } finally {
             this.showTurnProcessing(false);
         }

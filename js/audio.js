@@ -28,29 +28,39 @@ class AudioManager {
         // by setContext() so an ambient restore can supersede a combat switch
         // that hasn't finished its async asset check yet (and vice versa).
         this.pendingContext = null;
+        // Promise of an in-flight initialize() call so concurrent callers
+        // (e.g. the global click handler + a playMusic() trigger on the same
+        // gesture) share the same work instead of racing.
+        this._initPromise = null;
     }
 
     /**
      * Initialize audio system (requires user interaction)
      */
-    async initialize() {
-        if (this.initialized) return;
+    initialize() {
+        if (this.initialized) return Promise.resolve();
+        if (this._initPromise) return this._initPromise;
+        this._initPromise = (async () => {
+            try {
+                // Create audio context
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        try {
-            // Create audio context
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // Load settings. Use ?? so a persisted 0 (user-muted) is honored
+                // instead of being treated as missing by ||.
+                const settings = storageManager.loadSettings();
+                this.musicVolume = settings.musicVolume ?? 0.5;
+                this.sfxVolume = settings.sfxVolume ?? 0.7;
 
-            // Load settings. Use ?? so a persisted 0 (user-muted) is honored
-            // instead of being treated as missing by ||.
-            const settings = storageManager.loadSettings();
-            this.musicVolume = settings.musicVolume ?? 0.5;
-            this.sfxVolume = settings.sfxVolume ?? 0.7;
-
-            this.initialized = true;
-            console.log('Audio system initialized');
-        } catch (error) {
-            console.error('Failed to initialize audio:', error);
-        }
+                this.initialized = true;
+                console.log('Audio system initialized');
+            } catch (error) {
+                console.error('Failed to initialize audio:', error);
+            } finally {
+                // Allow a retry on the next call if init failed midway.
+                if (!this.initialized) this._initPromise = null;
+            }
+        })();
+        return this._initPromise;
     }
 
     /**
