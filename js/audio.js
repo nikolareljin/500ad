@@ -36,10 +36,11 @@ class AudioManager {
             // Create audio context
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-            // Load settings
+            // Load settings. Use ?? so a persisted 0 (user-muted) is honored
+            // instead of being treated as missing by ||.
             const settings = storageManager.loadSettings();
-            this.musicVolume = settings.musicVolume || 0.5;
-            this.sfxVolume = settings.sfxVolume || 0.7;
+            this.musicVolume = settings.musicVolume ?? 0.5;
+            this.sfxVolume = settings.sfxVolume ?? 0.7;
 
             this.initialized = true;
             console.log('Audio system initialized');
@@ -70,7 +71,11 @@ class AudioManager {
 
     async playMusic(trackName, loop = true) {
         if (!this.initialized) {
-            this.initialize();
+            // Await initialization so persisted volume settings are applied
+            // before we create the <audio> element; a missing await would let
+            // playback start with default volumes on the first call.
+            await this.initialize();
+            if (!this.initialized) return;
         }
 
         // Reserve a token for this call up front. Any concurrent playMusic()
