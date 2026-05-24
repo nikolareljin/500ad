@@ -671,6 +671,12 @@ class UIManager {
                 }
             }
             this.onTutorialAction('endTurn');
+            // Skip ambient restore once a game-over modal is up — showGameOver()
+            // calls stopMusic() to silence audio on win/loss, and a blind
+            // setContext here would resume ambient music behind the modal.
+            if (!gameState.gameOverState) {
+                audioManager.setContext('ambient');
+            }
         } finally {
             this.showTurnProcessing(false);
         }
@@ -1284,6 +1290,9 @@ class UIManager {
         }
 
         const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
+        // executeBattle() centralizes the combat-music switch after its
+        // range check, so we don't flip the audio context here for
+        // out-of-range/invalid attempts that exit early without combat.
         const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
             attemptRetreat: true,
             retreatSide: 'defender'
@@ -2027,15 +2036,17 @@ class UIManager {
      * Show notification
      */
     showNotification(message, type = 'info') {
+        if (!this.notificationContainer) return;
+        const MAX_NOTIFICATIONS = 5;
+        const existing = this.notificationContainer.querySelectorAll('.notification');
+        if (existing.length >= MAX_NOTIFICATIONS) {
+            existing[0].remove();
+        }
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
-        this.notificationContainer?.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        this.notificationContainer.appendChild(notification);
+        setTimeout(() => { notification.remove(); }, 3000);
     }
 
     /**
@@ -2287,6 +2298,7 @@ class UIManager {
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showAchievementsModal()">🏆 Achievements</button>
+                <button class="menu-btn" onclick="uiManager.replayTutorial()">Replay Tutorial</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
             </div>

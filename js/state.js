@@ -545,8 +545,8 @@ class GameState {
 
     createDefaultTutorialState() {
         return {
-            active: false,
-            skipped: true,
+            active: true,
+            skipped: false,
             completed: false,
             stepIndex: 0,
             progress: {
@@ -563,9 +563,6 @@ class GameState {
         if (!this.tutorialState || typeof this.tutorialState !== 'object') {
             this.tutorialState = this.createDefaultTutorialState();
         }
-        // Tutorial disabled for 1.16.1 — forcibly sets active/skipped regardless of persisted save state.
-        this.tutorialState.active = false;
-        this.tutorialState.skipped = true;
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
         const rawStepValue = Number(this.tutorialState.stepIndex);
         const rawStep = Number.isFinite(rawStepValue) ? Math.floor(rawStepValue) : 0;
