@@ -73,45 +73,43 @@ class AudioManager {
             this.initialize();
         }
 
-        // Stop current music
+        // Reserve a token for this call up front. Any concurrent playMusic()
+        // or stopMusic() will bump the counter past this value and supersede
+        // us; we must check the token before mutating any playback state so a
+        // stale older request can't clobber state owned by a newer one.
+        const requestToken = ++this.musicRequestToken;
+
+        const src = `assets/audio/music/${trackName}.mp3`;
+        const canLoad = await this.canLoadAsset(src);
+
+        // A newer request has won — bail without touching playback state.
+        if (requestToken !== this.musicRequestToken) {
+            return;
+        }
+
+        if (!canLoad) {
+            console.log(`Music file not available: ${src}`);
+            // Keep the previously-playing track running (we deliberately
+            // delayed pausing it until canLoad succeeded). Only clear
+            // currentContext so a subsequent setContext() call retries
+            // instead of being suppressed by stale state.
+            this.currentContext = null;
+            return;
+        }
+
+        // Confirmed loadable: now stop the previous track and switch.
         if (this.currentMusic) {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;
         }
 
-        // For now, we'll use a placeholder
-        // In production, you would load actual audio files
         console.log(`Playing music: ${trackName}`);
-
-        // Create audio element (placeholder)
         const audio = new Audio();
         audio.volume = this.musicVolume;
         audio.loop = loop;
-
-        const src = `assets/audio/music/${trackName}.mp3`;
-        const requestToken = ++this.musicRequestToken;
-        const canLoad = await this.canLoadAsset(src);
-        if (!canLoad) {
-            console.log(`Music file not available: ${src}`);
-            // Nothing is playing now (we paused the previous track above and
-            // never started the new one). Clear both fields so a subsequent
-            // setContext() call isn't suppressed by stale state.
-            this.currentMusic = null;
-            this.currentContext = null;
-            return;
-        }
-
-        if (requestToken !== this.musicRequestToken) {
-            return;
-        }
-
         audio.src = src;
 
         this.currentMusic = audio;
-        // Commit context only once the track is confirmed loadable and is
-        // still the most recently requested one — setting it earlier would
-        // leave a stale context if the asset check failed or a newer call
-        // superseded this one, causing later setContext() calls to no-op.
         this.currentContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
 
         // Play with promise handling for mobile
@@ -119,6 +117,16 @@ class AudioManager {
         if (playPromise !== undefined) {
             playPromise.catch(error => {
                 console.log('Audio play prevented:', error);
+                // Autoplay/permission rejection leaves the element paused.
+                // Clear currentContext (only if we're still the active
+                // request) so a subsequent setContext() can retry instead
+                // of being suppressed by an apparently-active context.
+                if (
+                    requestToken === this.musicRequestToken &&
+                    this.currentMusic === audio
+                ) {
+                    this.currentContext = null;
+                }
             });
         }
     }
@@ -138,10 +146,18 @@ class AudioManager {
     setContext(contextName) {
         const track = MUSIC_CONTEXT_TRACKS[contextName];
         if (!track) return;
-        // No-op only when the requested context is already active AND music
-        // is actually playing — otherwise we still need to (re)start the
-        // track so a previously-paused or never-loaded context can recover.
-        if (this.currentContext === contextName && this.currentMusic) return;
+        // No-op only when the requested context is already active AND the
+        // track is actually playing. A paused element (autoplay-blocked,
+        // pause from another flow, or interrupted load) must not suppress
+        // the restart — otherwise the manager can get stuck thinking a
+        // track is active while nothing is audible.
+        if (
+            this.currentContext === contextName &&
+            this.currentMusic &&
+            !this.currentMusic.paused
+        ) {
+            return;
+        }
         // playMusic() updates this.currentContext via MUSIC_TRACK_CONTEXTS.
         this.playMusic(track);
     }
