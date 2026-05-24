@@ -24,6 +24,10 @@ class AudioManager {
         this.audioContext = null;
         this.assetAvailability = new Map();
         this.musicRequestToken = 0;
+        // Context label of the most recent in-flight playMusic() call; used
+        // by setContext() so an ambient restore can supersede a combat switch
+        // that hasn't finished its async asset check yet (and vice versa).
+        this.pendingContext = null;
     }
 
     /**
@@ -57,15 +61,33 @@ class AudioManager {
         if (this.assetAvailability.has(path)) {
             return this.assetAvailability.get(path);
         }
+        // file:// runs typically can't issue CORS-clean HEAD preflights, so
+        // skip the check entirely and let the <audio> element try to load
+        // the source directly.
+        if (typeof location !== 'undefined' && location.protocol === 'file:') {
+            return true;
+        }
         try {
             const response = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+            // 405 Method Not Allowed means this host doesn't support HEAD;
+            // fall through to <audio> loading rather than treating the asset
+            // as missing.
+            if (response.status === 405) {
+                return true;
+            }
             const ok = response.ok;
-            this.assetAvailability.set(path, ok);
+            // Cache only definitive outcomes (2xx ok or 404 missing). Other
+            // status codes can be transient (5xx, 3xx redirects we didn't
+            // follow), so don't poison the cache with a one-off failure.
+            if (ok || response.status === 404) {
+                this.assetAvailability.set(path, ok);
+            }
             return ok;
         } catch (error) {
-            console.log('Audio asset check failed:', path, error);
-            this.assetAvailability.set(path, false);
-            return false;
+            // Transport-level error (network, CORS, etc.) — don't cache it as
+            // "missing"; let <audio> try the load and surface its own error.
+            console.log('Audio asset HEAD check failed (will retry on next call):', path, error);
+            return true;
         }
     }
 
@@ -83,6 +105,9 @@ class AudioManager {
         // us; we must check the token before mutating any playback state so a
         // stale older request can't clobber state owned by a newer one.
         const requestToken = ++this.musicRequestToken;
+        // Publish the in-flight context label so setContext() can supersede
+        // this call if a different context is requested before it commits.
+        this.pendingContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
 
         const src = `assets/audio/music/${trackName}.mp3`;
         const canLoad = await this.canLoadAsset(src);
@@ -99,6 +124,7 @@ class AudioManager {
             // currentContext so a subsequent setContext() call retries
             // instead of being suppressed by stale state.
             this.currentContext = null;
+            this.pendingContext = null;
             return;
         }
 
@@ -116,6 +142,7 @@ class AudioManager {
 
         this.currentMusic = audio;
         this.currentContext = MUSIC_TRACK_CONTEXTS[trackName] || null;
+        this.pendingContext = null;
 
         // Play with promise handling for mobile
         const playPromise = audio.play();
@@ -151,12 +178,18 @@ class AudioManager {
     setContext(contextName) {
         const track = MUSIC_CONTEXT_TRACKS[contextName];
         if (!track) return;
-        // No-op only when the requested context is already active AND the
-        // track is actually playing. A paused element (autoplay-blocked,
+        // If a different-context switch is mid-flight, never short-circuit:
+        // playMusic() bumps musicRequestToken, which is what cancels the
+        // stale in-flight request before it can commit late.
+        const inflightDiffers = this.pendingContext !== null
+            && this.pendingContext !== contextName;
+        // Otherwise no-op when the requested context is already active AND
+        // the track is actually playing. A paused element (autoplay-blocked,
         // pause from another flow, or interrupted load) must not suppress
         // the restart — otherwise the manager can get stuck thinking a
         // track is active while nothing is audible.
         if (
+            !inflightDiffers &&
             this.currentContext === contextName &&
             this.currentMusic &&
             !this.currentMusic.paused
@@ -172,9 +205,10 @@ class AudioManager {
      */
     stopMusic() {
         this.musicRequestToken++;
-        // Clear context so the next setContext() call won't be incorrectly
-        // suppressed by a stale value.
+        // Clear context (and any in-flight switch) so the next setContext()
+        // call won't be incorrectly suppressed by stale state.
         this.currentContext = null;
+        this.pendingContext = null;
         if (this.currentMusic) {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;
