@@ -2407,22 +2407,23 @@ class UIManager {
      * Show Mod Manager Modal
      */
     showModsModal() {
+        const esc = this.escapeHtml.bind(this);
         const modsList = modManager.mods.map(mod => `
             <div class="mod-card ${mod.enabled ? 'enabled' : 'disabled'}" style="border:1px solid rgba(212,175,55,${mod.enabled ? '0.6' : '0.2'}); border-radius:8px; padding:10px; margin-bottom:10px; background:rgba(30,41,59,${mod.enabled ? '0.7' : '0.35'}); display:flex; flex-direction:column; gap:4px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="margin:0; font-family:var(--font-display); font-size:1.1rem; color:var(--gold-light);">${mod.name} <small style="opacity:0.6; font-size:0.75rem;">v${mod.version}</small></h3>
+                    <h3 style="margin:0; font-family:var(--font-display); font-size:1.1rem; color:var(--gold-light);">${esc(mod.name)} <small style="opacity:0.6; font-size:0.75rem;">v${esc(mod.version)}</small></h3>
                     <div style="display:flex; gap:8px;">
-                        <button class="action-btn" style="padding:4px 8px; font-size:0.75rem; background:${mod.enabled ? 'var(--deep-red)' : 'green'};" onclick="uiManager.toggleMod('${mod.id}')">
+                        <button class="action-btn" data-mod-action="toggle" data-mod-id="${esc(mod.id)}" style="padding:4px 8px; font-size:0.75rem; background:${mod.enabled ? 'var(--deep-red)' : 'green'};">
                             ${mod.enabled ? 'Disable' : 'Enable'}
                         </button>
-                        <button class="action-btn" style="padding:4px 8px; font-size:0.75rem; background:maroon;" onclick="uiManager.deleteMod('${mod.id}')">
+                        <button class="action-btn" data-mod-action="delete" data-mod-id="${esc(mod.id)}" style="padding:4px 8px; font-size:0.75rem; background:maroon;">
                             Delete
                         </button>
                     </div>
                 </div>
-                <p style="margin:4px 0; font-size:0.85rem; color:var(--parchment); opacity:0.9;">${mod.description}</p>
+                <p style="margin:4px 0; font-size:0.85rem; color:var(--parchment); opacity:0.9;">${esc(mod.description)}</p>
                 <div style="font-size:0.75rem; opacity:0.7; display:flex; gap:12px;">
-                    <span>Author: ${mod.author}</span>
+                    <span>Author: ${esc(mod.author)}</span>
                     <span>Units: ${Object.keys(mod.units || {}).reduce((acc, cat) => acc + Object.keys(mod.units[cat] || {}).length, 0)}</span>
                     <span>Buildings: ${Object.keys(mod.buildings || {}).length}</span>
                     <span>Techs: ${Object.keys(mod.techs || {}).length}</span>
@@ -2443,33 +2444,56 @@ class UIManager {
                 
                 <h3 class="achievements-category-title" style="margin-top:1.5rem;">Load Example Mods</h3>
                 <div style="display:flex; gap:10px; margin-bottom:1.5rem; flex-wrap:wrap;">
-                    <button class="action-btn" onclick="uiManager.loadExampleMod('greek_fire_refinery')">🔥 Greek Fire Refinement</button>
-                    <button class="action-btn" onclick="uiManager.loadExampleMod('barbarian_auxiliaries')">⚔️ Barbarian Auxiliaries</button>
+                    <button class="action-btn" data-mod-action="example" data-mod-id="greek_fire_refinery">🔥 Greek Fire Refinement</button>
+                    <button class="action-btn" data-mod-action="example" data-mod-id="barbarian_auxiliaries">⚔️ Barbarian Auxiliaries</button>
+                    <button class="action-btn" data-mod-action="example" data-mod-id="imperial_roads_expansion">🛣️ Imperial Roads Expansion</button>
                 </div>
 
                 <h3 class="achievements-category-title">Install Custom Mod</h3>
                 <div style="display:flex; flex-direction:column; gap:10px;">
                     <div>
                         <label style="display:block; font-size:0.85rem; margin-bottom:4px; font-weight:600;">Upload Mod JSON File</label>
-                        <input type="file" id="mod-file-input" accept=".json" style="background:rgba(0,0,0,0.4); border:1px solid rgba(212,175,55,0.3); padding:8px; border-radius:4px; width:100%; color:var(--parchment);" onchange="uiManager.handleModFileUpload(event)">
+                        <input type="file" id="mod-file-input" accept=".json" style="background:rgba(0,0,0,0.4); border:1px solid rgba(212,175,55,0.3); padding:8px; border-radius:4px; width:100%; color:var(--parchment);">
                     </div>
                     <div>
                         <label style="display:block; font-size:0.85rem; margin-bottom:4px; font-weight:600;">Paste Mod JSON Payload</label>
                         <textarea id="mod-json-input" placeholder="Paste your Mod JSON here..." style="width:100%; height:120px; background:rgba(0,0,0,0.5); border:1px solid rgba(212,175,55,0.3); border-radius:4px; color:#fff; font-family:monospace; padding:8px; box-sizing:border-box; font-size:0.8rem;"></textarea>
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <button class="action-btn" onclick="uiManager.installModFromText()" style="flex:1;">Install / Update Mod</button>
+                        <button class="action-btn" data-mod-action="install-text" style="flex:1;">Install / Update Mod</button>
                     </div>
                     <div id="mod-validation-feedback" style="font-size:0.85rem; padding:8px; border-radius:4px; display:none;"></div>
                 </div>
             </div>
-            
+
             <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                <button class="action-btn" onclick="uiManager.closeModal()">Close</button>
+                <button class="action-btn" data-mod-action="close">Close</button>
             </div>
         `;
-        
+
         this.showModal(content);
+        this.bindModsModalHandlers();
+    }
+
+    bindModsModalHandlers() {
+        const container = document.getElementById('mods-list-container')?.closest('.achievements-panel') || document;
+        const fileInput = document.getElementById('mod-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', (event) => this.handleModFileUpload(event));
+        }
+        container.querySelectorAll('[data-mod-action]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                const action = event.currentTarget.getAttribute('data-mod-action');
+                const modId = event.currentTarget.getAttribute('data-mod-id') || '';
+                switch (action) {
+                    case 'toggle': this.toggleMod(modId); break;
+                    case 'delete': this.deleteMod(modId); break;
+                    case 'example': this.loadExampleMod(modId); break;
+                    case 'install-text': this.installModFromText(); break;
+                    case 'close': this.closeModal(); break;
+                }
+            });
+        });
     }
 
     toggleMod(modId) {
@@ -2518,8 +2542,8 @@ class UIManager {
                         feedback.style.background = 'rgba(185, 48, 48, 0.15)';
                         feedback.style.border = '1px solid var(--crimson)';
                         feedback.style.color = '#ffc8c8';
-                        feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` + 
-                            result.errors.map(err => `<li>${err}</li>`).join('') + `</ul>`;
+                        feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
+                            result.errors.map(err => `<li>${this.escapeHtml(err)}</li>`).join('') + `</ul>`;
                     }
                 }
             } catch (err) {
@@ -2559,8 +2583,8 @@ class UIManager {
                     feedback.style.background = 'rgba(185, 48, 48, 0.15)';
                     feedback.style.border = '1px solid var(--crimson)';
                     feedback.style.color = '#ffc8c8';
-                    feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` + 
-                        result.errors.map(err => `<li>${err}</li>`).join('') + `</ul>`;
+                    feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
+                        result.errors.map(err => `<li>${this.escapeHtml(err)}</li>`).join('') + `</ul>`;
                 }
             }
         } catch (err) {

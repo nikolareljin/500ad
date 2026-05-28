@@ -1837,7 +1837,7 @@ class GameState {
         if (typeof modManager !== 'undefined') {
             const modEvents = modManager.getEnabledEvents();
             for (const event of modEvents) {
-                if (this.isDynamicTemplateOnCooldown(event.id, event.cooldown || 5)) {
+                if (this.isDynamicTemplateOnCooldown(event.id, event.cooldown ?? 5)) {
                     continue;
                 }
                 if (event.triggerCondition) {
@@ -1849,7 +1849,7 @@ class GameState {
                     }
                 }
                 candidates.push({
-                    priority: event.priority || 10,
+                    priority: event.priority ?? 10,
                     id: event.id,
                     type: event.type || 'quest',
                     triggerTags: event.triggerTags || ['mod'],
