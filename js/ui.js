@@ -2568,13 +2568,13 @@ class UIManager {
                     this.showNotification(`Mod "${json.name}" installed successfully!`, 'success');
                     this.showModsModal();
                 } else {
-                    this.showNotification('Mod validation failed', 'error');
+                    this.showNotification('Mod install failed', 'error');
                     if (feedback) {
                         feedback.style.display = 'block';
                         feedback.style.background = 'rgba(185, 48, 48, 0.15)';
                         feedback.style.border = '1px solid var(--crimson)';
                         feedback.style.color = '#ffc8c8';
-                        feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
+                        feedback.innerHTML = `<strong>Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
                             result.errors.map(err => `<li>${this.escapeHtml(err)}</li>`).join('') + `</ul>`;
                     }
                 }

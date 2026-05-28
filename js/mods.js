@@ -550,6 +550,12 @@ class ModManager {
                             errors.push(`Event "${evt.id || idx}" triggerTags entries must all be strings.`);
                         }
                     }
+                    if (evt.priority !== undefined && !Number.isFinite(evt.priority)) {
+                        errors.push(`Event "${evt.id || idx}" priority must be a finite number when set.`);
+                    }
+                    if (evt.cooldown !== undefined && (!Number.isInteger(evt.cooldown) || evt.cooldown < 0)) {
+                        errors.push(`Event "${evt.id || idx}" cooldown must be a non-negative integer when set.`);
+                    }
                     if (evt.choices && !Array.isArray(evt.choices)) {
                         errors.push(`Event "${evt.id || idx}" choices must be an array.`);
                     } else if (evt.choices) {
