@@ -54,9 +54,11 @@ class ModManager {
      * Load mods list from LocalStorage
      */
     loadFromStorage() {
+        let hadStoredEntry = false;
         try {
             const raw = localStorage.getItem(this.storageKey);
-            if (raw) {
+            if (raw !== null) {
+                hadStoredEntry = true;
                 const parsed = JSON.parse(raw);
                 this.mods = Array.isArray(parsed)
                     ? parsed.filter((mod) => this.validateMod(mod).success)
@@ -65,10 +67,14 @@ class ModManager {
         } catch (e) {
             console.error('ModManager: failed to load mods from storage', e);
             this.mods = [];
+            // Treat parse failure as "no usable stored entry" so a fresh seed runs.
+            hadStoredEntry = false;
         }
 
-        // If no mods exist (or all stored mods were invalid), seed with example mods.
-        if (this.mods.length === 0) {
+        // Seed example mods only on first run (no storage key yet). An
+        // intentionally-emptied list (stored value is `[]`) stays empty
+        // across reloads — matches what the UI's empty-state text promises.
+        if (!hadStoredEntry) {
             this.seedExampleMods();
         }
     }
