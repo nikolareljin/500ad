@@ -417,7 +417,10 @@ class ModManager {
                         } else {
                             const requiredStats = ['health', 'attack', 'defense', 'movement', 'range'];
                             requiredStats.forEach(stat => {
-                                if (typeof unit.stats[stat] !== 'number') errors.push(`Unit "${unitId}" stat "${stat}" must be a number.`);
+                                const v = unit.stats[stat];
+                                if (!Number.isFinite(v) || v < 0) {
+                                    errors.push(`Unit "${unitId}" stat "${stat}" must be a finite number >= 0.`);
+                                }
                             });
                         }
                     }
@@ -446,18 +449,21 @@ class ModManager {
                         errors.push(`Building ID mismatch: key "${bldId}" does not match internal building.id "${bld.id}".`);
                     }
                     if (!bld.name || typeof bld.name !== 'string') errors.push(`Building "${bldId}" must have a name.`);
-                    if (typeof bld.maxLevel !== 'number' || bld.maxLevel < 1) errors.push(`Building "${bldId}" must specify a numeric maxLevel >= 1.`);
+                    if (!Number.isFinite(bld.maxLevel) || bld.maxLevel < 1) {
+                        errors.push(`Building "${bldId}" must specify a finite maxLevel >= 1.`);
+                    }
                     if (!bld.baseCost || typeof bld.baseCost !== 'object') {
                         errors.push(`Building "${bldId}" must have a baseCost object with numeric gold/manpower/prestige.`);
                     } else {
                         ['gold', 'manpower', 'prestige'].forEach((field) => {
-                            if (typeof bld.baseCost[field] !== 'number') {
-                                errors.push(`Building "${bldId}" baseCost.${field} must be a number.`);
+                            const v = bld.baseCost[field];
+                            if (!Number.isFinite(v) || v < 0) {
+                                errors.push(`Building "${bldId}" baseCost.${field} must be a finite number >= 0.`);
                             }
                         });
                     }
-                    if (typeof bld.buildTurns !== 'number' || bld.buildTurns < 1) {
-                        errors.push(`Building "${bldId}" must specify a numeric buildTurns >= 1.`);
+                    if (!Number.isFinite(bld.buildTurns) || bld.buildTurns < 1) {
+                        errors.push(`Building "${bldId}" must specify a finite buildTurns >= 1.`);
                     }
                 }
             }
@@ -484,19 +490,23 @@ class ModManager {
                         errors.push(`Technology ID mismatch: key "${techId}" does not match internal tech.id "${tech.id}".`);
                     }
                     if (!tech.name || typeof tech.name !== 'string') errors.push(`Technology "${techId}" must have a name.`);
-                    if (tech.tier !== undefined && typeof tech.tier !== 'number') {
-                        errors.push(`Technology "${techId}" tier must be a number when set.`);
+                    if (tech.tier !== undefined && (!Number.isFinite(tech.tier) || tech.tier < 0)) {
+                        errors.push(`Technology "${techId}" tier must be a finite number >= 0 when set.`);
                     }
-                    if (typeof tech.researchTurns !== 'number') errors.push(`Technology "${techId}" must have numeric researchTurns.`);
+                    if (!Number.isFinite(tech.researchTurns) || tech.researchTurns < 1) {
+                        errors.push(`Technology "${techId}" must specify a finite researchTurns >= 1.`);
+                    }
                     if (tech.requires !== undefined && !Array.isArray(tech.requires)) {
                         errors.push(`Technology "${techId}" requires must be an array of tech ids (e.g. ["siegecraft"]).`);
                     }
                     if (!tech.cost || typeof tech.cost !== 'object') {
                         errors.push(`Technology "${techId}" must have a cost object with numeric gold/prestige.`);
                     } else {
-                        if (typeof tech.cost.gold !== 'number') errors.push(`Technology "${techId}" cost.gold must be a number.`);
-                        if (tech.cost.prestige !== undefined && typeof tech.cost.prestige !== 'number') {
-                            errors.push(`Technology "${techId}" cost.prestige must be a number when set.`);
+                        if (!Number.isFinite(tech.cost.gold) || tech.cost.gold < 0) {
+                            errors.push(`Technology "${techId}" cost.gold must be a finite number >= 0.`);
+                        }
+                        if (tech.cost.prestige !== undefined && (!Number.isFinite(tech.cost.prestige) || tech.cost.prestige < 0)) {
+                            errors.push(`Technology "${techId}" cost.prestige must be a finite number >= 0 when set.`);
                         }
                     }
                 }
@@ -525,6 +535,13 @@ class ModManager {
                             errors.push(`Event "${evt.id || idx}" triggerCondition must be a string expression (e.g. "turn >= 5").`);
                         } else if (!MOD_TRIGGER_CONDITION_REGEX.test(evt.triggerCondition)) {
                             errors.push(`Event "${evt.id || idx}" triggerCondition "${evt.triggerCondition}" does not match the supported grammar: variable (turn, gold, manpower, or prestige), then one of the operators >=, <=, >, <, ==, then a non-negative integer (e.g. "turn >= 5").`);
+                        }
+                    }
+                    if (evt.triggerTags !== undefined) {
+                        if (!Array.isArray(evt.triggerTags)) {
+                            errors.push(`Event "${evt.id || idx}" triggerTags must be an array of strings when provided.`);
+                        } else if (evt.triggerTags.some((tag) => typeof tag !== 'string')) {
+                            errors.push(`Event "${evt.id || idx}" triggerTags entries must all be strings.`);
                         }
                     }
                     if (evt.choices && !Array.isArray(evt.choices)) {
@@ -685,19 +702,28 @@ class ModManager {
                 }
             }
 
-            // Merge buildings
+            // Merge buildings — auto-fill missing inner id from the key so
+            // mods that follow the core (id-less) shape still resolve.
             if (mod.buildings) {
                 for (const bldId in mod.buildings) {
                     if (isModUnsafeKey(bldId)) continue;
-                    CITY_BUILDING_TREE[bldId] = JSON.parse(JSON.stringify(mod.buildings[bldId]));
+                    const cloned = JSON.parse(JSON.stringify(mod.buildings[bldId]));
+                    if (cloned && typeof cloned === 'object' && cloned.id === undefined) {
+                        cloned.id = bldId;
+                    }
+                    CITY_BUILDING_TREE[bldId] = cloned;
                 }
             }
 
-            // Merge techs
+            // Merge techs — same auto-fill so id-less mod techs still resolve.
             if (mod.techs) {
                 for (const techId in mod.techs) {
                     if (isModUnsafeKey(techId)) continue;
-                    TECHNOLOGY_TREE[techId] = JSON.parse(JSON.stringify(mod.techs[techId]));
+                    const cloned = JSON.parse(JSON.stringify(mod.techs[techId]));
+                    if (cloned && typeof cloned === 'object' && cloned.id === undefined) {
+                        cloned.id = techId;
+                    }
+                    TECHNOLOGY_TREE[techId] = cloned;
                 }
             }
         }
@@ -727,8 +753,12 @@ class ModManager {
             if (Array.isArray(mod.events)) {
                 mod.events.forEach(evt => {
                     if (!evt || typeof evt !== 'object' || !evt.id) return;
+                    const safeTriggerTags = Array.isArray(evt.triggerTags)
+                        ? evt.triggerTags.filter((tag) => typeof tag === 'string')
+                        : [];
                     events.push({
                         ...evt,
+                        triggerTags: safeTriggerTags,
                         sourceId: evt.id,
                         id: `mod:${mod.id}:${evt.id}`,
                         modId: mod.id,

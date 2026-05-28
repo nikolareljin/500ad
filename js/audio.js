@@ -70,7 +70,6 @@ class AudioManager {
         if (this.currentTrack === trackName && this.currentMusic && !this.currentMusic.paused) {
             return;
         }
-        this.currentTrack = trackName;
 
         // Stop current music
         if (this.currentMusic) {
@@ -93,6 +92,7 @@ class AudioManager {
         if (!canLoad) {
             console.log(`Music file not available: ${src}`);
             if (this.currentMusic === audio) this.currentMusic = null;
+            // Don't claim the track is playing — leave currentTrack reflecting reality.
             return;
         }
 
@@ -103,6 +103,8 @@ class AudioManager {
         audio.src = src;
 
         this.currentMusic = audio;
+        // Only now is the track actually about to play; record it for idempotency.
+        this.currentTrack = trackName;
 
         // Play with promise handling for mobile
         const playPromise = audio.play();
