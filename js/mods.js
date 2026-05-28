@@ -336,6 +336,10 @@ class ModManager {
             errors.push('Mod Version must be a valid version string (e.g., "1.0.0").');
         }
 
+        if (mod.enabled !== undefined && typeof mod.enabled !== 'boolean') {
+            errors.push('Mod "enabled" must be a boolean (true or false) when set.');
+        }
+
         // Validate units if present
         if (mod.units) {
             if (typeof mod.units !== 'object') {
@@ -357,6 +361,10 @@ class ModManager {
                             continue;
                         }
                         const unit = categoryUnits[unitId];
+                        if (!unit || typeof unit !== 'object') {
+                            errors.push(`Unit "${unitId}" must be an object.`);
+                            continue;
+                        }
                         if (unit.id !== unitId) {
                             errors.push(`Unit ID mismatch: key "${unitId}" does not match internal unit.id "${unit.id}".`);
                         }
@@ -387,6 +395,10 @@ class ModManager {
                         continue;
                     }
                     const bld = mod.buildings[bldId];
+                    if (!bld || typeof bld !== 'object') {
+                        errors.push(`Building "${bldId}" must be an object.`);
+                        continue;
+                    }
                     if (bld.id !== bldId) {
                         errors.push(`Building ID mismatch: key "${bldId}" does not match internal building.id "${bld.id}".`);
                     }
@@ -419,6 +431,10 @@ class ModManager {
                         continue;
                     }
                     const tech = mod.techs[techId];
+                    if (!tech || typeof tech !== 'object') {
+                        errors.push(`Technology "${techId}" must be an object.`);
+                        continue;
+                    }
                     if (tech.id !== techId) {
                         errors.push(`Technology ID mismatch: key "${techId}" does not match internal tech.id "${tech.id}".`);
                     }
@@ -446,6 +462,10 @@ class ModManager {
                 errors.push('Events section must be an array.');
             } else {
                 mod.events.forEach((evt, idx) => {
+                    if (!evt || typeof evt !== 'object') {
+                        errors.push(`Event at index ${idx} must be an object.`);
+                        return;
+                    }
                     if (!evt.id || typeof evt.id !== 'string') errors.push(`Event at index ${idx} must have an id.`);
                     if (!evt.title || typeof evt.title !== 'string') errors.push(`Event "${evt.id || idx}" must have a title.`);
                     if (!evt.description || typeof evt.description !== 'string') errors.push(`Event "${evt.id || idx}" must have a description.`);
@@ -456,6 +476,10 @@ class ModManager {
                         errors.push(`Event "${evt.id || idx}" choices must be an array.`);
                     } else if (evt.choices) {
                         evt.choices.forEach((choice, choiceIdx) => {
+                            if (!choice || typeof choice !== 'object') {
+                                errors.push(`Event "${evt.id || idx}" choice at index ${choiceIdx} must be an object.`);
+                                return;
+                            }
                             if (!choice.id || typeof choice.id !== 'string') {
                                 errors.push(`Event "${evt.id || idx}" choice at index ${choiceIdx} must have an id.`);
                             }
@@ -490,7 +514,7 @@ class ModManager {
             description: modData.description || '',
             author: modData.author || 'Anonymous',
             version: modData.version,
-            enabled: modData.enabled !== undefined ? modData.enabled : true,
+            enabled: typeof modData.enabled === 'boolean' ? modData.enabled : true,
             units: modData.units || {},
             buildings: modData.buildings || {},
             techs: modData.techs || {},

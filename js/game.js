@@ -204,6 +204,14 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+// Synchronous save on tab close / navigation — pagehide fires reliably where
+// setTimeout-deferred work may be throttled or dropped.
+window.addEventListener('pagehide', () => {
+    if (gameState.initialized && storageManager.settings.autoSave) {
+        try { storageManager.autoSave(); } catch (e) { console.warn('pagehide auto-save failed:', e); }
+    }
+});
+
 // Export for debugging
 window.game = game;
 window.gameState = gameState;

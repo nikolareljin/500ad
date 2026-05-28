@@ -2498,16 +2498,22 @@ class UIManager {
 
     toggleMod(modId) {
         audioManager.playUISound('click');
-        modManager.toggleMod(modId);
-        this.showNotification('Mod toggled successfully', 'success');
+        if (modManager.toggleMod(modId)) {
+            this.showNotification('Mod toggled successfully', 'success');
+        } else {
+            this.showNotification('Mod not found — list may be stale', 'error');
+        }
         this.showModsModal();
     }
 
     deleteMod(modId) {
         audioManager.playUISound('click');
         if (confirm('Are you sure you want to delete this mod?')) {
-            modManager.deleteMod(modId);
-            this.showNotification('Mod deleted', 'info');
+            if (modManager.deleteMod(modId)) {
+                this.showNotification('Mod deleted', 'info');
+            } else {
+                this.showNotification('Mod not found — list may be stale', 'error');
+            }
             this.showModsModal();
         }
     }
@@ -2515,11 +2521,13 @@ class UIManager {
     loadExampleMod(modId) {
         audioManager.playUISound('click');
         const mod = modManager.mods.find(m => m.id === modId);
-        if (mod) {
-            modManager.toggleMod(modId);
-            this.showNotification(`Example mod "${mod.name}" toggled!`, 'success');
-            this.showModsModal();
+        if (!mod) {
+            this.showNotification(`Example mod "${modId}" not found — it may have been deleted. Reload the page to reseed defaults.`, 'error');
+            return;
         }
+        modManager.toggleMod(modId);
+        this.showNotification(`Example mod "${mod.name}" toggled!`, 'success');
+        this.showModsModal();
     }
 
     handleModFileUpload(event) {
