@@ -2531,18 +2531,25 @@ class UIManager {
             return;
         }
         let mod = modManager.mods.find(m => m.id === modId);
+        let reinstalled = false;
         if (!mod) {
             if (!modManager.installExampleMod(modId)) {
                 this.showNotification(`Example mod "${modId}" is not in the example catalog.`, 'error');
                 return;
             }
             mod = modManager.mods.find(m => m.id === modId);
-            this.showNotification(`Example mod "${mod.name}" reinstalled.`, 'success');
-            this.showModsModal();
-            return;
+            reinstalled = true;
         }
-        modManager.toggleMod(modId);
-        this.showNotification(`Example mod "${mod.name}" toggled!`, 'success');
+        // Enable on reinstall (mod was just (re)added disabled by default) so the
+        // "Load Example Mod" button does the obvious thing on a single click.
+        // For an already-present mod, this is the existing toggle behavior.
+        if (reinstalled && !mod.enabled) {
+            modManager.toggleMod(modId);
+            this.showNotification(`Example mod "${mod.name}" reinstalled and enabled.`, 'success');
+        } else {
+            modManager.toggleMod(modId);
+            this.showNotification(`Example mod "${mod.name}" toggled!`, 'success');
+        }
         this.showModsModal();
     }
 

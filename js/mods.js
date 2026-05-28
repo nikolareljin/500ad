@@ -5,6 +5,8 @@
 
 const MOD_UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const MOD_ID_REGEX = /^[a-z0-9_-]+$/;
+// Must match the grammar accepted by evaluateModCondition() below.
+const MOD_TRIGGER_CONDITION_REGEX = /^\s*(turn|gold|manpower|prestige)\s*(>=|<=|>|<|==)\s*(\d+)\s*$/;
 
 function isModUnsafeKey(key) {
     return typeof key !== 'string' || MOD_UNSAFE_KEYS.has(key);
@@ -496,11 +498,19 @@ class ModManager {
                         errors.push(`Event at index ${idx} must be an object.`);
                         return;
                     }
-                    if (!evt.id || typeof evt.id !== 'string') errors.push(`Event at index ${idx} must have an id.`);
+                    if (!evt.id || typeof evt.id !== 'string') {
+                        errors.push(`Event at index ${idx} must have an id.`);
+                    } else if (isModUnsafeKey(evt.id) || !MOD_ID_REGEX.test(evt.id)) {
+                        errors.push(`Event id "${evt.id}" is not a safe identifier (lowercase letters, numbers, hyphens, underscores; not __proto__/prototype/constructor).`);
+                    }
                     if (!evt.title || typeof evt.title !== 'string') errors.push(`Event "${evt.id || idx}" must have a title.`);
                     if (!evt.description || typeof evt.description !== 'string') errors.push(`Event "${evt.id || idx}" must have a description.`);
-                    if (evt.triggerCondition && typeof evt.triggerCondition !== 'string') {
-                        errors.push(`Event "${evt.id || idx}" triggerCondition must be a string expression (e.g. "turn >= 5").`);
+                    if (evt.triggerCondition !== undefined) {
+                        if (typeof evt.triggerCondition !== 'string') {
+                            errors.push(`Event "${evt.id || idx}" triggerCondition must be a string expression (e.g. "turn >= 5").`);
+                        } else if (!MOD_TRIGGER_CONDITION_REGEX.test(evt.triggerCondition)) {
+                            errors.push(`Event "${evt.id || idx}" triggerCondition "${evt.triggerCondition}" does not match the supported grammar: <turn|gold|manpower|prestige> <>=|<=|>|<|==> <integer>.`);
+                        }
                     }
                     if (evt.choices && !Array.isArray(evt.choices)) {
                         errors.push(`Event "${evt.id || idx}" choices must be an array.`);
@@ -570,11 +580,18 @@ class ModManager {
     /**
      * Campaigns reference live unit/building/tech templates by id (e.g.
      * combat reads `attackerType.stats.range`), so removing a template while
-     * a campaign is running can crash gameplay. Block mod toggle/delete in
-     * that case — players must change mods from the Main Menu.
+     * the game screen is active can crash gameplay. Block mod toggle/delete
+     * in that case — players must change mods from the Main Menu.
+     *
+     * Note: `gameState.initialized` stays true after `returnToMainMenu()`
+     * (which only swaps screens), so the source of truth here is which
+     * screen the UI is currently showing.
      */
     isCampaignActive() {
-        return typeof gameState !== 'undefined' && gameState && gameState.initialized === true;
+        if (typeof uiManager !== 'undefined' && uiManager && uiManager.currentScreen) {
+            return uiManager.currentScreen === 'game';
+        }
+        return false;
     }
 
     /**
@@ -709,7 +726,7 @@ function evaluateModCondition(conditionStr, state) {
     if (!conditionStr) return true;
     
     // Support basic variables: turn, gold, manpower, prestige
-    const match = conditionStr.match(/^\s*(turn|gold|manpower|prestige)\s*(>=|<=|>|<|==)\s*(\d+)\s*$/);
+    const match = conditionStr.match(MOD_TRIGGER_CONDITION_REGEX);
     if (!match) return false;
     
     const [, variable, operator, valueStr] = match;
