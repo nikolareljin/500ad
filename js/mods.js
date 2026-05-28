@@ -374,8 +374,8 @@ class ModManager {
 
         // Validate units if present
         if (mod.units) {
-            if (typeof mod.units !== 'object') {
-                errors.push('Units section must be an object.');
+            if (typeof mod.units !== 'object' || Array.isArray(mod.units)) {
+                errors.push('Units section must be an object keyed by category.');
             } else {
                 for (const cat in mod.units) {
                     if (!['infantry', 'cavalry', 'special', 'naval'].includes(cat)) {
@@ -383,8 +383,8 @@ class ModManager {
                         continue;
                     }
                     const categoryUnits = mod.units[cat];
-                    if (typeof categoryUnits !== 'object') {
-                        errors.push(`Units under "${cat}" must be defined as an object.`);
+                    if (!categoryUnits || typeof categoryUnits !== 'object' || Array.isArray(categoryUnits)) {
+                        errors.push(`Units under "${cat}" must be defined as an object keyed by unit id.`);
                         continue;
                     }
                     for (const unitId in categoryUnits) {
@@ -427,8 +427,8 @@ class ModManager {
 
         // Validate buildings if present — must match core CITY_BUILDING_TREE shape (baseCost + buildTurns)
         if (mod.buildings) {
-            if (typeof mod.buildings !== 'object') {
-                errors.push('Buildings section must be an object.');
+            if (typeof mod.buildings !== 'object' || Array.isArray(mod.buildings)) {
+                errors.push('Buildings section must be an object keyed by building id.');
             } else {
                 for (const bldId in mod.buildings) {
                     if (isModUnsafeKey(bldId) || !MOD_ID_REGEX.test(bldId)) {
@@ -463,8 +463,8 @@ class ModManager {
 
         // Validate techs if present — must match core TECHNOLOGY_TREE shape (requires array, cost object)
         if (mod.techs) {
-            if (typeof mod.techs !== 'object') {
-                errors.push('Techs section must be an object.');
+            if (typeof mod.techs !== 'object' || Array.isArray(mod.techs)) {
+                errors.push('Techs section must be an object keyed by tech id.');
             } else {
                 for (const techId in mod.techs) {
                     if (isModUnsafeKey(techId) || !MOD_ID_REGEX.test(techId)) {

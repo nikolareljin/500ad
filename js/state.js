@@ -563,6 +563,8 @@ class GameState {
         if (!this.tutorialState || typeof this.tutorialState !== 'object') {
             this.tutorialState = this.createDefaultTutorialState();
         }
+        this.tutorialState.active = Boolean(this.tutorialState.active);
+        this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
         const rawStepValue = Number(this.tutorialState.stepIndex);
         const rawStep = Number.isFinite(rawStepValue) ? Math.floor(rawStepValue) : 0;
