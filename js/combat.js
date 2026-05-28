@@ -350,11 +350,15 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
 
     if (!attackerDied) {
         attacker.experience += defenderDied ? 24 : 10;
-        checkLevelUp(attacker);
+        if (checkLevelUp(attacker) && attacker.owner === 'player' && typeof achievementManager !== 'undefined') {
+            achievementManager.recordUnitLevel(attacker);
+        }
     }
     if (!defenderDied && !attackerDied) {
         defender.experience += 6;
-        checkLevelUp(defender);
+        if (checkLevelUp(defender) && defender.owner === 'player' && typeof achievementManager !== 'undefined') {
+            achievementManager.recordUnitLevel(defender);
+        }
     }
 
     if (defenderDied) {
@@ -383,12 +387,12 @@ function executeBattle(attackerId, defenderId, terrain = 'plains', battleType = 
     combatLog.push(`Damage exchange: ${attacker.name} dealt ${attackerDamage}, ${defender.name} dealt ${defenderDamage}.`);
     combatLog.push(`Outcome: ${outcome.replace(/_/g, ' ')}.`);
 
-    if (
-        outcome === 'attacker_victory'
-        && attacker.owner === 'player'
-        && typeof achievementManager !== 'undefined'
-    ) {
-        achievementManager.recordBattleWon(attacker);
+    if (typeof achievementManager !== 'undefined') {
+        if (outcome === 'attacker_victory' && attacker.owner === 'player') {
+            achievementManager.recordBattleWon(attacker);
+        } else if (outcome === 'defender_victory' && defender.owner === 'player') {
+            achievementManager.recordBattleWon(defender);
+        }
     }
 
     return {

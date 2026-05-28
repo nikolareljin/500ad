@@ -16,7 +16,6 @@ shlib_import logging browser
 
 PORT="${PORT:-8000}"
 HOST="${HOST:-127.0.0.1}"
-URL="http://${HOST}:${PORT}/"
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON_CMD=(python3)
@@ -26,6 +25,25 @@ else
   log_error "Python is required to run a local web server"
   exit 1
 fi
+
+REQUESTED_PORT="$PORT"
+for ((i = 0; i < 50; i++)); do
+  if ! check_port "$PORT" "$HOST" 2>/dev/null; then
+    break
+  fi
+  PORT=$((PORT + 1))
+done
+
+if check_port "$PORT" "$HOST" 2>/dev/null; then
+  log_error "No available local server port found from ${REQUESTED_PORT} through ${PORT}"
+  exit 1
+fi
+
+if [[ "$PORT" != "$REQUESTED_PORT" ]]; then
+  log_info "Port ${REQUESTED_PORT} is in use; using ${PORT} instead."
+fi
+
+URL="http://${HOST}:${PORT}/"
 
 log_info "Starting 500 A.D. local server at ${URL}"
 (
@@ -41,7 +59,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-for _ in $(seq 1 50); do
+for ((i = 0; i < 50; i++)); do
   if check_port "$PORT" "$HOST"; then
     break
   fi

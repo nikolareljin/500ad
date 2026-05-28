@@ -95,10 +95,14 @@ const ACHIEVEMENT_DEFS = [
     {
         id: 'renaissance',
         title: 'Byzantine Renaissance',
-        description: 'Research 10 technologies.',
+        description: 'Research every available technology.',
         icon: '🔬',
         category: 'technology',
-        condition: (s) => s.techResearched >= 10
+        // Threshold derived from the tech tree itself so it stays correct as
+        // technologies are added or removed. TECHNOLOGY_TREE is defined in
+        // state.js, which loads after this file; the lambda is only invoked
+        // at runtime, so the lookup is safe.
+        condition: (s) => s.totalTechResearched >= Object.keys(TECHNOLOGY_TREE).length
     },
     {
         id: 'master_engineer',
@@ -116,7 +120,7 @@ const ACHIEVEMENT_DEFS = [
         description: 'Accumulate 10,000 gold.',
         icon: '💰',
         category: 'economy',
-        condition: (s) => s.goldEarned >= 10000
+        condition: (s) => s.maxGoldHeld >= 10000
     },
     {
         id: 'trade_empire',
@@ -206,6 +210,8 @@ const ACHIEVEMENT_DEFS = [
     }
 ];
 
+const EMPIRE_START_TECH_IDS = new Set(['military_logistics', 'naval_architecture', 'cavalry_tactics', 'irrigation_systems']);
+
 // ─── AchievementManager ─────────────────────────────────────────────────────
 
 class AchievementManager {
@@ -213,9 +219,13 @@ class AchievementManager {
         this._storageKey = '500ad_achievements';
         // Unlocked achievement ids (persisted globally, not per-save)
         this.unlocked = new Set();
-        // Per-session stats snapshot used for condition evaluation
+        // Lifetime stats used for condition evaluation; persisted to localStorage
+        // alongside `unlocked` and accumulated across sessions/campaigns.
         this.stats = this._defaultStats();
         this._cityLookupById = null;
+        // Track achievement ids whose condition has already thrown once, so
+        // _checkAll() logs each failure exactly once per session.
+        this._conditionErrorsLogged = new Set();
         this._load();
     }
 
@@ -229,8 +239,9 @@ class AchievementManager {
             maxCitiesHeld: 0,
             easternCitiesHeld: 0,
             techResearched: 0,
+            totalTechResearched: 0,
             roadsBuilt: 0,
-            goldEarned: 0,
+            maxGoldHeld: 0,
             maxFoodStockpile: 0,
             maxTradeRoutes: 0,
             trucesEstablished: 0,
@@ -238,7 +249,10 @@ class AchievementManager {
             maxTurnReached: 0,
             maxUnitLevel: 0,
             questsCompleted: 0,
-            campaignsWon: 0
+            campaignsWon: 0,
+            // Set in memory for O(1) membership checks; serialized to an array
+            // in _save() and rebuilt from the array in _load().
+            playerHeldCityIds: new Set()
         };
     }
 
@@ -253,7 +267,26 @@ class AchievementManager {
                 this.unlocked = new Set(data.unlocked.filter(id => typeof id === 'string'));
             }
             if (data.stats && typeof data.stats === 'object') {
-                this.stats = { ...this._defaultStats(), ...data.stats };
+                const loaded = { ...data.stats };
+                // Migrate old key name → new key. If both keys are present
+                // (partial migration from an earlier session), keep whichever
+                // value is larger so we never regress the lifetime peak.
+                if ('goldEarned' in loaded) {
+                    const prev = Number(loaded.maxGoldHeld) || 0;
+                    const old = Number(loaded.goldEarned) || 0;
+                    loaded.maxGoldHeld = Math.max(prev, old);
+                    delete loaded.goldEarned;
+                }
+                // Rebuild playerHeldCityIds as a Set of strings (it lives on
+                // disk as an array). Tolerate the legacy in-memory shape too.
+                const rawHeld = loaded.playerHeldCityIds;
+                const heldSource = Array.isArray(rawHeld)
+                    ? rawHeld
+                    : (rawHeld instanceof Set ? [...rawHeld] : []);
+                loaded.playerHeldCityIds = new Set(
+                    heldSource.filter(id => typeof id === 'string')
+                );
+                this.stats = { ...this._defaultStats(), ...loaded };
             }
         } catch (e) {
             console.warn('Achievements: failed to load', e);
@@ -262,9 +295,15 @@ class AchievementManager {
 
     _save() {
         try {
+            // JSON can't represent Set; serialize playerHeldCityIds as an array.
+            const heldIds = this.stats.playerHeldCityIds;
+            const statsToSave = {
+                ...this.stats,
+                playerHeldCityIds: heldIds instanceof Set ? [...heldIds] : (Array.isArray(heldIds) ? heldIds : [])
+            };
             localStorage.setItem(this._storageKey, JSON.stringify({
                 unlocked: [...this.unlocked],
-                stats: this.stats
+                stats: statsToSave
             }));
         } catch (e) {
             console.warn('Achievements: failed to save', e);
@@ -287,12 +326,21 @@ class AchievementManager {
         this.stats.maxTurnReached = Math.max(this.stats.maxTurnReached, gs.turn || 0);
 
         // Technologies
-        const techCount = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched.length : 0;
-        this.stats.techResearched = Math.max(this.stats.techResearched, techCount);
+        const techIds = Array.isArray(gs.player?.techResearched) ? gs.player.techResearched : [];
+        const techCount = techIds.length;
 
-        // Max gold held (peak gold resource total, NOT cumulative lifetime earnings)
+        // Total techs ever held (including free start techs) — used for Byzantine Renaissance
+        this.stats.totalTechResearched = Math.max(this.stats.totalTechResearched, techCount);
+
+        // Player-actively-researched techs (excluding free scenario start techs) — used for Scholar
+        const freeTechCount = gs.selectedScenario === 'managing_empire'
+            ? techIds.filter(id => EMPIRE_START_TECH_IDS.has(id)).length
+            : 0;
+        this.stats.techResearched = Math.max(this.stats.techResearched, Math.max(0, techCount - freeTechCount));
+
+        // Peak gold ever held (NOT cumulative earnings — condition checks this snapshot)
         const currentGold = gs.player?.resources?.gold || 0;
-        this.stats.goldEarned = Math.max(this.stats.goldEarned, currentGold);
+        this.stats.maxGoldHeld = Math.max(this.stats.maxGoldHeld, currentGold);
 
         // Food stockpile
         const currentFood = gs.player?.resources?.food || 0;
@@ -303,12 +351,25 @@ class AchievementManager {
         this.stats.maxCitiesHeld = Math.max(this.stats.maxCitiesHeld, cityCount);
 
         // Eastern cities (x > 200 on the 320-wide map)
+        // Founded city IDs use format 'founded_${x}_${y}_${turn}' — parse x when lookup misses
         const cityLookup = this._getCityLookupById();
         const easternCount = playerTerritories.reduce((count, cityId) => {
             const city = cityLookup.get(cityId);
-            return count + (city && typeof city.x === 'number' && city.x > 200 ? 1 : 0);
+            if (city) {
+                return count + (typeof city.x === 'number' && city.x > 200 ? 1 : 0);
+            }
+            if (String(cityId).startsWith('founded_')) {
+                const x = Number(String(cityId).split('_')[1]);
+                return count + (Number.isFinite(x) && x > 200 ? 1 : 0);
+            }
+            return count;
         }, 0);
         this.stats.easternCitiesHeld = Math.max(this.stats.easternCitiesHeld, easternCount);
+
+        // Accumulate city IDs ever held by the player (for recapture detection across save/load)
+        for (const cityId of playerTerritories) {
+            this.stats.playerHeldCityIds.add(cityId);
+        }
 
         // Unit max level
         const maxLevel = (gs.units || [])
@@ -325,9 +386,9 @@ class AchievementManager {
             .filter(f => f.status === 'alliance').length;
         this.stats.maxAlliances = Math.max(this.stats.maxAlliances, alliances);
 
-        // Quests completed
+        // Quests completed — history entries use status:'resolved'|'expired', not boolean flags
         const questsDone = (gs.dynamicNarrativeState?.history || [])
-            .filter(e => e.resolved && !e.expired).length;
+            .filter(e => e.status === 'resolved').length;
         this.stats.questsCompleted = Math.max(this.stats.questsCompleted, questsDone);
 
         this._checkAll();
@@ -338,7 +399,7 @@ class AchievementManager {
     recordBattleWon(winnerUnit = null) {
         this.stats.battlesWon++;
         if (winnerUnit?.type === 'naval') this.stats.navalBattlesWon++;
-        if (winnerUnit?.typeId && String(winnerUnit.typeId).includes('greek_fire')) {
+        if (winnerUnit?.bonuses?.greekFire || (winnerUnit?.typeId && String(winnerUnit.typeId).includes('greekfire'))) {
             this.stats.greekFireVictories++;
         }
         this._checkAll();
@@ -348,10 +409,56 @@ class AchievementManager {
     /** Record a city capture. Pass the tile for recapture detection. */
     recordCityCapture(tile = null, oldOwner = null) {
         this.stats.citiesCaptured++;
-        if (oldOwner === 'player' || tile?._wasPlayerOwned) {
-            this.stats.citiesRecaptured++;
+        const cityId = tile?.cityData?.id || null;
+        if (cityId) {
+            if (this.stats.playerHeldCityIds.has(cityId)) {
+                this.stats.citiesRecaptured++;
+            } else {
+                this.stats.playerHeldCityIds.add(cityId);
+            }
         }
         this._checkAll();
+        this._save();
+    }
+
+    /** Record a city joining peacefully (not a conquest — no citiesCaptured increment). */
+    recordCityJoined(tile = null) {
+        const cityId = tile?.cityData?.id || null;
+        if (cityId && !this.stats.playerHeldCityIds.has(cityId)) {
+            this.stats.playerHeldCityIds.add(cityId);
+            this._save();
+        }
+    }
+
+    /** Update peak gold and food peaks immediately on resource gain. */
+    syncResourcePeak() {
+        if (typeof gameState === 'undefined' || !gameState.initialized) return;
+        const resources = gameState.player?.resources || {};
+        let changed = false;
+        const gold = Number(resources.gold) || 0;
+        const food = Number(resources.food) || 0;
+        if (gold > this.stats.maxGoldHeld) { this.stats.maxGoldHeld = gold; changed = true; }
+        if (food > this.stats.maxFoodStockpile) { this.stats.maxFoodStockpile = food; changed = true; }
+        if (changed) { this._checkAll(); this._save(); }
+    }
+
+    /** Record the highest level reached by a player unit immediately after level-up. */
+    recordUnitLevel(unitOrLevel) {
+        const level = typeof unitOrLevel === 'number'
+            ? unitOrLevel
+            : Number(unitOrLevel?.level || 0);
+        if (!Number.isFinite(level) || level <= this.stats.maxUnitLevel) return;
+        this.stats.maxUnitLevel = level;
+        this._checkAll();
+        this._save();
+    }
+
+    /** Reset per-campaign transient state. Call at the start of each new campaign. */
+    resetForNewCampaign(startingTerritories = []) {
+        const seed = Array.isArray(startingTerritories)
+            ? startingTerritories.filter((cityId) => typeof cityId === 'string')
+            : [];
+        this.stats.playerHeldCityIds = new Set(seed);
         this._save();
     }
 
@@ -386,7 +493,13 @@ class AchievementManager {
                     this._unlock(def);
                 }
             } catch (e) {
-                // Silently skip bad condition
+                // Surface the failure once per achievement id so a broken
+                // condition or unexpected stats shape is discoverable from
+                // the console without spamming on every check cycle.
+                if (!this._conditionErrorsLogged.has(def.id)) {
+                    this._conditionErrorsLogged.add(def.id);
+                    console.warn(`Achievement condition threw for "${def.id}":`, e);
+                }
             }
         }
     }

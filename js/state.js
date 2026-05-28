@@ -761,6 +761,7 @@ class GameState {
         this.ensureStrategicResourceStockpile();
 
         this.turn = 1;
+        this.gameOverState = null;
         this.units = [];
         this.buildings = [];
         this.aiFactions = {};
@@ -792,6 +793,8 @@ class GameState {
         this.refreshPlayerVisibility({ grantRewards: false });
         gameMap.markTerritoryDirty();
         gameMap.requestRender();
+
+        if (typeof achievementManager !== 'undefined') achievementManager.resetForNewCampaign(this.player.territories);
 
         this.initialized = true;
         return true;
@@ -3229,8 +3232,8 @@ class GameState {
                 { type: 'civil_engineers', count: 1 }
             ]
             : [
-                { type: 'skutatoi', count: 3 },
-                { type: 'kavallarioi', count: 2 },
+                { type: 'skutatoi', count: 2 },
+                { type: 'kavallarioi', count: 1 },
                 { type: 'archers', count: 2 },
                 { type: 'civil_engineers', count: 1 }
             ];
@@ -3410,6 +3413,8 @@ class GameState {
         this.player.resources.gold = Math.max(0, this.player.resources.gold);
         this.player.resources.manpower = Math.max(0, this.player.resources.manpower);
         this.player.resources.prestige = Math.max(0, this.player.resources.prestige);
+
+        if (gold > 0 && typeof achievementManager !== 'undefined') achievementManager.syncResourcePeak();
     }
 
     ensureStrategicResourceStockpile() {
@@ -3431,11 +3436,14 @@ class GameState {
     addStrategicResources(resourceDeltas = {}) {
         if (!this.player) return;
         this.ensureStrategicResourceStockpile();
+        let foodAdded = false;
         STRATEGIC_RESOURCE_KEYS.forEach((key) => {
             const delta = Number(resourceDeltas[key] || 0);
             if (!Number.isFinite(delta) || delta === 0) return;
             this.player.resources[key] = Math.max(0, Math.floor(this.player.resources[key] + delta));
+            if (key === 'food' && delta > 0) foodAdded = true;
         });
+        if (foodAdded && typeof achievementManager !== 'undefined') achievementManager.syncResourcePeak();
     }
 
     getCityTerrainAccess(cityTile) {
@@ -3537,11 +3545,45 @@ class GameState {
             };
         }
 
-        this.spendResources(cost.gold, cost.manpower);
-        const queue = this.ensureCityTrainingQueue(cityTile);
         const barracksLevel = this.getCityBuildingLevel(cityTile, 'barracks');
         const recruitmentSpeed = Number(this.player?.bonuses?.recruitmentSpeed || 1);
         const trainingTurns = getUnitTrainingTurns(unitTypeId, { barracksLevel, recruitmentSpeed });
+
+        if (trainingTurns === 0) {
+            const spawnTile = this.getRecruitSpawnTile(cityTile, unitTypeId);
+            if (!spawnTile) {
+                const unitType = getUnitById(unitTypeId);
+                const isNaval = unitType?.type === 'naval' || unitType?.category === 'transport';
+                return {
+                    success: false,
+                    reasons: [isNaval ? 'No open nearby water tile' : 'No open nearby land tile']
+                };
+            }
+            if (!this.spendResources(cost.gold, cost.manpower)) {
+                return { success: false, reasons: ['Not enough resources'] };
+            }
+            const unit = this.recruitUnit(unitTypeId, spawnTile, {
+                cityTile,
+                skipCost: true,
+                owner: 'player',
+                faction: this.player?.faction || this.selectedFaction || 'byzantine'
+            });
+            if (!unit) {
+                this.addResources(cost.gold, cost.manpower);
+                return { success: false, reasons: ['Recruitment failed'] };
+            }
+            return {
+                success: true,
+                instantSpawn: true,
+                unit,
+                project: { unitTypeId, turnsRemaining: 0, totalTurns: 0 }
+            };
+        }
+
+        if (!this.spendResources(cost.gold, cost.manpower)) {
+            return { success: false, reasons: ['Not enough resources'] };
+        }
+        const queue = this.ensureCityTrainingQueue(cityTile);
         const project = {
             id: `train_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             unitTypeId,
@@ -3570,7 +3612,7 @@ class GameState {
         const completed = [];
         const playerCities = gameMap.getCityTiles('player');
         for (const cityTile of playerCities) {
-            const queue = this.ensureCityTrainingQueue(cityTile);
+            let queue = this.ensureCityTrainingQueue(cityTile);
             if (!queue.length) continue;
             // Barracks-centric pacing: each city progresses one training project per turn.
             const active = queue[0];
@@ -3583,7 +3625,9 @@ class GameState {
             const spawnTile = this.getRecruitSpawnTile(cityTile, active.unitTypeId);
             if (!spawnTile) {
                 active.turnsRemaining = 0;
-                active.blocked = 'No adjacent spawn tile';
+                const activeUnitType = getUnitById(active.unitTypeId);
+                const isNaval = activeUnitType?.type === 'naval' || activeUnitType?.category === 'transport';
+                active.blocked = isNaval ? 'No open nearby water tile' : 'No open nearby land tile';
                 const shouldNotifyBlocked = !active.blockedNotified || active.lastBlockedReason !== active.blocked;
                 active.lastBlockedReason = active.blocked;
                 active.blockedNotified = true;
@@ -3606,6 +3650,10 @@ class GameState {
                 owner: 'player',
                 faction: this.player?.faction || this.selectedFaction || 'byzantine'
             });
+            // recruitUnit → getCityBuildingLevel → ensureCityBuildingState replaces
+            // cityTile.cityData.trainingQueue with a new array. Re-fetch so structural
+            // ops (shift/push) act on the live array, not the stale local reference.
+            queue = this.ensureCityTrainingQueue(cityTile);
             if (!unit) {
                 active.turnsRemaining = 0;
                 if (!active.blocked) {
@@ -3642,22 +3690,32 @@ class GameState {
         if (!unitType) return null;
 
         const wantsWater = unitType.type === 'naval' || unitType.category === 'transport' || unitType.bonuses?.waterTraversal;
-        const offsets = [
-            { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 },
-            { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
-        ];
 
-        for (const offset of offsets) {
-            const x = cityTile.x + offset.x;
-            const y = cityTile.y + offset.y;
-            const mapTile = gameMap.getTile(x, y);
-            if (!mapTile) continue;
-            if (wantsWater && mapTile.terrain !== 'water') continue;
-            if (!wantsWater && mapTile.terrain === 'water') continue;
+        // Build a one-shot Set of occupied "x,y" strings so each candidate-tile
+        // check is O(1) instead of O(unitCount). Called from turn processing
+        // and recruitment option evaluation, so the scan dominates otherwise.
+        const occupied = new Set();
+        for (const u of this.units) {
+            const pos = u.position;
+            if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+                occupied.add(`${pos.x},${pos.y}`);
+            }
+        }
 
-            const occupied = this.units.some(u => u.position.x === x && u.position.y === y);
-            if (occupied) continue;
-            return { x, y };
+        for (let radius = 1; radius <= 3; radius++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+                    const x = cityTile.x + dx;
+                    const y = cityTile.y + dy;
+                    const mapTile = gameMap.getTile(x, y);
+                    if (!mapTile) continue;
+                    if (wantsWater && mapTile.terrain !== 'water') continue;
+                    if (!wantsWater && mapTile.terrain === 'water') continue;
+                    if (occupied.has(`${x},${y}`)) continue;
+                    return { x, y };
+                }
+            }
         }
 
         return null;
@@ -3702,7 +3760,7 @@ class GameState {
                 requireInfra('agriculture', 2, 'Agriculture');
                 break;
             case 'explorer':
-                requireInfra('roads', 2, 'Roads');
+                requireInfra('roads', 1, 'Roads');
                 break;
             case 'spy':
                 if ((infra.roads || 0) < 3 && !researched.has('monastic_scholarship')) reasons.push('Requires Roads 3 or Monastic Scholarship');
@@ -3762,7 +3820,7 @@ class GameState {
         const spawnTile = this.getRecruitSpawnTile(cityTile, unitId);
         if (!spawnTile) {
             const isNaval = unit.type === 'naval' || unit.category === 'transport';
-            reasons.push(isNaval ? 'No open adjacent water tile' : 'No open adjacent land tile');
+            reasons.push(isNaval ? 'No open nearby water tile' : 'No open nearby land tile');
         }
 
         return {
@@ -4065,7 +4123,8 @@ class GameState {
                 kind: 'town',
                 population: 4,
                 production: { food: 2, industry: 1, gold: 1 },
-                infrastructure: { roads: 1, agriculture: 1, industry: 1 }
+                infrastructure: { roads: 1, agriculture: 1, industry: 1 },
+                autoBuildEnabled: true
             };
             colonizer.currentMovement = 0;
             colonizer.fortified = false;
@@ -4116,6 +4175,7 @@ class GameState {
             infra.roads = Math.min((infra.roads || 0) + 1, 8);
             production.gold += 1;
             this.expandRoadNetworkFromCity(cityTile);
+            if (typeof achievementManager !== 'undefined') achievementManager.recordRoadBuilt();
         } else if (actionId === 'establish_monastery') {
             cityTile.cityData.monastery = true;
             this.player.resources.prestige += 6;
@@ -4328,7 +4388,6 @@ class GameState {
         const oldOwner = tile.owner;
         const oldFaction = tile.faction || tile.cityData?.historicalCivilization || null;
         const cityId = tile.cityData.id || `${position.x}_${position.y}`;
-        tile._wasPlayerOwned = Boolean(tile._wasPlayerOwned || oldOwner === 'player');
 
         // Neutral towns can join peacefully or resist based on diplomacy.
         if ((oldOwner === 'neutral' || oldOwner === null) && unit.owner === 'player') {
@@ -4344,6 +4403,11 @@ class GameState {
                         `${tile.cityData.name} (${tile.cityData.tribe || 'local tribe'}) joined your realm`,
                         'success'
                     );
+                }
+                // Peaceful join — track for recapture but don't count as a conquest
+                if (typeof achievementManager !== 'undefined') {
+                    achievementManager.recordCityJoined(tile);
+                    achievementManager.syncFromGameState();
                 }
             } else {
                 tile.owner = 'enemy';
@@ -4376,6 +4440,11 @@ class GameState {
             if (window.uiManager && unit.owner === 'player') {
                 uiManager.showNotification(`Captured ${tile.cityData.name}`, 'success');
             }
+            // Military capture — count as conquest
+            if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
+                achievementManager.recordCityCapture(tile, oldOwner);
+                achievementManager.syncFromGameState();
+            }
         }
 
         this.recordAIWorldEvent('city_captured', {
@@ -4399,12 +4468,6 @@ class GameState {
         gameMap.markTerritoryDirty();
         this.refreshPlayerVisibility({ grantRewards: false });
         this.refreshPlayerCapitalRoles(this.player?.faction || this.selectedFaction || 'byzantine');
-
-        // Record city capture for achievements
-        if (unit.owner === 'player' && tile.owner === 'player' && typeof achievementManager !== 'undefined') {
-            achievementManager.recordCityCapture(tile, oldOwner);
-            achievementManager.syncFromGameState();
-        }
 
         this.checkWinLossConditions();
     }
