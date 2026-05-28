@@ -24,6 +24,11 @@ class Game {
         // Initialize UI
         uiManager.initialize();
 
+        // Initialize Mod Manager
+        if (typeof modManager !== 'undefined') {
+            modManager.initialize();
+        }
+
         // Initialize audio
         await audioManager.initialize();
 
@@ -194,8 +199,16 @@ document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         // Auto-save when leaving
         if (gameState.initialized && storageManager.settings.autoSave) {
-            storageManager.autoSave();
+            storageManager.autoSaveAsync();
         }
+    }
+});
+
+// Synchronous save on tab close / navigation — pagehide fires reliably where
+// setTimeout-deferred work may be throttled or dropped.
+window.addEventListener('pagehide', () => {
+    if (gameState.initialized && storageManager.settings.autoSave) {
+        try { storageManager.autoSave(); } catch (e) { console.warn('pagehide auto-save failed:', e); }
     }
 });
 

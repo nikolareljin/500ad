@@ -545,8 +545,8 @@ class GameState {
 
     createDefaultTutorialState() {
         return {
-            active: false,
-            skipped: true,
+            active: true,
+            skipped: false,
             completed: false,
             stepIndex: 0,
             progress: {
@@ -563,9 +563,8 @@ class GameState {
         if (!this.tutorialState || typeof this.tutorialState !== 'object') {
             this.tutorialState = this.createDefaultTutorialState();
         }
-        // Tutorial disabled for 1.16.1 — forcibly sets active/skipped regardless of persisted save state.
-        this.tutorialState.active = false;
-        this.tutorialState.skipped = true;
+        this.tutorialState.active = Boolean(this.tutorialState.active);
+        this.tutorialState.skipped = Boolean(this.tutorialState.skipped);
         this.tutorialState.completed = Boolean(this.tutorialState.completed);
         const rawStepValue = Number(this.tutorialState.stepIndex);
         const rawStep = Number.isFinite(rawStepValue) ? Math.floor(rawStepValue) : 0;
@@ -1834,6 +1833,33 @@ class GameState {
                     }
                 ]
             });
+        }
+
+        // Modded narrative events
+        if (typeof modManager !== 'undefined') {
+            const modEvents = modManager.getEnabledEvents();
+            for (const event of modEvents) {
+                if (this.isDynamicTemplateOnCooldown(event.id, event.cooldown ?? 5)) {
+                    continue;
+                }
+                if (event.triggerCondition) {
+                    try {
+                        if (!evaluateModCondition(event.triggerCondition, this)) continue;
+                    } catch (e) {
+                        console.error('Error evaluating condition for mod event:', event.id, e);
+                        continue;
+                    }
+                }
+                candidates.push({
+                    priority: event.priority ?? 10,
+                    id: event.id,
+                    type: event.type || 'quest',
+                    triggerTags: event.triggerTags || ['mod'],
+                    title: event.title,
+                    description: event.description,
+                    choices: event.choices || []
+                });
+            }
         }
 
         return candidates.sort((a, b) => b.priority - a.priority);

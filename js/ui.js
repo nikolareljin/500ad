@@ -96,6 +96,11 @@ class UIManager {
             this.showAboutModal();
         });
 
+        document.getElementById('btn-mods')?.addEventListener('click', () => {
+            audioManager.playUISound('click');
+            this.showModsModal();
+        });
+
         // Leader selection
         document.getElementById('btn-back-from-leaders')?.addEventListener('click', () => {
             audioManager.playUISound('click');
@@ -671,6 +676,7 @@ class UIManager {
                 }
             }
             this.onTutorialAction('endTurn');
+            audioManager.setContext('ambient');
         } finally {
             this.showTurnProcessing(false);
         }
@@ -1283,6 +1289,7 @@ class UIManager {
             return;
         }
 
+        audioManager.setContext('combat');
         const terrain = gameMap.getTile(target.position.x, target.position.y)?.terrain || 'plains';
         const result = executeBattle(selected.id, target.id, terrain, terrain === 'city' ? 'siege' : 'field', {
             attemptRetreat: true,
@@ -2027,15 +2034,17 @@ class UIManager {
      * Show notification
      */
     showNotification(message, type = 'info') {
+        if (!this.notificationContainer) return;
+        const MAX_NOTIFICATIONS = 5;
+        const existing = this.notificationContainer.querySelectorAll('.notification');
+        if (existing.length >= MAX_NOTIFICATIONS) {
+            existing[0].remove();
+        }
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
-        this.notificationContainer?.appendChild(notification);
-
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+        this.notificationContainer.appendChild(notification);
+        setTimeout(() => { notification.remove(); }, 3000);
     }
 
     /**
@@ -2287,7 +2296,9 @@ class UIManager {
                 <button class="menu-btn" onclick="uiManager.closeModal()">Resume</button>
                 <button class="menu-btn" onclick="uiManager.showSaveGameModal()">Save Game</button>
                 <button class="menu-btn" onclick="uiManager.showAchievementsModal()">🏆 Achievements</button>
+                <button class="menu-btn" onclick="uiManager.replayTutorial()">Replay Tutorial</button>
                 <button class="menu-btn" onclick="uiManager.showSettingsModal()">Settings</button>
+                <button class="menu-btn" onclick="uiManager.showModsModal()">🧩 Mods</button>
                 <button class="menu-btn" onclick="uiManager.returnToMainMenu()">Main Menu</button>
             </div>
         `;
@@ -2390,6 +2401,237 @@ class UIManager {
         if (!panel?.classList.contains('active')) return;
         panel.classList.remove('active');
         gameMap?.requestRender();
+    }
+
+    /**
+     * Show Mod Manager Modal
+     */
+    showModsModal() {
+        const esc = this.escapeHtml.bind(this);
+        const modsList = modManager.mods.map(mod => `
+            <div class="mod-card ${mod.enabled ? 'enabled' : 'disabled'}" style="border:1px solid rgba(212,175,55,${mod.enabled ? '0.6' : '0.2'}); border-radius:8px; padding:10px; margin-bottom:10px; background:rgba(30,41,59,${mod.enabled ? '0.7' : '0.35'}); display:flex; flex-direction:column; gap:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; font-family:var(--font-display); font-size:1.1rem; color:var(--gold-light);">${esc(mod.name)} <small style="opacity:0.6; font-size:0.75rem;">v${esc(mod.version)}</small></h3>
+                    <div style="display:flex; gap:8px;">
+                        <button class="action-btn" data-mod-action="toggle" data-mod-id="${esc(mod.id)}" style="padding:4px 8px; font-size:0.75rem; background:${mod.enabled ? 'var(--deep-red)' : 'green'};">
+                            ${mod.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button class="action-btn" data-mod-action="delete" data-mod-id="${esc(mod.id)}" style="padding:4px 8px; font-size:0.75rem; background:maroon;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                <p style="margin:4px 0; font-size:0.85rem; color:var(--parchment); opacity:0.9;">${esc(mod.description)}</p>
+                <div style="font-size:0.75rem; opacity:0.7; display:flex; gap:12px;">
+                    <span>Author: ${esc(mod.author)}</span>
+                    <span>Units: ${Object.keys(mod.units || {}).reduce((acc, cat) => acc + Object.keys(mod.units[cat] || {}).length, 0)}</span>
+                    <span>Buildings: ${Object.keys(mod.buildings || {}).length}</span>
+                    <span>Techs: ${Object.keys(mod.techs || {}).length}</span>
+                    <span>Events: ${(mod.events || []).length}</span>
+                </div>
+            </div>
+        `).join('');
+
+        const content = `
+            <h2>🧩 Mod Manager</h2>
+            <p style="font-size:0.9rem; opacity:0.8; margin-bottom:1rem;">Customize your 500 A.D. experience. Paste Mod JSON, upload a mod file, or load pre-packaged example mods.</p>
+            
+            <div class="achievements-panel" style="max-height: 55vh; overflow-y: auto; padding-right: 5px;">
+                <h3 class="achievements-category-title">Active & Loaded Mods</h3>
+                <div id="mods-list-container">
+                    ${modsList || '<p style="opacity:0.6; text-align:center; padding:1.5rem 0;">No mods loaded yet. Upload or try an example mod!</p>'}
+                </div>
+                
+                <h3 class="achievements-category-title" style="margin-top:1.5rem;">Load Example Mods</h3>
+                <div style="display:flex; gap:10px; margin-bottom:1.5rem; flex-wrap:wrap;">
+                    <button class="action-btn" data-mod-action="example" data-mod-id="greek_fire_refinery">🔥 Greek Fire Refinement</button>
+                    <button class="action-btn" data-mod-action="example" data-mod-id="barbarian_auxiliaries">⚔️ Barbarian Auxiliaries</button>
+                    <button class="action-btn" data-mod-action="example" data-mod-id="imperial_roads_expansion">🛣️ Imperial Roads Expansion</button>
+                </div>
+
+                <h3 class="achievements-category-title">Install Custom Mod</h3>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div>
+                        <label style="display:block; font-size:0.85rem; margin-bottom:4px; font-weight:600;">Upload Mod JSON File</label>
+                        <input type="file" id="mod-file-input" accept=".json" style="background:rgba(0,0,0,0.4); border:1px solid rgba(212,175,55,0.3); padding:8px; border-radius:4px; width:100%; color:var(--parchment);">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.85rem; margin-bottom:4px; font-weight:600;">Paste Mod JSON Payload</label>
+                        <textarea id="mod-json-input" placeholder="Paste your Mod JSON here..." style="width:100%; height:120px; background:rgba(0,0,0,0.5); border:1px solid rgba(212,175,55,0.3); border-radius:4px; color:#fff; font-family:monospace; padding:8px; box-sizing:border-box; font-size:0.8rem;"></textarea>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="action-btn" data-mod-action="install-text" style="flex:1;">Install / Update Mod</button>
+                    </div>
+                    <div id="mod-validation-feedback" style="font-size:0.85rem; padding:8px; border-radius:4px; display:none;"></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                <button class="action-btn" data-mod-action="close">Close</button>
+            </div>
+        `;
+
+        this.showModal(content);
+        this.bindModsModalHandlers();
+    }
+
+    bindModsModalHandlers() {
+        const container = this.modalContent || document;
+        const fileInput = container.querySelector('#mod-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', (event) => this.handleModFileUpload(event));
+        }
+        container.querySelectorAll('[data-mod-action]').forEach((btn) => {
+            btn.addEventListener('click', (event) => {
+                const action = event.currentTarget.getAttribute('data-mod-action');
+                const modId = event.currentTarget.getAttribute('data-mod-id') || '';
+                switch (action) {
+                    case 'toggle': this.toggleMod(modId); break;
+                    case 'delete': this.deleteMod(modId); break;
+                    case 'example': this.loadExampleMod(modId); break;
+                    case 'install-text': this.installModFromText(); break;
+                    case 'close': this.closeModal(); break;
+                }
+            });
+        });
+    }
+
+    toggleMod(modId) {
+        audioManager.playUISound('click');
+        const result = modManager.toggleMod(modId);
+        if (result === 'ok') {
+            this.showNotification('Mod toggled successfully', 'success');
+        } else if (result === 'campaign_active') {
+            this.showNotification('Cannot change mods during an active campaign. Return to the Main Menu first.', 'error');
+        } else {
+            this.showNotification('Mod not found — list may be stale', 'error');
+        }
+        this.showModsModal();
+    }
+
+    deleteMod(modId) {
+        audioManager.playUISound('click');
+        if (confirm('Are you sure you want to delete this mod?')) {
+            const result = modManager.deleteMod(modId);
+            if (result === 'ok') {
+                this.showNotification('Mod deleted', 'info');
+            } else if (result === 'campaign_active') {
+                this.showNotification('Cannot delete mods during an active campaign. Return to the Main Menu first.', 'error');
+            } else {
+                this.showNotification('Mod not found — list may be stale', 'error');
+            }
+            this.showModsModal();
+        }
+    }
+
+    loadExampleMod(modId) {
+        audioManager.playUISound('click');
+        if (modManager.isCampaignActive()) {
+            this.showNotification('Cannot change mods during an active campaign. Return to the Main Menu first.', 'error');
+            return;
+        }
+        let mod = modManager.mods.find(m => m.id === modId);
+        let reinstalled = false;
+        if (!mod) {
+            if (!modManager.installExampleMod(modId)) {
+                this.showNotification(`Example mod "${modId}" is not in the example catalog.`, 'error');
+                return;
+            }
+            mod = modManager.mods.find(m => m.id === modId);
+            reinstalled = true;
+        }
+        // Enable on reinstall (mod was just (re)added disabled by default) so the
+        // "Load Example Mod" button does the obvious thing on a single click.
+        // For an already-present mod, this is the existing toggle behavior.
+        if (reinstalled && !mod.enabled) {
+            modManager.toggleMod(modId);
+            this.showNotification(`Example mod "${mod.name}" reinstalled and enabled.`, 'success');
+        } else {
+            modManager.toggleMod(modId);
+            this.showNotification(`Example mod "${mod.name}" toggled!`, 'success');
+        }
+        this.showModsModal();
+    }
+
+    handleModFileUpload(event) {
+        const input = event.target;
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const json = JSON.parse(e.target.result);
+                const result = modManager.addMod(json);
+                const feedback = document.getElementById('mod-validation-feedback');
+                if (result.success) {
+                    this.showNotification(`Mod "${json.name}" installed successfully!`, 'success');
+                    this.showModsModal();
+                } else {
+                    this.showNotification('Mod install failed', 'error');
+                    if (feedback) {
+                        feedback.style.display = 'block';
+                        feedback.style.background = 'rgba(185, 48, 48, 0.15)';
+                        feedback.style.border = '1px solid var(--crimson)';
+                        feedback.style.color = '#ffc8c8';
+                        feedback.innerHTML = `<strong>Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
+                            result.errors.map(err => `<li>${this.escapeHtml(err)}</li>`).join('') + `</ul>`;
+                    }
+                }
+            } catch (err) {
+                this.showNotification('Invalid JSON file format', 'error');
+                const feedback = document.getElementById('mod-validation-feedback');
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = 'rgba(185, 48, 48, 0.15)';
+                    feedback.style.border = '1px solid var(--crimson)';
+                    feedback.style.color = '#ffc8c8';
+                    feedback.textContent = `JSON Parse Error: ${err.message}`;
+                }
+            } finally {
+                // Reset so re-uploading the same file fires another change event.
+                if (input) input.value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    installModFromText() {
+        audioManager.playUISound('click');
+        const textarea = document.getElementById('mod-json-input');
+        const feedback = document.getElementById('mod-validation-feedback');
+        if (!textarea || !textarea.value.trim()) {
+            this.showNotification('Please paste some JSON first', 'error');
+            return;
+        }
+        
+        try {
+            const json = JSON.parse(textarea.value);
+            const result = modManager.addMod(json);
+            if (result.success) {
+                this.showNotification(`Mod "${json.name}" installed successfully!`, 'success');
+                this.showModsModal();
+            } else {
+                this.showNotification('Mod validation failed', 'error');
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = 'rgba(185, 48, 48, 0.15)';
+                    feedback.style.border = '1px solid var(--crimson)';
+                    feedback.style.color = '#ffc8c8';
+                    feedback.innerHTML = `<strong>Validation Errors:</strong><ul style="margin: 4px 0 0 16px; padding: 0;">` +
+                        result.errors.map(err => `<li>${this.escapeHtml(err)}</li>`).join('') + `</ul>`;
+                }
+            }
+        } catch (err) {
+            this.showNotification('Invalid JSON syntax', 'error');
+            if (feedback) {
+                feedback.style.display = 'block';
+                feedback.style.background = 'rgba(185, 48, 48, 0.15)';
+                feedback.style.border = '1px solid var(--crimson)';
+                feedback.style.color = '#ffc8c8';
+                feedback.textContent = `JSON Parse Error: ${err.message}`;
+            }
+        }
     }
 }
 

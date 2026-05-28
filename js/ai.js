@@ -411,6 +411,7 @@ class AIManager {
         const battleType = defenderTile?.cityData
             ? 'siege'
             : (terrain === 'forest' || terrain === 'hills' || terrain === 'mountains' ? 'ambush' : 'field');
+        if (typeof audioManager !== 'undefined') audioManager.setContext('combat');
         const result = executeBattle(unit.id, target.id, terrain, battleType, {
             attemptRetreat: true,
             retreatSide: 'defender'

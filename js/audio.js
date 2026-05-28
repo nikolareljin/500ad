@@ -8,6 +8,8 @@ class AudioManager {
         this.musicVolume = 0.5;
         this.sfxVolume = 0.7;
         this.currentMusic = null;
+        this.currentContext = null;
+        this.currentTrack = null;
         this.sounds = {};
         this.musicTracks = {};
         this.initialized = false;
@@ -63,6 +65,12 @@ class AudioManager {
             this.initialize();
         }
 
+        // Idempotent: if the same track is already playing, no-op so context
+        // switches (e.g. setContext('ambient')) don't restart it.
+        if (this.currentTrack === trackName && this.currentMusic && !this.currentMusic.paused) {
+            return;
+        }
+
         // Stop current music
         if (this.currentMusic) {
             this.currentMusic.pause();
@@ -84,6 +92,7 @@ class AudioManager {
         if (!canLoad) {
             console.log(`Music file not available: ${src}`);
             if (this.currentMusic === audio) this.currentMusic = null;
+            // Don't claim the track is playing — leave currentTrack reflecting reality.
             return;
         }
 
@@ -94,6 +103,8 @@ class AudioManager {
         audio.src = src;
 
         this.currentMusic = audio;
+        // Only now is the track actually about to play; record it for idempotency.
+        this.currentTrack = trackName;
 
         // Play with promise handling for mobile
         const playPromise = audio.play();
@@ -108,22 +119,24 @@ class AudioManager {
      * Play sound effect
      */
     playSound(soundName) {
-        if (!this.initialized) return;
+        // SFX assets not yet available — intentional no-op.
+        // Uncomment and wire src when assets/audio/sfx/${soundName}.mp3 files exist.
+    }
 
-        console.log(`Playing sound: ${soundName}`);
-
-        // Create audio element for sound effect
-        const audio = new Audio();
-        audio.volume = this.sfxVolume;
-
-        // You would set audio.src to actual sound file here
-        // audio.src = `assets/audio/sfx/${soundName}.mp3`;
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.log('Sound play prevented:', error);
-            });
+    /**
+     * Switch music context (ambient or combat).
+     * Track changes are gated on the actually-playing track, not the recorded
+     * context — so direct playMusic() calls elsewhere can't desync this and
+     * cause spurious restarts.
+     */
+    setContext(contextName) {
+        const trackForContext = contextName === 'combat'
+            ? 'battle_theme'
+            : (contextName === 'ambient' ? '500ad_ambient' : null);
+        if (!trackForContext) return;
+        this.currentContext = contextName;
+        if (this.currentTrack !== trackForContext) {
+            this.playMusic(trackForContext);
         }
     }
 
@@ -136,6 +149,8 @@ class AudioManager {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;
         }
+        this.currentTrack = null;
+        this.currentContext = null;
     }
 
     /**

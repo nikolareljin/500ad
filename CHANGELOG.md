@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.20.0] - 2026-05-27
+
+### Added
+- Added a data-driven modding system (`js/mods.js`) with a `ModManager` that loads, validates, persists, toggles, and merges JSON mods into the game's core unit, building, technology, and event templates at runtime.
+- Added a Mod Manager modal accessible via the new `🧩 Mods` button on the Main Menu and Game Menu, supporting paste-JSON input, `.json` file upload, per-mod enable/disable toggles, deletion, and one-click activation of pre-packaged example mods.
+- Added three seeded example mods (Greek Fire Refinement, Barbarian Auxiliaries, Imperial Roads Expansion) to demonstrate units, buildings, technologies, and event-driven quests.
+- Added sandboxed event triggers: mod-defined events expose a `triggerCondition` string evaluated against `turn`, `gold`, `manpower`, and `prestige` using a strict `<var> <op> <value>` grammar so arbitrary code cannot run.
+- Added mod persistence in `localStorage` under `500ad_mods`, surviving across saves and campaigns; core game data is deep-cloned at startup so disabling a mod cleanly restores defaults.
+
+### Changed
+- Updated `index.html` to load `js/mods.js` and expose the Main Menu `Mods` entry point.
+- Updated `scripts/script-helpers` submodule to the latest production tag.
+
+## [1.19.0] - 2026-05-03
+
+### Added
+- Re-enabled tutorial and onboarding experience (#24): new campaigns now open with the interactive step-by-step tutorial (move, combat, build, diplomacy, end turn). Existing saves that already skipped or completed the tutorial are unaffected.
+- Added "Replay Tutorial" entry to the in-game Game Menu so players can revisit the tutorial at any time.
+- Added music context transitions for the sound system (#22): battle theme plays automatically when combat begins (player or AI-initiated) and the ambient track resumes after the enemy turn completes.
+- Added `AudioManager.setContext()` for centralized music-track state management, preventing redundant track switches.
+
+### Fixed
+- Fixed `playSound()` generating browser media errors on every call by removing a dead `Audio()` element that was instantiated without a source attribute.
+- Fixed unbounded notification DOM accumulation during AI turns with many simultaneous combats; notifications are now capped at 5 simultaneous entries to prevent DOM buildup.
+- Fixed synchronous auto-save on tab-switch (`visibilitychange`) causing a main-thread freeze; `autoSaveAsync()` now defers `JSON.stringify` past the current frame, eliminating compositor jank on low-memory devices.
+
+### Changed
+- Updated tutorial default state so new games offer the tutorial immediately without requiring a manual trigger; players with existing saves are not affected.
+
 ## [1.18.0] - 2026-03-27
 
 ### Fixed

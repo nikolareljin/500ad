@@ -16,6 +16,7 @@ const SAVE_SCHEMA_VERSION = 1;
 class StorageManager {
     constructor() {
         this.settings = this.loadSettings();
+        this.autoSaveTimer = null;
     }
 
     normalizeSlotNumber(slotNumber) {
@@ -231,10 +232,38 @@ class StorageManager {
     }
 
     /**
-     * Auto-save game
+     * Cancel any pending async auto-save timer.
+     */
+    cancelPendingAutoSave() {
+        if (this.autoSaveTimer !== null) {
+            clearTimeout(this.autoSaveTimer);
+            this.autoSaveTimer = null;
+        }
+    }
+
+    /**
+     * Auto-save game (synchronous). Clears any pending async save so the
+     * deferred work doesn't duplicate the JSON.stringify of the same state.
      */
     autoSave() {
+        this.cancelPendingAutoSave();
         return this.saveGame(0);
+    }
+
+    /**
+     * Auto-save deferred past the current frame to avoid blocking the main thread
+     * on visibilitychange events (JSON.stringify on large state can freeze 50-200ms).
+     * Coalesces rapid bursts (e.g. visibilitychange + pagehide) so only one
+     * JSON.stringify runs per quiescent period. The dedicated `pagehide`
+     * listener calls autoSave() synchronously, which also clears any pending
+     * deferred work to avoid duplicate saves.
+     */
+    autoSaveAsync() {
+        if (this.autoSaveTimer !== null) return;
+        this.autoSaveTimer = setTimeout(() => {
+            this.autoSaveTimer = null;
+            try { this.saveGame(0); } catch (e) { console.warn('Async auto-save failed:', e); }
+        }, 0);
     }
 
     /**
