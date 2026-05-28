@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.20.0] - 2026-05-27
+
+### Added
+- Added a data-driven modding system (`js/mods.js`) with a `ModManager` that loads, validates, persists, toggles, and merges JSON mods into the game's core unit, building, technology, and event templates at runtime.
+- Added a Mod Manager modal accessible via the new `🧩 Mods` button on the Main Menu and Game Menu, supporting paste-JSON input, `.json` file upload, per-mod enable/disable toggles, deletion, and one-click activation of pre-packaged example mods.
+- Added three seeded example mods (Greek Fire Refinement, Barbarian Auxiliaries, Imperial Roads Expansion) to demonstrate units, buildings, technologies, and event-driven quests.
+- Added sandboxed event triggers: mod-defined events expose a `triggerCondition` string evaluated against `turn`, `gold`, `manpower`, and `prestige` using a strict `<var> <op> <value>` grammar so arbitrary code cannot run.
+- Added mod persistence in `localStorage` under `500ad_mods`, surviving across saves and campaigns; core game data is deep-cloned at startup so disabling a mod cleanly restores defaults.
+
+### Changed
+- Updated `index.html` to load `js/mods.js` and expose the Main Menu `Mods` entry point.
+- Updated `scripts/script-helpers` submodule to the latest production tag.
+
 ## [1.19.0] - 2026-05-03
 
 ### Added

@@ -407,7 +407,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.20.0** - Introduces an achievements and milestones system that tracks player progress, rewards key strategic accomplishments, and surfaces historical challenges as in-game objectives.
+**Version 1.20.0** - Introduces a data-driven modding system: players can load JSON mods that add custom units, buildings, technologies, and event-driven quests, with three pre-packaged example mods (Greek Fire Refinement, Barbarian Auxiliaries, Imperial Roads Expansion) shipped out of the box.
 
 ## License
 
