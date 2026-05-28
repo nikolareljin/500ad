@@ -440,7 +440,9 @@ class ModManager {
                         errors.push(`Building "${bldId}" must be an object.`);
                         continue;
                     }
-                    if (bld.id !== bldId) {
+                    // Inner `id` is optional (core CITY_BUILDING_TREE entries don't carry one).
+                    // If present, it must match the key — applyMods auto-fills from the key otherwise.
+                    if (bld.id !== undefined && bld.id !== bldId) {
                         errors.push(`Building ID mismatch: key "${bldId}" does not match internal building.id "${bld.id}".`);
                     }
                     if (!bld.name || typeof bld.name !== 'string') errors.push(`Building "${bldId}" must have a name.`);
@@ -476,11 +478,15 @@ class ModManager {
                         errors.push(`Technology "${techId}" must be an object.`);
                         continue;
                     }
-                    if (tech.id !== techId) {
+                    // Inner `id` and `tier` are optional (core TECHNOLOGY_TREE entries carry
+                    // neither); enforce key match only if `id` is explicitly set.
+                    if (tech.id !== undefined && tech.id !== techId) {
                         errors.push(`Technology ID mismatch: key "${techId}" does not match internal tech.id "${tech.id}".`);
                     }
                     if (!tech.name || typeof tech.name !== 'string') errors.push(`Technology "${techId}" must have a name.`);
-                    if (typeof tech.tier !== 'number') errors.push(`Technology "${techId}" must have a numeric tier.`);
+                    if (tech.tier !== undefined && typeof tech.tier !== 'number') {
+                        errors.push(`Technology "${techId}" tier must be a number when set.`);
+                    }
                     if (typeof tech.researchTurns !== 'number') errors.push(`Technology "${techId}" must have numeric researchTurns.`);
                     if (tech.requires !== undefined && !Array.isArray(tech.requires)) {
                         errors.push(`Technology "${techId}" requires must be an array of tech ids (e.g. ["siegecraft"]).`);

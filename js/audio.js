@@ -9,6 +9,7 @@ class AudioManager {
         this.sfxVolume = 0.7;
         this.currentMusic = null;
         this.currentContext = null;
+        this.currentTrack = null;
         this.sounds = {};
         this.musicTracks = {};
         this.initialized = false;
@@ -64,6 +65,13 @@ class AudioManager {
             this.initialize();
         }
 
+        // Idempotent: if the same track is already playing, no-op so context
+        // switches (e.g. setContext('ambient')) don't restart it.
+        if (this.currentTrack === trackName && this.currentMusic && !this.currentMusic.paused) {
+            return;
+        }
+        this.currentTrack = trackName;
+
         // Stop current music
         if (this.currentMusic) {
             this.currentMusic.pause();
@@ -115,15 +123,18 @@ class AudioManager {
 
     /**
      * Switch music context (ambient or combat).
-     * Only triggers a track change when the context actually changes.
+     * Track changes are gated on the actually-playing track, not the recorded
+     * context — so direct playMusic() calls elsewhere can't desync this and
+     * cause spurious restarts.
      */
     setContext(contextName) {
-        if (contextName === 'combat' && this.currentContext !== 'combat') {
-            this.currentContext = 'combat';
-            this.playMusic('battle_theme');
-        } else if (contextName === 'ambient' && this.currentContext !== 'ambient') {
-            this.currentContext = 'ambient';
-            this.playMusic('500ad_ambient');
+        const trackForContext = contextName === 'combat'
+            ? 'battle_theme'
+            : (contextName === 'ambient' ? '500ad_ambient' : null);
+        if (!trackForContext) return;
+        this.currentContext = contextName;
+        if (this.currentTrack !== trackForContext) {
+            this.playMusic(trackForContext);
         }
     }
 
@@ -136,6 +147,8 @@ class AudioManager {
             this.currentMusic.pause();
             this.currentMusic.currentTime = 0;
         }
+        this.currentTrack = null;
+        this.currentContext = null;
     }
 
     /**

@@ -2554,9 +2554,10 @@ class UIManager {
     }
 
     handleModFileUpload(event) {
-        const file = event.target.files[0];
+        const input = event.target;
+        const file = input.files[0];
         if (!file) return;
-        
+
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -2587,6 +2588,9 @@ class UIManager {
                     feedback.style.color = '#ffc8c8';
                     feedback.textContent = `JSON Parse Error: ${err.message}`;
                 }
+            } finally {
+                // Reset so re-uploading the same file fires another change event.
+                if (input) input.value = '';
             }
         };
         reader.readAsText(file);
