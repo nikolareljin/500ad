@@ -402,7 +402,16 @@ class ModManager {
                         }
                         if (!unit.name || typeof unit.name !== 'string') errors.push(`Unit "${unitId}" must have a name.`);
                         if (!unit.era || !Array.isArray(unit.era)) errors.push(`Unit "${unitId}" must specify valid eras as an array.`);
-                        if (!unit.cost || typeof unit.cost !== 'object') errors.push(`Unit "${unitId}" must have a cost object.`);
+                        if (!unit.cost || typeof unit.cost !== 'object') {
+                            errors.push(`Unit "${unitId}" must have a cost object with numeric gold and manpower.`);
+                        } else {
+                            ['gold', 'manpower'].forEach((field) => {
+                                const v = unit.cost[field];
+                                if (!Number.isFinite(v) || v < 0) {
+                                    errors.push(`Unit "${unitId}" cost.${field} must be a finite number >= 0.`);
+                                }
+                            });
+                        }
                         if (!unit.stats || typeof unit.stats !== 'object') {
                             errors.push(`Unit "${unitId}" must have a stats object.`);
                         } else {
@@ -509,7 +518,7 @@ class ModManager {
                         if (typeof evt.triggerCondition !== 'string') {
                             errors.push(`Event "${evt.id || idx}" triggerCondition must be a string expression (e.g. "turn >= 5").`);
                         } else if (!MOD_TRIGGER_CONDITION_REGEX.test(evt.triggerCondition)) {
-                            errors.push(`Event "${evt.id || idx}" triggerCondition "${evt.triggerCondition}" does not match the supported grammar: <turn|gold|manpower|prestige> <>=|<=|>|<|==> <integer>.`);
+                            errors.push(`Event "${evt.id || idx}" triggerCondition "${evt.triggerCondition}" does not match the supported grammar: variable (turn, gold, manpower, or prestige), then one of the operators >=, <=, >, <, ==, then a non-negative integer (e.g. "turn >= 5").`);
                         }
                     }
                     if (evt.choices && !Array.isArray(evt.choices)) {
@@ -698,7 +707,12 @@ class ModManager {
     }
 
     /**
-     * Get a list of narrative events defined in enabled mods
+     * Get a list of narrative events defined in enabled mods.
+     *
+     * Event `id` is namespaced as `mod:<modId>:<eventId>` so it can't collide
+     * with core dynamic-narrative template ids (or with events from other
+     * mods) in the shared cooldown map. The original id is preserved as
+     * `sourceId` for display/debugging.
      */
     getEnabledEvents() {
         const events = [];
@@ -706,8 +720,12 @@ class ModManager {
         for (const mod of enabledMods) {
             if (Array.isArray(mod.events)) {
                 mod.events.forEach(evt => {
+                    if (!evt || typeof evt !== 'object' || !evt.id) return;
                     events.push({
                         ...evt,
+                        sourceId: evt.id,
+                        id: `mod:${mod.id}:${evt.id}`,
+                        modId: mod.id,
                         modName: mod.name
                     });
                 });
