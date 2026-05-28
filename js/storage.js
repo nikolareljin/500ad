@@ -240,14 +240,10 @@ class StorageManager {
     /**
      * Auto-save deferred past the current frame to avoid blocking the main thread
      * on visibilitychange events (JSON.stringify on large state can freeze 50-200ms).
-     * Falls back to a synchronous save when the document is being hidden/unloaded
-     * — deferred timers may be throttled or cancelled in that lifecycle phase.
+     * For terminal unload the dedicated `pagehide` listener performs a synchronous
+     * save, so this method always defers and never blocks.
      */
     autoSaveAsync() {
-        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-            try { this.saveGame(0); } catch (e) { console.warn('Auto-save (hidden) failed:', e); }
-            return;
-        }
         setTimeout(() => {
             try { this.saveGame(0); } catch (e) { console.warn('Async auto-save failed:', e); }
         }, 0);

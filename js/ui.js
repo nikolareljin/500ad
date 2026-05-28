@@ -2476,8 +2476,8 @@ class UIManager {
     }
 
     bindModsModalHandlers() {
-        const container = document.getElementById('mods-list-container')?.closest('.achievements-panel') || document;
-        const fileInput = document.getElementById('mod-file-input');
+        const container = this.modalContent || document;
+        const fileInput = container.querySelector('#mod-file-input');
         if (fileInput) {
             fileInput.addEventListener('change', (event) => this.handleModFileUpload(event));
         }
@@ -2498,8 +2498,11 @@ class UIManager {
 
     toggleMod(modId) {
         audioManager.playUISound('click');
-        if (modManager.toggleMod(modId)) {
+        const result = modManager.toggleMod(modId);
+        if (result === 'ok') {
             this.showNotification('Mod toggled successfully', 'success');
+        } else if (result === 'campaign_active') {
+            this.showNotification('Cannot change mods during an active campaign. Return to the Main Menu first.', 'error');
         } else {
             this.showNotification('Mod not found — list may be stale', 'error');
         }
@@ -2509,8 +2512,11 @@ class UIManager {
     deleteMod(modId) {
         audioManager.playUISound('click');
         if (confirm('Are you sure you want to delete this mod?')) {
-            if (modManager.deleteMod(modId)) {
+            const result = modManager.deleteMod(modId);
+            if (result === 'ok') {
                 this.showNotification('Mod deleted', 'info');
+            } else if (result === 'campaign_active') {
+                this.showNotification('Cannot delete mods during an active campaign. Return to the Main Menu first.', 'error');
             } else {
                 this.showNotification('Mod not found — list may be stale', 'error');
             }
@@ -2520,9 +2526,19 @@ class UIManager {
 
     loadExampleMod(modId) {
         audioManager.playUISound('click');
-        const mod = modManager.mods.find(m => m.id === modId);
+        if (modManager.isCampaignActive()) {
+            this.showNotification('Cannot change mods during an active campaign. Return to the Main Menu first.', 'error');
+            return;
+        }
+        let mod = modManager.mods.find(m => m.id === modId);
         if (!mod) {
-            this.showNotification(`Example mod "${modId}" not found — it may have been deleted. Reload the page to reseed defaults.`, 'error');
+            if (!modManager.installExampleMod(modId)) {
+                this.showNotification(`Example mod "${modId}" is not in the example catalog.`, 'error');
+                return;
+            }
+            mod = modManager.mods.find(m => m.id === modId);
+            this.showNotification(`Example mod "${mod.name}" reinstalled.`, 'success');
+            this.showModsModal();
             return;
         }
         modManager.toggleMod(modId);

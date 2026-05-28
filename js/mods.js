@@ -31,7 +31,10 @@ class ModManager {
         this.originalData = {
             units: JSON.parse(JSON.stringify(UNIT_TYPES)),
             buildings: JSON.parse(JSON.stringify(CITY_BUILDING_TREE)),
-            techs: JSON.parse(JSON.stringify(TECHNOLOGY_TREE))
+            techs: JSON.parse(JSON.stringify(TECHNOLOGY_TREE)),
+            recruitmentCatalog: (typeof RECRUITMENT_UNIT_CATALOG !== 'undefined')
+                ? RECRUITMENT_UNIT_CATALOG.slice()
+                : null
         };
         console.log('ModManager: Core game data backed up successfully.');
     }
@@ -80,10 +83,12 @@ class ModManager {
     }
 
     /**
-     * Seed local mods with interesting prepackaged examples
+     * Return the static catalog of seeded example mods. Used both for the
+     * initial seed and for on-demand reinstall when the user has deleted a
+     * seeded entry and clicks the corresponding example button.
      */
-    seedExampleMods() {
-        this.mods = [
+    getExampleModCatalog() {
+        return [
             {
                 id: 'greek_fire_refinery',
                 name: 'Greek Fire Refinement Mod',
@@ -124,12 +129,12 @@ class ModManager {
                     fire_distillation: {
                         id: 'fire_distillation',
                         name: 'Naphtha Distillation',
-                        description: 'Improves distillation of crude oil mixtures, increasing combat strength of all Greek Fire units.',
+                        description: 'Improved distillation of crude oil mixtures buoys imperial coffers from naval contracts and grants steady prestige.',
                         tier: 3,
                         researchTurns: 5,
                         cost: { gold: 320, prestige: 35 },
                         requires: ['siegecraft'],
-                        effects: { combat_attack_bonus: 5, prestige_income: 1 }
+                        effects: { siegeAttackMultiplier: 1.1, prestigePerTurn: 1 }
                     }
                 },
                 events: [
@@ -199,12 +204,12 @@ class ModManager {
                     foederati_treaties: {
                         id: 'foederati_treaties',
                         name: 'Foederati Treaties',
-                        description: 'Formalizes treaties with local chieftains, reducing mercenary upkeep.',
+                        description: 'Formalizes treaties with local chieftains, smoothing diplomacy and increasing manpower available for muster.',
                         tier: 2,
                         researchTurns: 4,
                         cost: { gold: 240, prestige: 28 },
                         requires: ['military_logistics'],
-                        effects: { upkeep_reduction: 10, trust_bonus: 3 }
+                        effects: { manpowerMultiplier: 1.05, diplomacyAcceptanceBonus: 0.05 }
                     }
                 },
                 events: [
@@ -219,16 +224,16 @@ class ModManager {
                             {
                                 id: 'pay_chieftain',
                                 title: 'Pay the tribute',
-                                subtitle: '-100 gold, +5 trust',
+                                subtitle: '-100 gold, +5 tribal trust',
                                 summary: 'The chieftain remains loyal, securing the frontiers.',
-                                effects: { resources: { gold: -100 } }
+                                effects: { resources: { gold: -100 }, trust: { tribal: 5 } }
                             },
                             {
                                 id: 'refuse_chieftain',
                                 title: 'Refuse the demands',
-                                subtitle: '-10 prestige, -2 trust',
+                                subtitle: '-10 prestige, -2 tribal trust',
                                 summary: 'Auxiliary morale wavers and diplomatic trust suffers.',
-                                effects: { resources: { prestige: -10 } }
+                                effects: { resources: { prestige: -10 }, trust: { tribal: -2 } }
                             }
                         ]
                     }
@@ -311,7 +316,32 @@ class ModManager {
                 ]
             }
         ];
+    }
+
+    seedExampleMods() {
+        this.mods = JSON.parse(JSON.stringify(this.getExampleModCatalog()));
         this.saveToStorage();
+    }
+
+    /**
+     * Install (or replace) a seeded example mod by id. Returns true when an
+     * entry exists in the catalog and was installed, false otherwise.
+     */
+    installExampleMod(modId) {
+        if (this.isCampaignActive()) return false;
+        const catalog = this.getExampleModCatalog();
+        const example = catalog.find((m) => m.id === modId);
+        if (!example) return false;
+        const cloned = JSON.parse(JSON.stringify(example));
+        const existingIdx = this.mods.findIndex((m) => m.id === modId);
+        if (existingIdx >= 0) {
+            this.mods[existingIdx] = cloned;
+        } else {
+            this.mods.push(cloned);
+        }
+        this.saveToStorage();
+        this.applyMods();
+        return true;
     }
 
     /**
@@ -502,6 +532,9 @@ class ModManager {
      * Add or update a mod
      */
     addMod(modData) {
+        if (this.isCampaignActive()) {
+            return { success: false, errors: ['Mods cannot be installed or updated while a campaign is in progress. Return to the Main Menu first.'] };
+        }
         const validation = this.validateMod(modData);
         if (!validation.success) {
             return validation;
@@ -535,31 +568,40 @@ class ModManager {
     }
 
     /**
-     * Toggle a mod's active state
+     * Campaigns reference live unit/building/tech templates by id (e.g.
+     * combat reads `attackerType.stats.range`), so removing a template while
+     * a campaign is running can crash gameplay. Block mod toggle/delete in
+     * that case — players must change mods from the Main Menu.
      */
-    toggleMod(modId) {
-        const mod = this.mods.find(m => m.id === modId);
-        if (mod) {
-            mod.enabled = !mod.enabled;
-            this.saveToStorage();
-            this.applyMods();
-            return true;
-        }
-        return false;
+    isCampaignActive() {
+        return typeof gameState !== 'undefined' && gameState && gameState.initialized === true;
     }
 
     /**
-     * Delete a mod
+     * Toggle a mod's active state. Returns 'ok' on success, 'not_found' if
+     * the id is unknown, or 'campaign_active' if a campaign is in progress.
+     */
+    toggleMod(modId) {
+        if (this.isCampaignActive()) return 'campaign_active';
+        const mod = this.mods.find(m => m.id === modId);
+        if (!mod) return 'not_found';
+        mod.enabled = !mod.enabled;
+        this.saveToStorage();
+        this.applyMods();
+        return 'ok';
+    }
+
+    /**
+     * Delete a mod. Returns 'ok' / 'not_found' / 'campaign_active' similar to toggleMod.
      */
     deleteMod(modId) {
+        if (this.isCampaignActive()) return 'campaign_active';
         const initialLen = this.mods.length;
         this.mods = this.mods.filter(m => m.id !== modId);
-        if (this.mods.length !== initialLen) {
-            this.saveToStorage();
-            this.applyMods();
-            return true;
-        }
-        return false;
+        if (this.mods.length === initialLen) return 'not_found';
+        this.saveToStorage();
+        this.applyMods();
+        return 'ok';
     }
 
     /**
@@ -585,6 +627,12 @@ class ModManager {
         }
         Object.assign(TECHNOLOGY_TREE, JSON.parse(JSON.stringify(this.originalData.techs)));
 
+        // Reset recruitment catalog so disabled mod units no longer recruit
+        if (this.originalData.recruitmentCatalog && typeof RECRUITMENT_UNIT_CATALOG !== 'undefined') {
+            RECRUITMENT_UNIT_CATALOG.length = 0;
+            RECRUITMENT_UNIT_CATALOG.push(...this.originalData.recruitmentCatalog);
+        }
+
         // Merge enabled mods
         const enabledMods = this.mods.filter(m => m.enabled);
         console.log(`ModManager: Applying ${enabledMods.length} enabled mods.`);
@@ -598,6 +646,9 @@ class ModManager {
                     for (const unitId in mod.units[cat]) {
                         if (isModUnsafeKey(unitId)) continue;
                         UNIT_TYPES[cat][unitId] = JSON.parse(JSON.stringify(mod.units[cat][unitId]));
+                        if (typeof RECRUITMENT_UNIT_CATALOG !== 'undefined' && !RECRUITMENT_UNIT_CATALOG.includes(unitId)) {
+                            RECRUITMENT_UNIT_CATALOG.push(unitId);
+                        }
                     }
                 }
             }
