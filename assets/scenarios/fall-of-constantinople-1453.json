@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "id": "fall-of-constantinople-1453",
+  "title": "Fall of Constantinople (1453)",
+  "description": "Sultan Mehmed II lays siege to Constantinople with an army of 80,000–200,000 troops, a massive artillery train including the Basilica cannon, and a naval blockade. The last Byzantine Emperor, Constantine XI Palaiologos, falls defending the walls. After 1,123 years, the Eastern Roman Empire ends.",
+  "date_year": 1453,
+  "date_display": "May 29, 1453",
+  "century": "15",
+  "map_center": {
+    "lat": 41.01,
+    "lng": 28.97,
+    "tile_x": 146,
+    "tile_y": 68
+  },
+  "map_zoom": 4,
+  "forces": [
+    {
+      "faction": "byzantine",
+      "commander": "Constantine XI Palaiologos",
+      "actor_slug": "constantine-xi-palaiologos",
+      "position": {
+        "lat": 41.01,
+        "lng": 28.92,
+        "tile_x": 145,
+        "tile_y": 68
+      },
+      "units": ["infantry", "varangian_guard", "archers", "navy"],
+      "strength": "~7,000–10,000 defenders (incl. Genoese mercenaries)"
+    },
+    {
+      "faction": "seljuk",
+      "commander": "Mehmed II",
+      "actor_slug": "mehmed-ii",
+      "position": {
+        "lat": 41.01,
+        "lng": 29.05,
+        "tile_x": 147,
+        "tile_y": 68
+      },
+      "units": ["infantry", "heavy_cavalry", "siege", "horse_archers", "navy"],
+      "strength": "~80,000–200,000 (disputed)"
+    }
+  ],
+  "objectives": [
+    {
+      "location_id": "constantinople",
+      "name": "Constantinople",
+      "tile_x": 146,
+      "tile_y": 68,
+      "type": "capital"
+    }
+  ],
+  "historical_notes": "Constantine XI refused to surrender the city or flee. He died fighting on the walls alongside his soldiers on May 29, 1453. His body was never conclusively identified. The city was renamed Istanbul. The Orthodox Patriarchate remained in the city under Ottoman rule. The date is commemorated annually in Greece as a day of national mourning.",
+  "neobyzantine_event_url": "https://neobyzantine.org/timeline/fall-of-constantinople-1453",
+  "source": "bundled"
+}
