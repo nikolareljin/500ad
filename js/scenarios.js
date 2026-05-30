@@ -1,23 +1,16 @@
 'use strict';
 
 /**
- * ScenarioLoader — loads historical battle scenarios from JSON.
+ * ScenarioLoader — loads historical battle scenarios from local JSON files.
  *
- * Scenarios can be bundled locally (assets/scenarios/*.json) or fetched
- * from the neobyzantine-org Game Export API:
- *   GET https://neobyzantine.org/api/game/scenario/{slug}
+ * Scenarios are exported from neobyzantine-org via `php artisan game:export`,
+ * then bundled into this repo under assets/scenarios/ or loaded from a
+ * user-supplied JSON file. No remote fetching — all data is local.
  *
  * JSON schema: docs/GAME_DATA_CONTRACT.md in neobyzantine-org repo (schema v1.0).
  */
 class ScenarioLoader {
     static SCHEMA_VERSION = '1.0';
-
-    // Allowed origins for remote scenario fetch (prevents SSRF-style abuse)
-    static ALLOWED_ORIGINS = [
-        'https://neobyzantine.org',
-        'http://localhost:8080',
-        'http://localhost',
-    ];
 
     // Map scenario faction strings → 500ad faction ids
     static FACTION_MAP = {
@@ -51,25 +44,6 @@ class ScenarioLoader {
     }
 
     // ── Loading ────────────────────────────────────────────────────────────
-
-    /**
-     * Fetch a scenario JSON from a remote URL.
-     * Only fetches from ALLOWED_ORIGINS for security.
-     */
-    async loadFromUrl(url) {
-        const origin = this._parseOrigin(url);
-        if (!origin || !ScenarioLoader.ALLOWED_ORIGINS.includes(origin)) {
-            throw new Error(`Scenario URL origin not allowed: ${origin}`);
-        }
-
-        const response = await fetch(url, { mode: 'cors' });
-        if (!response.ok) {
-            throw new Error(`Failed to fetch scenario: HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        return this._validate(data);
-    }
 
     /** Parse and validate a scenario JSON string. */
     loadFromJson(jsonString) {
@@ -172,7 +146,7 @@ class ScenarioLoader {
         this._activeScenario = null;
     }
 
-    // ── Internal ───────────────────────────────────────────────────────────
+    // ── Internal ─────────────────────────────────────────────────────────
 
     _validate(data) {
         if (!data || typeof data !== 'object') {
@@ -217,15 +191,6 @@ class ScenarioLoader {
         }
 
         console.info(`[ScenarioLoader] Placed ${units.length} ${factionId} unit(s) at tile (${tile_x}, ${tile_y})`);
-    }
-
-    _parseOrigin(url) {
-        try {
-            const u = new URL(url);
-            return u.origin;
-        } catch {
-            return '';
-        }
     }
 }
 
