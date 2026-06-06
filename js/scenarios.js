@@ -12,7 +12,7 @@
 class ScenarioLoader {
     static SCHEMA_VERSION = '1.0';
 
-    // Registry populated by loadIndex() — metadata only, no full JSON.
+    // Registry populated by loadIndex() — metadata extracted from each full scenario JSON file.
     static _registry = [];
 
     /** Load assets/scenarios/index.json and fetch each scenario's metadata. */
@@ -25,6 +25,7 @@ class ScenarioLoader {
         } catch {
             return;
         }
+        if (!Array.isArray(ids)) return;
         const results = await Promise.all(
             ids.map(id =>
                 fetch(`assets/scenarios/${id}.json`)
@@ -239,7 +240,7 @@ class ScenarioLoader {
             if (isPlayer) {
                 gameState.player.unitsOwned.push(unit.id);
             }
-            gameMap.revealArea(unit.position.x, unit.position.y, 3);
+            if (isPlayer) gameMap.revealArea(unit.position.x, unit.position.y, 3);
             placed++;
         });
 

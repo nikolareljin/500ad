@@ -782,6 +782,8 @@ class GameState {
             // Revoke all city ownership so every town starts neutral regardless of setupScenarioTowns result.
             (gameMap?.getCityTiles() || []).forEach(tile => { tile.owner = null; });
             this.player.territories = [];
+            // Reset fog so setupScenarioTowns reveal side-effects don't expose the map before units are placed.
+            if (typeof gameMap?.initializeFogOfWar === 'function') gameMap.initializeFogOfWar();
         } else {
             this.activeScenario = null;
             this.setupScenarioTowns(civilization, scenario);
