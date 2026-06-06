@@ -5,7 +5,7 @@
 
 const SCENARIOS = {
     building: 'building_civilization',
-    empire: 'managing_empire'
+    empire: 'managing_empire',
 };
 
 const CIVILIZATION_ALIASES = {
@@ -730,7 +730,7 @@ class GameState {
     /**
      * Initialize a new game with selected leader, century, faction, and scenario
      */
-    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.empire) {
+    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.empire, historicalScenario = null) {
         const leader = getLeaderById(leaderId);
         if (!leader) {
             console.error('Leader not found:', leaderId);
@@ -773,24 +773,33 @@ class GameState {
         this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
-        this.setupScenarioTowns(civilization, scenario);
-        if (scenario === SCENARIOS.empire) {
-            const empireStartTechs = [
-                'military_logistics',
-                'naval_architecture',
-                'cavalry_tactics',
-                'irrigation_systems'
-            ];
-            empireStartTechs.forEach((techId) => {
-                if (!this.player.techResearched.includes(techId)) {
-                    this.player.techResearched.push(techId);
-                    this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
-                }
-            });
-            this.seedAdvancedEmpireInfrastructure();
+        if (historicalScenario) {
+            // Historical battle — decorate map tiles with historical data but leave all towns neutral.
+            // Forces are placed exclusively by ScenarioLoader.applyScenario() after init.
+            this.setupScenarioTowns(civilization, SCENARIOS.building);
+            // Revoke any starting city ownership: battle scenarios start from unit positions only.
+            (gameMap?.getCityTiles('player') || []).forEach(tile => { tile.owner = null; });
+            this.player.territories = [];
+        } else {
+            this.setupScenarioTowns(civilization, scenario);
+            if (scenario === SCENARIOS.empire) {
+                const empireStartTechs = [
+                    'military_logistics',
+                    'naval_architecture',
+                    'cavalry_tactics',
+                    'irrigation_systems'
+                ];
+                empireStartTechs.forEach((techId) => {
+                    if (!this.player.techResearched.includes(techId)) {
+                        this.player.techResearched.push(techId);
+                        this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+                    }
+                });
+                this.seedAdvancedEmpireInfrastructure();
+            }
+            this.createStartingUnits(civilization, scenario);
+            this.createEnemyUnits(scenario);
         }
-        this.createStartingUnits(civilization, scenario);
-        this.createEnemyUnits(scenario);
         this.refreshAIFactionState();
         this.refreshPlayerVisibility({ grantRewards: false });
         gameMap.markTerritoryDirty();
