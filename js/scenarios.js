@@ -227,7 +227,7 @@ class ScenarioLoader {
             const unitTypeId = ScenarioLoader.UNIT_MAP[unitKey] ?? 'skutatoi';
             const offsetX = (i % 3) - 1;
             const offsetY = Math.floor(i / 3) - 1;
-            const pos = this._findLandTile(gameState, gameMap, tile_x + offsetX, tile_y + offsetY);
+            const pos = this._findLandTile(gameState, gameMap, tile_x + offsetX, tile_y + offsetY, unitTypeId);
             if (!pos) return;
             const unit = createUnit(unitTypeId, pos, owner);
             if (!unit) return;
@@ -247,13 +247,24 @@ class ScenarioLoader {
         console.info(`[ScenarioLoader] Placed ${placed} ${factionId} unit(s) near tile (${tile_x}, ${tile_y})`);
     }
 
-    /** Return the nearest valid spawn tile to (x, y), searching outward up to maxRadius. */
-    _findLandTile(gameState, gameMap, x, y, maxRadius = 6) {
+    /** Return the nearest valid spawn tile to (x, y), searching outward up to maxRadius.
+     *  Water-only units (naval/transport) target water tiles; all others target land tiles. */
+    _findLandTile(gameState, gameMap, x, y, unitTypeId = null, maxRadius = 6) {
+        const unitType = typeof getUnitById === 'function' ? getUnitById(unitTypeId) : null;
+        const waterOnly = unitType?.type === 'naval' || unitType?.category === 'transport';
+
         for (let r = 0; r <= maxRadius; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
                     if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                    if (gameState.isSpawnTileAvailable(x + dx, y + dy)) return { x: x + dx, y: y + dy };
+                    const nx = x + dx, ny = y + dy;
+                    if (waterOnly) {
+                        const tile = gameMap.getTile(nx, ny);
+                        if (!tile || tile.terrain !== 'water') continue;
+                        if (gameState.units.some(u => u.position.x === nx && u.position.y === ny)) continue;
+                        return { x: nx, y: ny };
+                    }
+                    if (gameState.isSpawnTileAvailable(nx, ny)) return { x: nx, y: ny };
                 }
             }
         }
