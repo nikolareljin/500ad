@@ -34,7 +34,7 @@ class ScenarioLoader {
             )
         );
         ScenarioLoader._registry = results
-            .filter(Boolean)
+            .filter(d => d && typeof d.id === 'string' && d.id && typeof d.title === 'string' && d.title)
             .map(d => ({
                 id: d.id,
                 title: d.title,
@@ -264,7 +264,7 @@ class ScenarioLoader {
                         if (gameState.units.some(u => u.position.x === nx && u.position.y === ny)) continue;
                         return { x: nx, y: ny };
                     }
-                    if (gameState.isSpawnTileAvailable(nx, ny)) return { x: nx, y: ny };
+                    if (gameState.isSpawnTileAvailable(nx, ny) && !gameMap.isRiverTile(nx, ny)) return { x: nx, y: ny };
                 }
             }
         }
