@@ -774,11 +774,13 @@ class GameState {
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
         if (historicalScenario) {
+            // Clear any stale scenario metadata from a previous run before applying the new one.
+            this.activeScenario = null;
             // Historical battle — decorate map tiles with historical data but leave all towns neutral.
             // Forces are placed exclusively by ScenarioLoader.applyScenario() after init.
             this.setupScenarioTowns(civilization, SCENARIOS.building);
-            // Revoke any starting city ownership: battle scenarios start from unit positions only.
-            (gameMap?.getCityTiles('player') || []).forEach(tile => { tile.owner = null; });
+            // Revoke all city ownership so every town starts neutral regardless of setupScenarioTowns result.
+            (gameMap?.getCityTiles() || []).forEach(tile => { tile.owner = null; });
             this.player.territories = [];
         } else {
             this.activeScenario = null;

@@ -60,8 +60,14 @@ class UIManager {
         // Set up event listeners
         this.setupEventListeners();
 
-        // Load historical scenario registry in background
-        ScenarioLoader.loadIndex().catch(err => console.warn('[UIManager] Scenario index load failed:', err));
+        // Load historical scenario registry in background; refresh tabs if leader selection is already open
+        ScenarioLoader.loadIndex()
+            .then(() => {
+                if (this.currentScreen === 'leaderSelection') {
+                    this.populateScenarios(this.selectedCentury);
+                }
+            })
+            .catch(err => console.warn('[UIManager] Scenario index load failed:', err));
 
         // Show main menu after loading
         setTimeout(() => {
@@ -149,7 +155,9 @@ class UIManager {
 
         document.getElementById('btn-scenario-info')?.addEventListener('click', () => {
             const url = gameState?.activeScenario?.neobyzantineUrl;
-            if (url) window.open(url, '_blank', 'noopener,noreferrer');
+            if (url && url.startsWith('https://neobyzantine.org/')) {
+                window.open(url, '_blank', 'noopener,noreferrer');
+            }
         });
 
         document.getElementById('btn-recruit')?.addEventListener('click', () => {
@@ -1406,7 +1414,9 @@ class UIManager {
             const hasLink = Boolean(gameState?.activeScenario?.neobyzantineUrl);
             scenarioBtn.style.display = hasLink ? '' : 'none';
             if (hasLink) {
-                scenarioBtn.title = `Learn more about ${gameState.activeScenario.title ?? 'this battle'} on NeoByzantine.org`;
+                const label = `Learn more about ${gameState.activeScenario.title ?? 'this battle'} on NeoByzantine.org`;
+                scenarioBtn.title = label;
+                scenarioBtn.setAttribute('aria-label', label);
             }
         }
     }
