@@ -1411,7 +1411,8 @@ class UIManager {
         // Show/hide the neobyzantine.org history button for active battle scenarios
         const scenarioBtn = document.getElementById('btn-scenario-info');
         if (scenarioBtn) {
-            const hasLink = Boolean(gameState?.activeScenario?.neobyzantineUrl);
+            const scenarioUrl = gameState?.activeScenario?.neobyzantineUrl;
+            const hasLink = Boolean(scenarioUrl && scenarioUrl.startsWith('https://neobyzantine.org/'));
             scenarioBtn.style.display = hasLink ? '' : 'none';
             if (hasLink) {
                 const label = `Learn more about ${gameState.activeScenario.title ?? 'this battle'} on NeoByzantine.org`;

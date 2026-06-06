@@ -40,7 +40,7 @@ class ScenarioLoader {
                 title: d.title,
                 description: d.description,
                 century: String(d.century),
-                player_faction: d.forces?.[0]?.faction ?? 'byzantine',
+                playerFaction: d.forces?.[0]?.faction ?? 'byzantine',
             }));
         console.info(`[ScenarioLoader] Loaded ${ScenarioLoader._registry.length} historical scenario(s)`);
     }
