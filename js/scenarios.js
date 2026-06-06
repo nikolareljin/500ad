@@ -231,6 +231,10 @@ class ScenarioLoader {
             const unit = createUnit(unitTypeId, pos, owner);
             if (!unit) return;
 
+            unit.faction = factionId;
+            if (typeof gameState.applyFactionUnitNaming === 'function') {
+                gameState.applyFactionUnitNaming(unit, factionId);
+            }
             gameState.units.push(unit);
             if (isPlayer) {
                 gameState.player.unitsOwned.push(unit.id);
@@ -242,14 +246,13 @@ class ScenarioLoader {
         console.info(`[ScenarioLoader] Placed ${placed} ${factionId} unit(s) near tile (${tile_x}, ${tile_y})`);
     }
 
-    /** Return the nearest non-water tile to (x, y), searching outward up to maxRadius. */
+    /** Return the nearest valid spawn tile to (x, y), searching outward up to maxRadius. */
     _findLandTile(gameMap, x, y, maxRadius = 6) {
         for (let r = 0; r <= maxRadius; r++) {
             for (let dy = -r; dy <= r; dy++) {
                 for (let dx = -r; dx <= r; dx++) {
                     if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                    const tile = gameMap.getTile(x + dx, y + dy);
-                    if (tile && tile.terrain !== 'water') return { x: x + dx, y: y + dy };
+                    if (gameState?.isSpawnTileAvailable(x + dx, y + dy)) return { x: x + dx, y: y + dy };
                 }
             }
         }

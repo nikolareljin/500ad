@@ -781,6 +781,7 @@ class GameState {
             (gameMap?.getCityTiles('player') || []).forEach(tile => { tile.owner = null; });
             this.player.territories = [];
         } else {
+            this.activeScenario = null;
             this.setupScenarioTowns(civilization, scenario);
             if (scenario === SCENARIOS.empire) {
                 const empireStartTechs = [
@@ -4702,7 +4703,7 @@ class GameState {
         const playerCities = gameMap?.getCityTiles('player') || [];
         const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
         const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
-        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario);
+        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario) || Boolean(this.activeScenario);
         const hasNoUnits = playerUnits.length === 0;
         const hasNoCities = playerCities.length === 0;
         const lostByCities = hasNoCities && !allowNoCityStart;
