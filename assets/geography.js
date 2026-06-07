@@ -319,7 +319,8 @@ function generateWorldHeightmap() {
 
       // Major inland water bodies: override elevation to shallow-water band (height 40).
       // This makes Caspian, Aral, Lake Van, Dead Sea render as distinct inland lakes.
-      if (!inside && isInLake(lon, lat)) {
+      // Note: !inside guard removed — Van, Dead Sea, Aral lie inside land polygons.
+      if (isInLake(lon, lat)) {
         elevation = 40;
       }
 

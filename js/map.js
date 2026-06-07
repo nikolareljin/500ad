@@ -844,10 +844,12 @@ class GameMap {
     }
 
     /**
-     * Place historical towns on the map
+     * Place historical towns on the map.
+     * @param {Array|null} towns - Override list (e.g. importedTowns from ScenarioLoader); defaults to HISTORIC_TOWNS.
      */
-    placeHistoricalTowns() {
-        HISTORIC_TOWNS.forEach(town => {
+    placeHistoricalTowns(towns = null) {
+        const list = towns ?? (typeof HISTORIC_TOWNS !== 'undefined' ? HISTORIC_TOWNS : []);
+        list.forEach(town => {
             if (town.y < this.height && town.x < this.width) {
                 // Ensure city surroundings are not isolated in open water due to coastline rasterization.
                 for (let dy = -1; dy <= 1; dy++) {
@@ -1205,9 +1207,10 @@ class GameMap {
                 this.ctx.lineTo(px + tileSize * 0.9, py + tileSize * 0.5);
                 this.ctx.stroke();
 
-                // Bridge overlay: draw when tile has road infrastructure crossing a major river
+                // Bridge overlay: draw when a road tile crosses a major river.
+                // Road tiles store type in tile.road; cityData.infrastructure.roads is city-only.
                 const tile = this.tiles[y]?.[x];
-                if (isMajor && tile?.cityData?.infrastructure?.roads > 0) {
+                if (isMajor && tile?.road) {
                     this.ctx.strokeStyle = 'rgba(140, 120, 90, 0.9)';
                     this.ctx.lineWidth = Math.max(2, tileSize * 0.14);
                     this.ctx.beginPath();

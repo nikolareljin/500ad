@@ -183,6 +183,13 @@ class ScenarioLoader {
 
         // Merge: imported towns take precedence
         gameMap.importedTowns = [...importedTowns, ...baseList];
+
+        // Apply merged list to map tiles — placeHistoricalTowns reads HISTORIC_TOWNS by default
+        // and is called during init, so we re-invoke with the merged list to place imported entries.
+        if (typeof gameMap.placeHistoricalTowns === 'function') {
+            gameMap.placeHistoricalTowns(gameMap.importedTowns);
+        }
+
         console.info(`[ScenarioLoader] Imported ${importedTowns.length} locations from neobyzantine-org`);
     }
 
