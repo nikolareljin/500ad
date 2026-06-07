@@ -1207,10 +1207,10 @@ class GameMap {
                 this.ctx.lineTo(px + tileSize * 0.9, py + tileSize * 0.5);
                 this.ctx.stroke();
 
-                // Bridge overlay: draw when a road tile crosses a major river.
+                // Bridge overlay: draw when a road tile crosses any river.
                 // Road tiles store type in tile.road; cityData.infrastructure.roads is city-only.
                 const tile = this.tiles[y]?.[x];
-                if (isMajor && tile?.road) {
+                if (tile?.road) {
                     this.ctx.strokeStyle = 'rgba(140, 120, 90, 0.9)';
                     this.ctx.lineWidth = Math.max(2, tileSize * 0.14);
                     this.ctx.beginPath();
