@@ -60,6 +60,15 @@ class UIManager {
         // Set up event listeners
         this.setupEventListeners();
 
+        // Load historical scenario registry in background; refresh tabs if leader selection is already open
+        ScenarioLoader.loadIndex()
+            .then(() => {
+                if (this.currentScreen === 'leaderSelection') {
+                    this.populateScenarios(this.selectedCentury);
+                }
+            })
+            .catch(err => console.warn('[UIManager] Scenario index load failed:', err));
+
         // Show main menu after loading
         setTimeout(() => {
             this.showScreen('mainMenu');
@@ -142,6 +151,13 @@ class UIManager {
         document.getElementById('btn-menu')?.addEventListener('click', () => {
             audioManager.playUISound('click');
             this.showGameMenu();
+        });
+
+        document.getElementById('btn-scenario-info')?.addEventListener('click', () => {
+            const url = gameState?.activeScenario?.neobyzantineUrl;
+            if (url && url.startsWith('https://neobyzantine.org/')) {
+                window.open(url, '_blank', 'noopener,noreferrer');
+            }
         });
 
         document.getElementById('btn-recruit')?.addEventListener('click', () => {
@@ -253,7 +269,6 @@ class UIManager {
         this.showScreen('leaderSelection');
         this.clearLeaderSelection();
         this.populateCenturies();
-        this.populateScenarios();
         this.switchCentury(this.selectedCentury);
     }
 
@@ -265,11 +280,11 @@ class UIManager {
         document.getElementById('leader-detail')?.classList.remove('active');
     }
 
-    populateScenarios() {
+    populateScenarios(century) {
         const container = document.getElementById('scenario-tabs');
         if (!container) return;
 
-        const scenarios = [
+        const campaignScenarios = [
             {
                 id: SCENARIOS.building,
                 title: 'Building the Civilization',
@@ -282,8 +297,16 @@ class UIManager {
             }
         ];
 
+        const battles = ScenarioLoader.getScenariosByCentury(century);
+
+        // If a battle scenario was active but is no longer available for this century, reset it
+        if (ScenarioLoader.getScenarioMeta(this.selectedScenario) && !battles.find(b => b.id === this.selectedScenario)) {
+            this.selectedScenario = SCENARIOS.empire;
+        }
+
         container.innerHTML = '';
-        scenarios.forEach((scenario) => {
+
+        campaignScenarios.forEach((scenario) => {
             const btn = document.createElement('button');
             btn.className = `scenario-tab ${this.selectedScenario === scenario.id ? 'active' : ''}`;
             btn.dataset.scenario = scenario.id;
@@ -292,6 +315,23 @@ class UIManager {
             btn.addEventListener('click', () => this.switchScenario(scenario.id));
             container.appendChild(btn);
         });
+
+        if (battles.length > 0) {
+            const divider = document.createElement('span');
+            divider.className = 'scenario-divider';
+            divider.textContent = 'Historical Battles';
+            container.appendChild(divider);
+
+            battles.forEach((scenario) => {
+                const btn = document.createElement('button');
+                btn.className = `scenario-tab scenario-tab--battle ${this.selectedScenario === scenario.id ? 'active' : ''}`;
+                btn.dataset.scenario = scenario.id;
+                btn.title = scenario.description;
+                btn.textContent = scenario.title;
+                btn.addEventListener('click', () => this.switchScenario(scenario.id));
+                container.appendChild(btn);
+            });
+        }
     }
 
     switchScenario(scenarioId) {
@@ -300,6 +340,7 @@ class UIManager {
             tab.classList.toggle('active', tab.dataset.scenario === scenarioId);
         });
     }
+
 
     /**
      * Populate century tabs
@@ -342,6 +383,7 @@ class UIManager {
         if (factions.length > 0) {
             this.switchFaction(factions[0]);
         }
+        this.populateScenarios(century);
     }
 
     /**
@@ -560,30 +602,52 @@ class UIManager {
     /**
      * Start game with selected leader
      */
-    startGame() {
+    async startGame() {
         if (!this.selectedLeaderCard) {
             this.showNotification('Please select a leader', 'error');
             return;
         }
 
+        // Resolve historical scenario if one is selected from the registry
+        const meta = ScenarioLoader.getScenarioMeta(this.selectedScenario);
+        let historicalScenario = null;
+        if (meta) {
+            try {
+                const loader = new ScenarioLoader();
+                historicalScenario = await loader.loadBuiltin(this.selectedScenario);
+            } catch (err) {
+                console.error('[startGame] Failed to load battle scenario:', err);
+                this.showNotification('Failed to load battle scenario', 'error');
+                return;
+            }
+        }
+
+        const century = historicalScenario ? String(historicalScenario.century) : this.selectedCentury;
+        const faction = historicalScenario
+            ? (ScenarioLoader.FACTION_MAP[historicalScenario.forces?.[0]?.faction] ?? 'byzantine')
+            : this.selectedFaction;
+
         this.showScreen('game');
         initializeGameMap();
         const success = gameState.initializeGame(
             this.selectedLeaderCard.id,
-            this.selectedCentury,
-            this.selectedFaction,
-            this.selectedScenario
+            century,
+            faction,
+            this.selectedScenario,
+            historicalScenario
         );
         if (success) {
+            if (historicalScenario) {
+                const loader = new ScenarioLoader();
+                loader.applyScenario(gameState, gameMap, historicalScenario);
+            }
             this.initializeGameView();
             this.updateHUD();
-            // For battles, use: battle_theme
-            // For ambient music, use: 500ad_ambient
             audioManager.playMusic('500ad_ambient');
-            this.showNotification(
-                `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`,
-                'info'
-            );
+            const notifMsg = historicalScenario
+                ? historicalScenario.title
+                : `Scenario: ${this.selectedScenario === SCENARIOS.empire ? 'Managing an Empire' : 'Building the Civilization'}`;
+            this.showNotification(notifMsg, 'info');
             this.startTutorial({ replay: false });
         } else {
             this.showScreen('leaderSelection');
@@ -1343,6 +1407,19 @@ class UIManager {
         setOptionalResource('resource-rare', resources.rare);
         document.getElementById('turn-number').textContent = gameState.turn;
         this.updateCommandOverview();
+
+        // Show/hide the neobyzantine.org history button for active battle scenarios
+        const scenarioBtn = document.getElementById('btn-scenario-info');
+        if (scenarioBtn) {
+            const scenarioUrl = gameState?.activeScenario?.neobyzantineUrl;
+            const hasLink = Boolean(scenarioUrl && scenarioUrl.startsWith('https://neobyzantine.org/'));
+            scenarioBtn.style.display = hasLink ? '' : 'none';
+            if (hasLink) {
+                const label = `Learn more about ${gameState.activeScenario.title ?? 'this battle'} on NeoByzantine.org`;
+                scenarioBtn.title = label;
+                scenarioBtn.setAttribute('aria-label', label);
+            }
+        }
     }
 
     toggleCommandOverview() {
@@ -2346,6 +2423,14 @@ class UIManager {
         requestAnimationFrame(() => {
             window.game?.handleResize();
             initializeMinimap();
+
+            // Historical battle: applyScenario already centered the camera; don't override.
+            if (gameState?.activeScenario) {
+                gameMap?.requestRender();
+                this.updateTutorialPanelVisibility();
+                return;
+            }
+
             const playerCities = gameMap?.getCityTiles('player') || [];
             const playerFaction = gameState?.player?.faction || gameState?.selectedFaction || this.selectedFaction || 'byzantine';
             const preferredStartTownId = gameState?.getLeaderStartProfile?.(playerFaction)?.startTownId;

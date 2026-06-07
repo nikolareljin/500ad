@@ -12,6 +12,49 @@
 class ScenarioLoader {
     static SCHEMA_VERSION = '1.0';
 
+    // Registry populated by loadIndex() — metadata extracted from each full scenario JSON file.
+    static _registry = [];
+
+    /** Load assets/scenarios/index.json and fetch each scenario's metadata. */
+    static async loadIndex() {
+        let ids;
+        try {
+            const resp = await fetch('assets/scenarios/index.json');
+            if (!resp.ok) return;
+            ids = await resp.json();
+        } catch {
+            return;
+        }
+        if (!Array.isArray(ids)) return;
+        const results = await Promise.all(
+            ids.map(id =>
+                fetch(`assets/scenarios/${id}.json`)
+                    .then(r => r.ok ? r.json() : null)
+                    .catch(() => null)
+            )
+        );
+        ScenarioLoader._registry = results
+            .filter(d => d && typeof d.id === 'string' && d.id && typeof d.title === 'string' && d.title)
+            .map(d => ({
+                id: d.id,
+                title: d.title,
+                description: d.description ?? '',
+                century: String(d.century),
+                playerFaction: d.forces?.[0]?.faction ?? 'byzantine',
+            }));
+        console.info(`[ScenarioLoader] Loaded ${ScenarioLoader._registry.length} historical scenario(s)`);
+    }
+
+    /** Return registry entries for a given century string. */
+    static getScenariosByCentury(century) {
+        return ScenarioLoader._registry.filter(s => s.century === String(century));
+    }
+
+    /** Return registry entry for a scenario id, or null. */
+    static getScenarioMeta(id) {
+        return ScenarioLoader._registry.find(s => s.id === id) ?? null;
+    }
+
     // Map scenario faction strings → 500ad faction ids
     static FACTION_MAP = {
         byzantine: 'byzantine',
@@ -31,12 +74,12 @@ class ScenarioLoader {
     static UNIT_MAP = {
         heavy_cavalry: 'cataphract',
         tagmata: 'tagmata',
-        archers: 'archer',
+        archers: 'archers',
         varangian_guard: 'varangian',
-        horse_archers: 'horse_archer',
+        horse_archers: 'horsearchers',
         infantry: 'skutatoi',
-        siege: 'siege_engineer',
-        navy: 'transport_ship',
+        siege: 'engineers',
+        navy: 'transport',
     };
 
     constructor() {
@@ -86,8 +129,15 @@ class ScenarioLoader {
 
         // Place each force on the map
         for (const force of (scenario.forces || [])) {
-            this._placeForce(gameState, gameMap, force, scenario.date_year);
+            this._placeForce(gameState, gameMap, force);
         }
+
+        // Register newly placed enemy units with the AI faction system
+        if (typeof gameState.refreshAIFactionState === 'function') {
+            gameState.refreshAIFactionState();
+        }
+
+        gameMap.requestRender();
 
         // Store metadata for UI display
         gameState.activeScenario = {
@@ -164,33 +214,61 @@ class ScenarioLoader {
         return data;
     }
 
-    _placeForce(gameState, gameMap, force, era) {
+    _placeForce(gameState, gameMap, force) {
         const { tile_x, tile_y } = force.position || {};
         if (typeof tile_x !== 'number' || typeof tile_y !== 'number') return;
 
         const factionId = ScenarioLoader.FACTION_MAP[force.faction] ?? 'byzantine';
-        const isPlayer = factionId === 'byzantine' && gameState.playerFaction === 'byzantine';
+        const isPlayer = factionId === gameState.player?.faction;
+        const owner = isPlayer ? 'player' : 'enemy';
 
-        const units = (force.units || ['infantry']).map(unitKey => {
+        let placed = 0;
+        (force.units || ['infantry']).forEach((unitKey, i) => {
             const unitTypeId = ScenarioLoader.UNIT_MAP[unitKey] ?? 'skutatoi';
-            return {
-                type: unitTypeId,
-                x: tile_x,
-                y: tile_y,
-                owner: factionId,
-                health: 100,
-                fromScenario: true,
-            };
+            const offsetX = (i % 3) - 1;
+            const offsetY = Math.floor(i / 3) - 1;
+            const pos = this._findLandTile(gameState, gameMap, tile_x + offsetX, tile_y + offsetY, unitTypeId);
+            if (!pos) return;
+            const unit = createUnit(unitTypeId, pos, owner);
+            if (!unit) return;
+
+            unit.faction = factionId;
+            if (typeof gameState.applyFactionUnitNaming === 'function') {
+                gameState.applyFactionUnitNaming(unit, factionId);
+            }
+            gameState.units.push(unit);
+            if (isPlayer) {
+                gameState.player.unitsOwned.push(unit.id);
+            }
+            if (isPlayer) gameMap.revealArea(unit.position.x, unit.position.y, 3);
+            placed++;
         });
 
-        // Add units to gameState unit roster
-        if (typeof gameState.addUnits === 'function') {
-            gameState.addUnits(units);
-        } else if (Array.isArray(gameState.units)) {
-            gameState.units.push(...units);
-        }
+        console.info(`[ScenarioLoader] Placed ${placed} ${factionId} unit(s) near tile (${tile_x}, ${tile_y})`);
+    }
 
-        console.info(`[ScenarioLoader] Placed ${units.length} ${factionId} unit(s) at tile (${tile_x}, ${tile_y})`);
+    /** Return the nearest valid spawn tile to (x, y), searching outward up to maxRadius.
+     *  Water-only units (naval/transport) target water tiles; all others target land tiles. */
+    _findLandTile(gameState, gameMap, x, y, unitTypeId = null, maxRadius = 6) {
+        const unitType = typeof getUnitById === 'function' ? getUnitById(unitTypeId) : null;
+        const waterOnly = unitType?.type === 'naval' || unitType?.category === 'transport';
+
+        for (let r = 0; r <= maxRadius; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    const nx = x + dx, ny = y + dy;
+                    if (waterOnly) {
+                        const tile = gameMap.getTile(nx, ny);
+                        if (!tile || tile.terrain !== 'water') continue;
+                        if (gameState.units.some(u => u.position.x === nx && u.position.y === ny)) continue;
+                        return { x: nx, y: ny };
+                    }
+                    if (gameState.isSpawnTileAvailable(nx, ny) && !gameMap.isRiverTile(nx, ny)) return { x: nx, y: ny };
+                }
+            }
+        }
+        return null;
     }
 }
 
