@@ -38,7 +38,7 @@ class ScenarioLoader {
             .map(d => ({
                 id: d.id,
                 title: d.title,
-                description: d.description,
+                description: d.description ?? '',
                 century: String(d.century),
                 playerFaction: d.forces?.[0]?.faction ?? 'byzantine',
             }));

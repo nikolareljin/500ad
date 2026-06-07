@@ -780,7 +780,10 @@ class GameState {
             // Forces are placed exclusively by ScenarioLoader.applyScenario() after init.
             this.setupScenarioTowns(civilization, SCENARIOS.building);
             // Revoke all city ownership so every town starts neutral regardless of setupScenarioTowns result.
-            (gameMap?.getCityTiles() || []).forEach(tile => { tile.owner = 'neutral'; });
+            (gameMap?.getCityTiles() || []).forEach(tile => {
+                tile.owner = 'neutral';
+                tile.faction = tile.cityData?.historicalCivilization || null;
+            });
             this.player.territories = [];
             // Reset fog so setupScenarioTowns reveal side-effects don't expose the map before units are placed.
             if (typeof gameMap?.initializeFogOfWar === 'function') gameMap.initializeFogOfWar();
