@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/header.svg" alt="500 A.D. — Byzantine Empire Strategy Game" width="900"/>
+</p>
+
 # 500 A.D. - Byzantine Empire Strategy Game
 
 A mobile-optimized turn-based strategy game set in the Byzantine Empire (Eastern Roman Empire) from 500-1453 AD.
