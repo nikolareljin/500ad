@@ -420,3 +420,11 @@ This is a historical educational game. All historical figures and events are in 
 ---
 
 **For the Glory of Constantinople! ⚔️👑**
+
+---
+
+## Clone traffic
+
+![Clone traffic](https://raw.githubusercontent.com/nikolareljin/stats/main/charts/500ad.svg)
+
+_Updated daily. Total and unique cloners over the last 14 days._
