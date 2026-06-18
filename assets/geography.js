@@ -164,36 +164,73 @@ const LAND_POLYGONS = [
   [[49.5, 28.8], [51.8, 28.8], [51.8, 26.4], [49.5, 26.4]]     // Gulf coast land patch
 ];
 
+// Each river has id, name, width_class ('major'|'minor'), and path ([[lon,lat],...]).
+// major rivers render wider and require bridges for road crossings.
 const RIVER_PATHS = [
-  // Nile
-  [[31, 25], [31, 22], [31, 19], [32, 16], [33, 13]],
-  // Danube
-  [[9, 48], [14, 47], [19, 46], [24, 45], [29, 45]],
-  // Euphrates
-  [[38, 38], [40, 36], [42, 34], [44, 32]],
-  // Tigris
-  [[43, 38], [44, 36], [45, 34], [46, 31]],
-  // Po
-  [[8, 45], [10, 45], [12, 45]],
-  // Rhone
-  [[6, 46], [5, 44], [5, 43]],
-  // Dnieper
-  [[31, 52], [31, 49], [31, 46]]
+  { id: 'nile',      name: 'Nile',      width_class: 'major', path: [[31,25],[31,22],[31,19],[32,16],[33,13]] },
+  { id: 'danube',    name: 'Danube',    width_class: 'major', path: [[9,48],[14,47],[19,46],[24,45],[29,45]] },
+  { id: 'euphrates', name: 'Euphrates', width_class: 'major', path: [[38,38],[40,36],[42,34],[44,32]] },
+  { id: 'tigris',    name: 'Tigris',    width_class: 'major', path: [[43,38],[44,36],[45,34],[46,31]] },
+  { id: 'volga',     name: 'Volga',     width_class: 'major', path: [[49,57],[49,53],[50,48],[51,46]] },
+  { id: 'po',        name: 'Po',        width_class: 'minor', path: [[8,45],[10,45],[12,45]] },
+  { id: 'rhone',     name: 'Rhone',     width_class: 'minor', path: [[6,46],[5,44],[5,43]] },
+  { id: 'dnieper',   name: 'Dnieper',   width_class: 'minor', path: [[31,52],[31,49],[31,46]] },
+  { id: 'don',       name: 'Don',       width_class: 'minor', path: [[39,57],[40,54],[40,48]] },
+  { id: 'jordan',    name: 'Jordan',    width_class: 'minor', path: [[35,33],[35,32],[35,31]] },
+  { id: 'amu_darya', name: 'Amu Darya', width_class: 'minor', path: [[64,38],[62,38],[60,37]] },
+];
+
+// Major inland water bodies rendered as distinct lakes (not ocean).
+// These were geographically significant in the 500–1453 AD period.
+const LAKE_POLYGONS = [
+  { id: 'caspian',  name: 'Caspian Sea',
+    polygon: [[50,37],[51,38],[52,39],[53,40],[53,42],[52,43],[51,44],[50,43],[49,42],[49,40],[49,38]] },
+  { id: 'aral',     name: 'Aral Sea',
+    polygon: [[59,44],[61,44],[62,45],[61,46],[59,46],[58,45]] },
+  { id: 'van',      name: 'Lake Van',
+    polygon: [[43,38.5],[44,38.7],[43.5,38.9],[42.8,38.7]] },
+  { id: 'dead_sea', name: 'Dead Sea',
+    polygon: [[35.4,31.8],[35.6,31.6],[35.5,31.3],[35.3,31.5]] },
 ];
 
 function isNearRiver(lon, lat) {
   const riverWidthDeg = 0.30;
 
   for (const river of RIVER_PATHS) {
-    for (let i = 0; i < river.length - 1; i++) {
-      const [ax, ay] = river[i];
-      const [bx, by] = river[i + 1];
+    const path = river.path;
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i];
+      const [bx, by] = path[i + 1];
       if (distToSegment(lon, lat, ax, ay, bx, by) <= riverWidthDeg) {
         return true;
       }
     }
   }
 
+  return false;
+}
+
+function getRiverWidthClass(lon, lat) {
+  const riverWidthDeg = 0.30;
+
+  for (const river of RIVER_PATHS) {
+    const path = river.path;
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i];
+      const [bx, by] = path[i + 1];
+      if (distToSegment(lon, lat, ax, ay, bx, by) <= riverWidthDeg) {
+        return river.width_class;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isInLake(lon, lat) {
+  for (const lake of LAKE_POLYGONS) {
+    if (pointInPolygon(lon, lat, lake.polygon)) return true;
+  }
   return false;
 }
 
@@ -278,6 +315,13 @@ function generateWorldHeightmap() {
       // River carving for inland lowlands.
       if (isNearRiver(lon, lat) && elevation > 55 && elevation < 155) {
         elevation = Math.min(elevation, 48);
+      }
+
+      // Major inland water bodies: override elevation to shallow-water band (height 40).
+      // This makes Caspian, Aral, Lake Van, Dead Sea render as distinct inland lakes.
+      // Note: !inside guard removed — Van, Dead Sea, Aral lie inside land polygons.
+      if (isInLake(lon, lat)) {
+        elevation = 40;
       }
 
       row.push(Math.floor(clamp(elevation, 0, 255)));

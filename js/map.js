@@ -844,10 +844,12 @@ class GameMap {
     }
 
     /**
-     * Place historical towns on the map
+     * Place historical towns on the map.
+     * @param {Array|null} towns - Override list (e.g. importedTowns from ScenarioLoader); defaults to HISTORIC_TOWNS.
      */
-    placeHistoricalTowns() {
-        HISTORIC_TOWNS.forEach(town => {
+    placeHistoricalTowns(towns = null) {
+        const list = towns ?? (typeof HISTORIC_TOWNS !== 'undefined' ? HISTORIC_TOWNS : []);
+        list.forEach(town => {
             if (town.y < this.height && town.x < this.width) {
                 // Ensure city surroundings are not isolated in open water due to coastline rasterization.
                 for (let dy = -1; dy <= 1; dy++) {
@@ -1169,30 +1171,53 @@ class GameMap {
 
     /**
      * Draw major river overlays on visible region.
+     * Major rivers (Nile, Danube, Euphrates, Tigris, Volga) render wider.
+     * Minor rivers render thin. Bridges drawn when road infrastructure is present.
      */
     drawRivers(startX, startY, endX, endY, tileSize) {
         if (typeof MEDITERRANEAN_HEIGHTMAP === 'undefined') return;
+        if (typeof getRiverWidthClass !== 'function') return;
 
-        this.ctx.strokeStyle = 'rgba(95, 175, 230, 0.65)';
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
 
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
                 const height = MEDITERRANEAN_HEIGHTMAP[y]?.[x];
-                if (height === undefined || height > 50) continue;
+                if (height === undefined || height > 50 || height < 40) continue;
                 if (this.isFoggedTile(x, y)) continue;
 
-                // Draw river strokes only for inland water, not broad oceans.
-                if (height < 40) continue;
+                const geo = this.tileToGeo(x, y);
+                const widthClass = getRiverWidthClass(geo.lon, geo.lat);
+                if (!widthClass) continue;
 
                 const px = x * tileSize;
                 const py = y * tileSize;
-                this.ctx.lineWidth = Math.max(1, tileSize * 0.18);
+                const isMajor = widthClass === 'major';
+
+                // River stroke
+                this.ctx.strokeStyle = isMajor
+                    ? 'rgba(75, 155, 215, 0.75)'
+                    : 'rgba(95, 175, 230, 0.65)';
+                this.ctx.lineWidth = isMajor
+                    ? Math.max(2, tileSize * 0.38)
+                    : Math.max(1, tileSize * 0.18);
                 this.ctx.beginPath();
-                this.ctx.moveTo(px + tileSize * 0.15, py + tileSize * 0.5);
-                this.ctx.lineTo(px + tileSize * 0.85, py + tileSize * 0.5);
+                this.ctx.moveTo(px + tileSize * 0.1, py + tileSize * 0.5);
+                this.ctx.lineTo(px + tileSize * 0.9, py + tileSize * 0.5);
                 this.ctx.stroke();
+
+                // Bridge overlay: draw when a road tile crosses any river.
+                // Road tiles store type in tile.road; cityData.infrastructure.roads is city-only.
+                const tile = this.tiles[y]?.[x];
+                if (tile?.road) {
+                    this.ctx.strokeStyle = 'rgba(140, 120, 90, 0.9)';
+                    this.ctx.lineWidth = Math.max(2, tileSize * 0.14);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(px + tileSize * 0.5, py + tileSize * 0.15);
+                    this.ctx.lineTo(px + tileSize * 0.5, py + tileSize * 0.85);
+                    this.ctx.stroke();
+                }
             }
         }
     }
