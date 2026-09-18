@@ -5,7 +5,7 @@
 
 const SCENARIOS = {
     building: 'building_civilization',
-    empire: 'managing_empire'
+    empire: 'managing_empire',
 };
 
 const CIVILIZATION_ALIASES = {
@@ -730,7 +730,7 @@ class GameState {
     /**
      * Initialize a new game with selected leader, century, faction, and scenario
      */
-    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.empire) {
+    initializeGame(leaderId, century = '6', faction = 'byzantine', scenario = SCENARIOS.empire, historicalScenario = null) {
         const leader = getLeaderById(leaderId);
         if (!leader) {
             console.error('Leader not found:', leaderId);
@@ -773,24 +773,41 @@ class GameState {
         this.tutorialState = this.createDefaultTutorialState();
         this.initializeDynamicNarrativeState();
         this.initializeDiplomacyState();
-        this.setupScenarioTowns(civilization, scenario);
-        if (scenario === SCENARIOS.empire) {
-            const empireStartTechs = [
-                'military_logistics',
-                'naval_architecture',
-                'cavalry_tactics',
-                'irrigation_systems'
-            ];
-            empireStartTechs.forEach((techId) => {
-                if (!this.player.techResearched.includes(techId)) {
-                    this.player.techResearched.push(techId);
-                    this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
-                }
+        if (historicalScenario) {
+            // Clear any stale scenario metadata from a previous run before applying the new one.
+            this.activeScenario = null;
+            // Historical battle — decorate map tiles with historical data but leave all towns neutral.
+            // Forces are placed exclusively by ScenarioLoader.applyScenario() after init.
+            this.setupScenarioTowns(civilization, SCENARIOS.building);
+            // Revoke all city ownership so every town starts neutral regardless of setupScenarioTowns result.
+            (gameMap?.getCityTiles() || []).forEach(tile => {
+                tile.owner = 'neutral';
+                tile.faction = tile.cityData?.historicalCivilization || null;
             });
-            this.seedAdvancedEmpireInfrastructure();
+            this.player.territories = [];
+            // Reset fog so setupScenarioTowns reveal side-effects don't expose the map before units are placed.
+            if (typeof gameMap?.initializeFogOfWar === 'function') gameMap.initializeFogOfWar();
+        } else {
+            this.activeScenario = null;
+            this.setupScenarioTowns(civilization, scenario);
+            if (scenario === SCENARIOS.empire) {
+                const empireStartTechs = [
+                    'military_logistics',
+                    'naval_architecture',
+                    'cavalry_tactics',
+                    'irrigation_systems'
+                ];
+                empireStartTechs.forEach((techId) => {
+                    if (!this.player.techResearched.includes(techId)) {
+                        this.player.techResearched.push(techId);
+                        this.applyTechnologyEffects(TECHNOLOGY_TREE[techId]?.effects || {});
+                    }
+                });
+                this.seedAdvancedEmpireInfrastructure();
+            }
+            this.createStartingUnits(civilization, scenario);
+            this.createEnemyUnits(scenario);
         }
-        this.createStartingUnits(civilization, scenario);
-        this.createEnemyUnits(scenario);
         this.refreshAIFactionState();
         this.refreshPlayerVisibility({ grantRewards: false });
         gameMap.markTerritoryDirty();
@@ -4693,7 +4710,7 @@ class GameState {
         const playerCities = gameMap?.getCityTiles('player') || [];
         const playerFaction = this.player?.faction || this.selectedFaction || 'byzantine';
         const leaderStartProfile = this.getLeaderStartProfile(playerFaction);
-        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario);
+        const allowNoCityStart = this.isNomadicBuildStart(leaderStartProfile, this.selectedScenario) || Boolean(this.activeScenario);
         const hasNoUnits = playerUnits.length === 0;
         const hasNoCities = playerCities.length === 0;
         const lostByCities = hasNoCities && !allowNoCityStart;

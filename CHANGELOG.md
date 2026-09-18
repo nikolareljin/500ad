@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.21.0] - 2026-05-29
+
+### Added
+- **Map rendering improvements** (`assets/geography.js`, `js/map.js`): `RIVER_PATHS` restructured as objects with `width_class` (`major`/`minor`); major rivers (Nile, Danube, Euphrates, Tigris, Volga) render wider with a distinct blue; minor rivers (Po, Rhone, Dnieper, Don, Jordan, Amu Darya) use original thin style. Bridge overlays drawn on road-crossing river tiles.
+- **Lake polygons** (`assets/geography.js`): `LAKE_POLYGONS` for Caspian Sea, Aral Sea (historical size), Lake Van, Dead Sea — rendered as distinct inland water in the heightmap.
+- **`ScenarioLoader`** (`js/scenarios.js`): new class supporting `loadBuiltin()` and `loadFromJson()`. `applyScenario()` places historical forces on tiles; `applyMapData()` merges imported locations with `HISTORIC_TOWNS`.
+- **Bundled historical scenarios**: `assets/scenarios/manzikert-1071.json` (Battle of Manzikert, 1071) and `assets/scenarios/fall-of-constantinople-1453.json` (Fall of Constantinople, 1453).
+- **`assets/data/neobyzantine-locations.json`**: placeholder for supplementary location data; the file documents the fields it expects.
+
+### Changed
+- `scripts/script-helpers` advanced from 0.13.0 to **0.30.0**. Nothing in the library was renamed or removed across those 18 releases, and the functions this repo calls through it (`check_port`, `open_url`, `log_info`, `log_error`) are unchanged. `scripts/runner.sh` defines its own `cleanup`, which the library has since grown a function of the same name — it sources helpers before defining it, so the local one still wins.
+
 ## [1.20.0] - 2026-05-27
 
 ### Added

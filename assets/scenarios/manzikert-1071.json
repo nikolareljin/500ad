@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "id": "manzikert-1071",
+  "title": "Battle of Manzikert (1071)",
+  "description": "The Seljuk Sultan Alp Arslan crushes the Byzantine army of Emperor Romanos IV Diogenes near the town of Manzikert (modern Malazgirt, Turkey). The Byzantine defeat opens Anatolia to Turkic settlement and marks the beginning of Byzantine decline in the East.",
+  "date_year": 1071,
+  "date_display": "August 26, 1071",
+  "century": "11",
+  "map_center": {
+    "lat": 39.05,
+    "lng": 42.87,
+    "tile_x": 176,
+    "tile_y": 73
+  },
+  "map_zoom": 5,
+  "forces": [
+    {
+      "faction": "byzantine",
+      "commander": "Romanos IV Diogenes",
+      "actor_slug": "romanos-iv-diogenes",
+      "position": {
+        "lat": 38.90,
+        "lng": 42.70,
+        "tile_x": 175,
+        "tile_y": 74
+      },
+      "units": ["heavy_cavalry", "tagmata", "archers", "varangian_guard", "infantry"],
+      "strength": "~40,000 (disputed)"
+    },
+    {
+      "faction": "seljuk",
+      "commander": "Alp Arslan",
+      "actor_slug": "alp-arslan",
+      "position": {
+        "lat": 39.20,
+        "lng": 43.05,
+        "tile_x": 177,
+        "tile_y": 72
+      },
+      "units": ["horse_archers", "heavy_cavalry"],
+      "strength": "~30,000–100,000 (disputed)"
+    }
+  ],
+  "objectives": [
+    {
+      "location_id": "manzikert",
+      "name": "Manzikert",
+      "tile_x": 176,
+      "tile_y": 73,
+      "type": "city"
+    }
+  ],
+  "historical_notes": "Romanos IV was captured during the battle — the first Byzantine emperor taken prisoner in centuries. The peace terms he negotiated were repudiated by the regency in Constantinople. Alp Arslan was assassinated shortly after. The battle is considered the turning point that made Anatolia permanently Turkic.",
+  "neobyzantine_event_url": "https://neobyzantine.org/timeline/battle-of-manzikert-1071",
+  "source": "bundled"
+}
