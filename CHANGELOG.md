@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file.
 - **`assets/data/neobyzantine-locations.json`**: placeholder for supplementary location data exported from neobyzantine-org.
 
 ### Changed
+- `scripts/script-helpers` advanced from 0.13.0 to **0.30.0**. Nothing in the library was renamed or removed across those 18 releases, and the functions this repo calls through it (`check_port`, `open_url`, `log_info`, `log_error`) are unchanged. `scripts/runner.sh` defines its own `cleanup`, which the library has since grown a function of the same name — it sources helpers before defining it, so the local one still wins.
 - Updated `scripts/script-helpers` submodule to 0.13.0.
 
 ## [1.20.0] - 2026-05-27
