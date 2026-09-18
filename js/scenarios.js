@@ -3,12 +3,37 @@
 /**
  * ScenarioLoader — loads historical battle scenarios from local JSON files.
  *
- * Scenarios are exported from neobyzantine-org via `php artisan game:export`,
- * then bundled into this repo under assets/scenarios/ or loaded from a
- * user-supplied JSON file. No remote fetching — all data is local.
+ * Scenarios are authored against the neobyzantine.org history material and
+ * bundled into this repository under assets/scenarios/, or supplied by the
+ * player as a JSON file. No remote fetching — all data is local.
  *
- * JSON schema: docs/GAME_DATA_CONTRACT.md in neobyzantine-org repo (schema v1.0).
+ * The schema is version 1.0 and is owned here rather than anywhere else:
+ * _validate() below is the enforced contract, and the bundled files under
+ * assets/scenarios/ are the worked examples.
  */
+const NEOBYZANTINE_ORIGIN = 'https://neobyzantine.org';
+
+/**
+ * Return a scenario's external history link when it genuinely points at
+ * neobyzantine.org, otherwise null.
+ *
+ * Scenario JSON is user-supplied via ScenarioLoader.loadFromJson, so this value
+ * reaches window.open from outside the application. Comparing the parsed origin
+ * states the rule the code actually depends on: a prefix test only holds while
+ * the trailing slash is present, and silently starts accepting
+ * neobyzantine.org.example.com the day someone trims it.
+ */
+function neobyzantineLink(value) {
+    if (typeof value !== 'string' || value === '') return null;
+    let parsed;
+    try {
+        parsed = new URL(value);
+    } catch {
+        return null;
+    }
+    return parsed.origin === NEOBYZANTINE_ORIGIN ? parsed.href : null;
+}
+
 class ScenarioLoader {
     static SCHEMA_VERSION = '1.0';
 
@@ -145,7 +170,7 @@ class ScenarioLoader {
             title: scenario.title,
             dateYear: scenario.date_year,
             dateDisplay: scenario.date_display,
-            neobyzantineUrl: scenario.neobyzantine_event_url,
+            neobyzantineUrl: neobyzantineLink(scenario.neobyzantine_event_url),
         };
 
         console.info(`[ScenarioLoader] Applied scenario: ${scenario.title} (${scenario.date_year})`);
@@ -190,7 +215,7 @@ class ScenarioLoader {
             gameMap.placeHistoricalTowns(gameMap.importedTowns);
         }
 
-        console.info(`[ScenarioLoader] Imported ${importedTowns.length} locations from neobyzantine-org`);
+        console.info(`[ScenarioLoader] Imported ${importedTowns.length} supplementary locations`);
     }
 
     // ── Accessors ──────────────────────────────────────────────────────────

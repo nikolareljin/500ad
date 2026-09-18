@@ -2488,16 +2488,26 @@ class GameMap {
         return tiles;
     }
 
+    /**
+     * Whether a tile carries a river, decided by river geometry rather than height.
+     *
+     * This used to accept any tile in the height band 40..52 and fall back to
+     * isNearRiver(). The band was never a safe proxy: assets/geography.js puts
+     * inland lakes at exactly 40 and the coastal shelf at roughly 35..51, so of
+     * the 2732 tiles it matched only 374 were near a river -- 247 were lakes and
+     * 2111 were open sea. getCityTerrainAccess() builds its neighbourhood with
+     * getTileNeighborhood(), which unlike terrainAllowsBuildAction() does not
+     * filter water, so 335 land tiles claimed river access from an adjacent
+     * saltwater tile and collected irrigation, canal and food bonuses for it.
+     *
+     * The band was also redundant. MEDITERRANEAN_HEIGHTMAP and isNearRiver both
+     * come from assets/geography.js, so there is no load order in which the band
+     * is available and the geometry is not, and on land the two agree exactly.
+     */
     isRiverTile(x, y) {
-        const h = (typeof MEDITERRANEAN_HEIGHTMAP !== 'undefined')
-            ? MEDITERRANEAN_HEIGHTMAP?.[y]?.[x]
-            : undefined;
-        if (typeof h === 'number' && h >= 40 && h <= 52) return true;
-        if (typeof isNearRiver === 'function') {
-            const geo = this.tileToGeo(x, y);
-            return isNearRiver(geo.lon, geo.lat);
-        }
-        return false;
+        if (typeof isNearRiver !== 'function') return false;
+        const geo = this.tileToGeo(x, y);
+        return isNearRiver(geo.lon, geo.lat);
     }
 
     isFertileTile(x, y) {

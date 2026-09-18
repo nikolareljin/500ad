@@ -154,8 +154,8 @@ class UIManager {
         });
 
         document.getElementById('btn-scenario-info')?.addEventListener('click', () => {
-            const url = gameState?.activeScenario?.neobyzantineUrl;
-            if (url && url.startsWith('https://neobyzantine.org/')) {
+            const url = neobyzantineLink(gameState?.activeScenario?.neobyzantineUrl);
+            if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer');
             }
         });
@@ -1411,8 +1411,7 @@ class UIManager {
         // Show/hide the neobyzantine.org history button for active battle scenarios
         const scenarioBtn = document.getElementById('btn-scenario-info');
         if (scenarioBtn) {
-            const scenarioUrl = gameState?.activeScenario?.neobyzantineUrl;
-            const hasLink = Boolean(scenarioUrl && scenarioUrl.startsWith('https://neobyzantine.org/'));
+            const hasLink = Boolean(neobyzantineLink(gameState?.activeScenario?.neobyzantineUrl));
             scenarioBtn.style.display = hasLink ? '' : 'none';
             if (hasLink) {
                 const label = `Learn more about ${gameState.activeScenario.title ?? 'this battle'} on NeoByzantine.org`;
