@@ -7,16 +7,124 @@
 // Hoisted out of getUnitPortraitPath() so it isn't re-allocated on every call
 // (the method runs on UI hot paths: recruitment modal + unit panel refresh).
 const UNIT_PORTRAITS = {
+    // Existing base mappings
     'arab:camel_riders':        'arab_unit_camel_riders_circle.png',
     'bulgar:skutatoi':          'bulgar_unit_infantry_circle.png',
     'bulgar:mountain_infantry': 'bulgar_unit_infantry_circle.png',
     'byzantine:skutatoi':       'byzantine_unit_skutatoi_circle.png',
     'byzantine:cataphract':     'byzantine_unit_cataphract.png',
     'byzantine:varangian':      'byzantine_varangian_guard.png',
-    'frank:skutatoi':           'ostrogoth_unit_infantry_circle.png',
+    'frank:skutatoi':           'frank_unit_axemen_circle.png',
     'tribal:skutatoi':          'ostrogoth_unit_infantry_circle.png',
     'sassanid:kavallarioi':     'sassanid_unit_cavalry_circle.png',
     'sassanid:horsearchers':    'sassanid_unit_cavalry_circle.png',
+
+    // New Faction Units (E219)
+    // Franks
+    'frank:frankish_axemen':      'frank_unit_axemen_circle.png',
+    'frank:frankish_spearmen':    'frank_unit_axemen_circle.png',
+    'frank:leudes_cavalry':       'frank_unit_axemen_circle.png',
+    'frank:frankish_skirmishers': 'frank_unit_axemen_circle.png',
+    'frankish_axemen':            'frank_unit_axemen_circle.png',
+    'frankish_spearmen':          'frank_unit_axemen_circle.png',
+    'leudes_cavalry':             'frank_unit_axemen_circle.png',
+    'frankish_skirmishers':       'frank_unit_axemen_circle.png',
+
+    // Anglo-Saxons
+    'anglo_saxon:saxon_household': 'anglo_saxon_unit_household_circle.png',
+    'anglo_saxon:seax_fighter':    'anglo_saxon_unit_household_circle.png',
+    'anglo_saxon:saxon_javelin':   'anglo_saxon_unit_household_circle.png',
+    'anglo_saxon:boat_raider':     'anglo_saxon_unit_household_circle.png',
+    'saxon_household':             'anglo_saxon_unit_household_circle.png',
+    'seax_fighter':                'anglo_saxon_unit_household_circle.png',
+    'saxon_javelin':               'anglo_saxon_unit_household_circle.png',
+    'boat_raider':                 'anglo_saxon_unit_household_circle.png',
+
+    // Slavs
+    'slav:slav_axe_infantry': 'slav_unit_axe_circle.png',
+    'slav:slav_skirmisher':   'slav_unit_axe_circle.png',
+    'slav:slav_scout':        'slav_unit_axe_circle.png',
+    'slav:slav_archer':       'slav_unit_axe_circle.png',
+    'slav_axe_infantry':      'slav_unit_axe_circle.png',
+    'slav_skirmisher':        'slav_unit_axe_circle.png',
+    'slav_scout':             'slav_unit_axe_circle.png',
+    'slav_archer':            'slav_unit_axe_circle.png',
+
+    // Ethiopians / Axum
+    'axum:axumite_spearmen':  'axum_unit_spearmen_circle.png',
+    'axum:axumite_cavalry':   'axum_unit_spearmen_circle.png',
+    'axum:ethiopian_archers': 'axum_unit_spearmen_circle.png',
+    'axum:axumite_guard':     'axum_unit_spearmen_circle.png',
+    'axumite_spearmen':       'axum_unit_spearmen_circle.png',
+    'axumite_cavalry':        'axum_unit_spearmen_circle.png',
+    'ethiopian_archers':      'axum_unit_spearmen_circle.png',
+    'axumite_guard':          'axum_unit_spearmen_circle.png',
+
+    // Nubians
+    'nubia:nubian_archer':   'nubia_unit_archer_circle.png',
+    'nubia:nubian_spearman': 'nubia_unit_archer_circle.png',
+    'nubia:nubian_horseman': 'nubia_unit_archer_circle.png',
+    'nubia:nubian_retainer': 'nubia_unit_archer_circle.png',
+    'nubian_archer':         'nubia_unit_archer_circle.png',
+    'nubian_spearman':       'nubia_unit_archer_circle.png',
+    'nubian_horseman':       'nubia_unit_archer_circle.png',
+    'nubian_retainer':       'nubia_unit_archer_circle.png',
+
+    // Latins
+    'latin:italo_roman_infantry': 'latin_unit_infantry_circle.png',
+    'latin:ballista_crew':        'latin_unit_infantry_circle.png',
+    'latin:latin_cavalry':        'latin_unit_infantry_circle.png',
+    'italo_roman_infantry':       'latin_unit_infantry_circle.png',
+    'ballista_crew':              'latin_unit_infantry_circle.png',
+    'latin_cavalry':              'latin_unit_infantry_circle.png',
+
+    // China
+    'china:chinese_armored_cavalry': 'china_unit_crossbow_circle.png',
+    'china:chinese_crossbow':        'china_unit_crossbow_circle.png',
+    'china:chinese_polearm':         'china_unit_crossbow_circle.png',
+    'china:chinese_guard':           'china_unit_crossbow_circle.png',
+    'chinese_armored_cavalry':       'china_unit_crossbow_circle.png',
+    'chinese_crossbow':              'china_unit_crossbow_circle.png',
+    'chinese_polearm':               'china_unit_crossbow_circle.png',
+    'chinese_guard':                 'china_unit_crossbow_circle.png',
+
+    // Ostrogoths
+    'ostrogoth:gothic_heavy_cavalry': 'ostrogoth_unit_infantry_circle.png',
+    'ostrogoth:gothic_infantry':      'ostrogoth_unit_infantry_circle.png',
+    'ostrogoth:gothic_royal_guard':   'ostrogoth_unit_infantry_circle.png',
+    'ostrogoth:gothic_bowmen':        'ostrogoth_unit_infantry_circle.png',
+    'gothic_heavy_cavalry':           'ostrogoth_unit_infantry_circle.png',
+    'gothic_infantry':                'ostrogoth_unit_infantry_circle.png',
+    'gothic_royal_guard':             'ostrogoth_unit_infantry_circle.png',
+    'gothic_bowmen':                  'ostrogoth_unit_infantry_circle.png',
+
+    // Arabs
+    'arab:arab_camel_archer':  'arab_unit_camel_riders_circle.png',
+    'arab:arab_skirmisher':    'arab_unit_camel_riders_circle.png',
+    'arab:arab_spear_cavalry': 'arab_unit_camel_riders_circle.png',
+    'arab:arab_tribal_elite':  'arab_unit_camel_riders_circle.png',
+    'arab_camel_archer':       'arab_unit_camel_riders_circle.png',
+    'arab_skirmisher':         'arab_unit_camel_riders_circle.png',
+    'arab_spear_cavalry':      'arab_unit_camel_riders_circle.png',
+    'arab_tribal_elite':       'arab_unit_camel_riders_circle.png',
+
+    // Byzantines (Imperial, Levantine, Egyptian)
+    'byzantine:foederati_horse_archer': 'byzantine_unit_cataphract.png',
+    'byzantine:limitanei':              'byzantine_unit_skutatoi_circle.png',
+    'byzantine:syrian_archer':          'byzantine_unit_skutatoi_circle.png',
+    'byzantine:levant_scout':           'byzantine_unit_cataphract.png',
+    'byzantine:hillman_skirmisher':     'byzantine_unit_skutatoi_circle.png',
+    'byzantine:egyptian_bow_infantry':  'byzantine_unit_skutatoi_circle.png',
+    'byzantine:egyptian_camel_scout':   'arab_unit_camel_riders_circle.png',
+    'byzantine:egyptian_guard':         'byzantine_unit_skutatoi_circle.png',
+    'foederati_horse_archer':           'byzantine_unit_cataphract.png',
+    'limitanei':                        'byzantine_unit_skutatoi_circle.png',
+    'syrian_archer':                    'byzantine_unit_skutatoi_circle.png',
+    'levant_scout':                     'byzantine_unit_cataphract.png',
+    'hillman_skirmisher':               'byzantine_unit_skutatoi_circle.png',
+    'egyptian_bow_infantry':            'byzantine_unit_skutatoi_circle.png',
+    'egyptian_camel_scout':             'arab_unit_camel_riders_circle.png',
+    'egyptian_guard':                   'byzantine_unit_skutatoi_circle.png'
 };
 
 class UIManager {
@@ -562,7 +670,7 @@ class UIManager {
     getUnitPortraitPath(unit) {
         const faction = unit?.faction || unit?.owner || '';
         const typeId = unit?.typeId || '';
-        const file = UNIT_PORTRAITS[`${faction}:${typeId}`];
+        const file = UNIT_PORTRAITS[`${faction}:${typeId}`] || UNIT_PORTRAITS[typeId];
         return file ? `assets/images/units/thumbs/${file}` : null;
     }
 

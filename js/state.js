@@ -14,6 +14,14 @@ const CIVILIZATION_ALIASES = {
     bulgar: 'bulgar',
     frank: 'frank',
     sassanid: 'sassanid',
+    ostrogoth: 'ostrogoth',
+    latin: 'latin',
+    anglo_saxon: 'anglo_saxon',
+    slav: 'slav',
+    axum: 'axum',
+    nubia: 'nubia',
+    china: 'china',
+    ottoman: 'ottoman',
     enemies: 'byzantine',
     contestants: 'byzantine'
 };
@@ -200,16 +208,28 @@ const CIVILIZATION_CAPITAL_SEATS = {
     byzantine: ['constantinople', 'nicaea', 'thessalonica', 'ravenna', 'rome'],
     arab: ['damascus', 'baghdad', 'jerusalem', 'fustat'],
     bulgar: ['preslav', 'serdica', 'skopje', 'belgrade'],
-    frank: ['rome', 'aachen', 'paris', 'milan', 'venice'],
+    frank: ['aachen', 'paris', 'massilia'],
+    ostrogoth: ['ravenna', 'rome', 'milan'],
+    latin: ['rome', 'naples'],
+    anglo_saxon: ['london'],
+    slav: ['kiev', 'belgrade'],
+    axum: ['axum', 'adulis'],
+    nubia: ['dongola'],
+    china: ['multan', 'samarkand'],
+    ottoman: ['constantinople'],
     sassanid: ['ctesiphon', 'isfahan', 'rayy', 'merv']
 };
 
 const CENTURY_TOWN_CONTROL_OVERRIDES = {
     '6': {
-        ravenna: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
-        rome: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
-        milan: { civilization: 'frank', stance: 'hostile', tribe: 'Ostrogoths' },
-        naples: { civilization: 'byzantine', stance: 'neutral', tribe: 'Italo-Romans' }
+        ravenna: { civilization: 'ostrogoth', stance: 'hostile', tribe: 'Ostrogoths' },
+        rome: { civilization: 'ostrogoth', stance: 'hostile', tribe: 'Ostrogoths' },
+        milan: { civilization: 'ostrogoth', stance: 'hostile', tribe: 'Ostrogoths' },
+        naples: { civilization: 'latin', stance: 'neutral', tribe: 'Italo-Romans' },
+        london: { civilization: 'anglo_saxon', stance: 'neutral', tribe: 'Anglo-Saxons' },
+        axum: { civilization: 'axum', stance: 'neutral', tribe: 'Aksumites' },
+        adulis: { civilization: 'axum', stance: 'neutral', tribe: 'Aksumites' },
+        dongola: { civilization: 'nubia', stance: 'neutral', tribe: 'Nubians' }
     },
     '7': {
         baghdad: { civilization: 'sassanid', stance: 'neutral', tribe: 'Mesopotamians' },
@@ -2305,14 +2325,16 @@ class GameState {
 
         if (text.includes('sassanid') || text.includes('persian')) return 'sassanid';
         if (text.includes('bulgar')) return 'bulgar';
-        if (text.includes('seljuk') || text.includes('rashidun') || text.includes('caliph')) return 'arab';
-        if (
-            text.includes('ostrogoth') ||
-            text.includes('goth') ||
-            text.includes('frank') ||
-            text.includes('lombard') ||
-            text.includes('visigoth')
-        ) return 'frank';
+        if (text.includes('seljuk') || text.includes('rashidun') || text.includes('caliph') || text.includes('ghassanid') || text.includes('lakhmid')) return 'arab';
+        if (text.includes('ottoman') || text.includes('mehmed')) return 'ottoman';
+        if (text.includes('ostrogoth') || text.includes('totila') || text.includes('theodoric')) return 'ostrogoth';
+        if (text.includes('latin') || text.includes('vigilius') || text.includes('pope') || text.includes('exarch') || text.includes('roman senate')) return 'latin';
+        if (text.includes('anglo') || text.includes('saxon') || text.includes('jute') || text.includes('aethelberht') || text.includes('cerdic')) return 'anglo_saxon';
+        if (text.includes('slav') || text.includes('daurentius') || text.includes('dobreta')) return 'slav';
+        if (text.includes('axum') || text.includes('aksum') || text.includes('kaleb') || text.includes('ethiopia')) return 'axum';
+        if (text.includes('nubia') || text.includes('nobatia') || text.includes('silko') || text.includes('makuria')) return 'nubia';
+        if (text.includes('china') || text.includes('liang') || text.includes('sui') || text.includes('tang')) return 'china';
+        if (text.includes('frank') || text.includes('clovis') || text.includes('merovingian') || text.includes('lombard') || text.includes('visigoth')) return 'frank';
 
         return null;
     }
@@ -3338,12 +3360,23 @@ class GameState {
 
     getFactionArmyRoster(town, owner, faction) {
         const era = this.getCurrentEraTag();
-        const eligible = getUnitsByEra(era).filter((u) => this.isCombatRosterUnit(u));
+        const allowedUnits = (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS[faction])
+            ? FACTION_ROSTERS[faction]
+            : (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS.tribal ? FACTION_ROSTERS.tribal : ['skutatoi', 'archers']);
+        const allowedSet = new Set(allowedUnits);
+        const eligible = getUnitsByEra(era).filter((u) => allowedSet.has(u.id) && this.isCombatRosterUnit(u));
         const factionBias = {
-            byzantine: ['skutatoi', 'archers', 'kavallarioi', 'cataphract', 'mangonel'],
-            arab: ['horsearchers', 'camel_riders', 'archers', 'kavallarioi'],
+            byzantine: ['skutatoi', 'archers', 'kavallarioi', 'cataphract', 'limitanei'],
+            arab: ['arab_camel_archer', 'arab_spear_cavalry', 'arab_skirmisher', 'camel_riders'],
             bulgar: ['mountain_infantry', 'skutatoi', 'archers', 'kavallarioi'],
-            frank: ['skutatoi', 'kavallarioi', 'cataphract', 'engineers'],
+            frank: ['frankish_axemen', 'frankish_spearmen', 'leudes_cavalry', 'kavallarioi'],
+            ostrogoth: ['gothic_infantry', 'gothic_heavy_cavalry', 'gothic_bowmen', 'gothic_royal_guard'],
+            latin: ['italo_roman_infantry', 'latin_cavalry', 'ballista_crew', 'skutatoi'],
+            anglo_saxon: ['saxon_household', 'seax_fighter', 'saxon_javelin', 'boat_raider'],
+            slav: ['slav_axe_infantry', 'slav_skirmisher', 'slav_scout', 'slav_archer'],
+            axum: ['axumite_spearmen', 'axumite_cavalry', 'ethiopian_archers', 'axumite_guard'],
+            nubia: ['nubian_spearman', 'nubian_archer', 'nubian_horseman', 'nubian_retainer'],
+            china: ['chinese_armored_cavalry', 'chinese_crossbow', 'chinese_polearm', 'chinese_guard'],
             sassanid: ['horsearchers', 'camel_riders', 'kavallarioi', 'archers'],
             tribal: ['skutatoi', 'archers', 'kavallarioi', 'psilos']
         };
@@ -3751,6 +3784,25 @@ class GameState {
             return { unitId, unit, available: false, reasons: ['Requires a city'], spawnTile: null };
         }
 
+        const playerCiv = this.selectedFaction || 'byzantine';
+        if (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS[playerCiv]) {
+            if (!FACTION_ROSTERS[playerCiv].includes(unitId)) {
+                reasons.push('Not available to this civilization');
+            }
+        }
+
+        const levantUnits = new Set(['syrian_archer', 'levant_scout', 'hillman_skirmisher']);
+        const egyptUnits = new Set(['egyptian_bow_infantry', 'egyptian_camel_scout', 'egyptian_guard']);
+        const levantCities = new Set(['antioch', 'damascus', 'aleppo', 'edessa', 'jerusalem']);
+        const egyptCities = new Set(['alexandria', 'fustat']);
+
+        if (levantUnits.has(unitId) && cityTile.cityData && !levantCities.has(cityTile.cityData.id)) {
+            reasons.push('Recruitable only in the Levant region (Antioch, Damascus, Aleppo, Edessa, Jerusalem)');
+        }
+        if (egyptUnits.has(unitId) && cityTile.cityData && !egyptCities.has(cityTile.cityData.id)) {
+            reasons.push('Recruitable only in Egypt (Alexandria, Fustat)');
+        }
+
         const infra = cityTile.cityData.infrastructure || {};
         const researched = new Set(this.player?.techResearched || []);
         const hasPort = Boolean(cityTile.cityData.port || cityTile.cityData.navalYard);
@@ -3856,8 +3908,14 @@ class GameState {
     }
 
     getRecruitmentOptions(cityTile) {
-        return RECRUITMENT_UNIT_CATALOG
-            .filter((unitId) => Boolean(getUnitById(unitId)))
+        const playerCiv = this.selectedFaction || 'byzantine';
+        const factionRoster = (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS[playerCiv])
+            ? FACTION_ROSTERS[playerCiv]
+            : (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS.byzantine ? FACTION_ROSTERS.byzantine : RECRUITMENT_UNIT_CATALOG);
+        const rosterSet = new Set(factionRoster);
+
+        return Array.from(new Set([...RECRUITMENT_UNIT_CATALOG, ...factionRoster]))
+            .filter((unitId) => rosterSet.has(unitId) && Boolean(getUnitById(unitId)))
             .map((unitId) => this.getRecruitmentOptionStatus(cityTile, unitId));
     }
 
