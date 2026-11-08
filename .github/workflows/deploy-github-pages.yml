@@ -75,6 +75,8 @@ jobs:
           set -eu
           mkdir -p _site
           cp index.html _site/
+          # Google Search Console ownership file(s).
+          for f in google*.html; do if [ -f "$f" ]; then cp "$f" _site/; fi; done
           cp -R css _site/
           cp -R js _site/
           cp -R assets _site/
