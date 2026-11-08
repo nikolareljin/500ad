@@ -39,6 +39,42 @@ The following files were sourced from Wikimedia Commons depictions (historical p
   - Source: Alexios I Komnenos (Mutinensis - color)
   - URL: https://upload.wikimedia.org/wikipedia/commons/c/c1/139_-_Alexios_I_Komnenos_%28Mutinensis_-_color%29.png
 
+- `mehmed_ii.png`
+  - Subject: Sultan Mehmed II (The Conqueror, Ottoman Sultan, 1453 campaign)
+  - Style: Historical Ottoman miniature-inspired portrait with imperial turban, gold halo, and embroidered robes.
+
+- `romanos_iv.png`
+  - Subject: Emperor Romanos IV Diogenes (1071 Manzikert campaign)
+  - Style: Byzantine imperial portrait with pearled stemma crown, purple loros, and gold illumination.
+
+- `theodoric.png`
+  - Subject: King Theodoric the Great (Ostrogothic Kingdom)
+  - Style: 6th-century Germanic-Roman royal portrait with gemmed spangenhelm and gothic eagle fibula.
+
+- `clovis_i.png`
+  - Subject: King Clovis I (King of the Franks)
+  - Style: Merovingian royal portrait with gold circlet and emerald mantle.
+
+- `kaleb_axum.png`
+  - Subject: King Kaleb / Elesbaan (Kingdom of Axum)
+  - Style: Classical Aksumite royal depiction with high golden crown, Ge'ez cross, and crimson royal tunic.
+
+- `silko_nubia.png`
+  - Subject: King Silko of Nobatia (Nubian Christian Kingdom)
+  - Style: Nobatian warrior-king depiction with royal circlet and traditional linen tunic.
+
+- `aethelberht.png`
+  - Subject: King Aethelberht of Kent (Anglo-Saxon Bretwalda)
+  - Style: Early Anglo-Saxon royal portrait with garnet-inlaid gold crown and mantle.
+
+- `dobreta_slav.png`
+  - Subject: Daurentius / Dobreta (Slavic Knyaz / Leader)
+  - Style: 6th-century Slavic chieftain with fur trim, iron torque, and patterned tunic.
+
+- `emperor_wu_china.png`
+  - Subject: Emperor Wu of Liang (Xiao Yan, Southern Dynasties China)
+  - Style: Chinese imperial portrait with traditional Mian crown, beaded veil, and jade-accented robes.
+
 ## Processing Notes
 
 - Images were cropped and resized to `1024x1024`

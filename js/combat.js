@@ -225,6 +225,10 @@ function applyBattleTypeModifiers(attacker, defender, battleType, terrain, baseD
         if (defenderNaval && !attackerNaval) defenderDamage = Math.floor(defenderDamage * 1.15);
     }
 
+    if (attacker.bonuses?.coastalLanding && (battleType === 'naval' || defenderTile?.terrain === 'water' || defenderTile?.terrain === 'coastal')) {
+        attackerDamage = Math.floor(attackerDamage * (attacker.bonuses.coastalLanding || 1.35));
+    }
+
     if (defender.fortified) {
         attackerDamage = Math.floor(attackerDamage * 0.8);
         defenderDamage = Math.floor(defenderDamage * 1.15);
@@ -438,7 +442,13 @@ function checkLevelUp(unit) {
     let availableUnits = null;
     const currentEra = gameState?.getCurrentEraTag?.();
     if (currentEra) {
-        availableUnits = new Set(getUnitsByEra(currentEra).map((u) => u.id));
+        const faction = unit.faction || (typeof gameState !== 'undefined' ? gameState?.selectedFaction : 'byzantine');
+        const allowed = (typeof FACTION_ROSTERS !== 'undefined' && FACTION_ROSTERS[faction]) ? new Set(FACTION_ROSTERS[faction]) : null;
+        availableUnits = new Set(
+            getUnitsByEra(currentEra)
+                .filter((u) => !allowed || allowed.has(u.id))
+                .map((u) => u.id)
+        );
     }
 
     while (unit.experience >= (unit.level * 100)) {

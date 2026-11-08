@@ -61,7 +61,7 @@ const LEADERS = {
                 name: 'Totila',
                 title: 'King of the Ostrogoths',
                 faction: 'Ostrogothic Kingdom',
-                civilization: 'frank',
+                civilization: 'ostrogoth',
                 years: '541-552 AD',
                 era: 'early',
                 portrait: 'totila.png',
@@ -72,6 +72,142 @@ const LEADERS = {
                 ],
                 startingResources: { gold: 600, manpower: 900, prestige: 100 },
                 bonuses: { homeDefense: 1.4 }
+            },
+            {
+                id: 'theodoric',
+                name: 'Theodoric the Great',
+                title: 'King of Ostrogoths & Italy',
+                faction: 'Ostrogothic Kingdom',
+                civilization: 'ostrogoth',
+                years: '493-526 AD',
+                era: 'early',
+                portrait: 'theodoric.png',
+                stats: { military: 9, economy: 8, diplomacy: 8 },
+                abilities: [
+                    { name: 'Civilitas', description: '+30% city defense, +15% gold from Italian towns' },
+                    { name: 'Edictum Theodorici', description: '-20% unrest and crime' }
+                ],
+                startingResources: { gold: 1200, manpower: 900, prestige: 200 },
+                bonuses: { cityDefense: 1.3, goldIncome: 1.15 }
+            },
+            {
+                id: 'clovis1',
+                name: 'Clovis I',
+                title: 'King of the Franks',
+                faction: 'Frankish Kingdom',
+                civilization: 'frank',
+                years: '481-511 AD',
+                era: 'early',
+                portrait: 'clovis_i.png',
+                stats: { military: 9, economy: 7, diplomacy: 7 },
+                abilities: [
+                    { name: 'Salic Law', description: '+20% manpower from Gaul' },
+                    { name: 'Francisca Charge', description: '+25% Frankish axemen shock damage' }
+                ],
+                startingResources: { gold: 1000, manpower: 1000, prestige: 180 },
+                bonuses: { shockDamage: 1.25, manpowerRegen: 1.2 }
+            },
+            {
+                id: 'vigilius',
+                name: 'Vigilius',
+                title: 'Leader of Roman Senate & Exarchate',
+                faction: 'Latin Exarchate',
+                civilization: 'latin',
+                years: '537-555 AD',
+                era: 'early',
+                portrait: 'latin_unit_infantry_circle.png',
+                stats: { military: 6, economy: 8, diplomacy: 9 },
+                abilities: [
+                    { name: 'Papal Concordat', description: '+30% prestige from treaties' },
+                    { name: 'Patrimonium Petri', description: '+20% grain and food production' }
+                ],
+                startingResources: { gold: 1100, manpower: 500, prestige: 250 },
+                bonuses: { prestigeBonus: 1.3, foodIncome: 1.2 }
+            },
+            {
+                id: 'aethelberht',
+                name: 'Aethelberht of Kent',
+                title: 'Bretwalda of the English',
+                faction: 'Anglo-Saxon Kingdoms',
+                civilization: 'anglo_saxon',
+                years: '560-616 AD',
+                era: 'early',
+                portrait: 'aethelberht.png',
+                stats: { military: 8, economy: 7, diplomacy: 8 },
+                abilities: [
+                    { name: 'Law of Aethelberht', description: '+25% town loyalty, +15% taxes' },
+                    { name: 'North Sea Mastery', description: '+30% boat raider speed and landing attack' }
+                ],
+                startingResources: { gold: 800, manpower: 700, prestige: 150 },
+                bonuses: { coastalRaidBonus: 1.3, navalSpeed: 1.3 }
+            },
+            {
+                id: 'dobreta',
+                name: 'Daurentius (Dobreta)',
+                title: 'Knyaz of the Slavs',
+                faction: 'Slavic Tribes',
+                civilization: 'slav',
+                years: '570-590 AD',
+                era: 'early',
+                portrait: 'dobreta_slav.png',
+                stats: { military: 8, economy: 6, diplomacy: 5 },
+                abilities: [
+                    { name: 'Forest Ambush', description: '+40% attack from forests and hills' },
+                    { name: 'Unbowed Freedom', description: '+50% resistance to vassalization' }
+                ],
+                startingResources: { gold: 600, manpower: 1100, prestige: 120 },
+                bonuses: { hillAttack: 1.4, moraleBoost: 1.25 }
+            },
+            {
+                id: 'kaleb',
+                name: 'Kaleb of Axum (Elesbaan)',
+                title: 'Negus of Aksum',
+                faction: 'Kingdom of Axum',
+                civilization: 'axum',
+                years: '514-540 AD',
+                era: 'early',
+                portrait: 'kaleb_axum.png',
+                stats: { military: 9, economy: 9, diplomacy: 7 },
+                abilities: [
+                    { name: 'Red Sea Hegemony', description: '+35% gold from maritime trade' },
+                    { name: 'Himyarite Crusade', description: '+20% attack in desert terrain' }
+                ],
+                startingResources: { gold: 1400, manpower: 800, prestige: 220 },
+                bonuses: { tradeBoost: 1.35, desertAttack: 1.2 }
+            },
+            {
+                id: 'silko',
+                name: 'Silko of Nobatia',
+                title: 'King of the Nobatae',
+                faction: 'Kingdom of Nobatia',
+                civilization: 'nubia',
+                years: '536-555 AD',
+                era: 'early',
+                portrait: 'silko_nubia.png',
+                stats: { military: 8, economy: 7, diplomacy: 6 },
+                abilities: [
+                    { name: 'Triumph of Kalabsha', description: '+30% archer range and damage' },
+                    { name: 'Nile Cataracts', description: '+25% defense along rivers' }
+                ],
+                startingResources: { gold: 750, manpower: 750, prestige: 160 },
+                bonuses: { archerPower: 1.3, riverDefense: 1.25 }
+            },
+            {
+                id: 'emperor_wu',
+                name: 'Emperor Wu of Liang',
+                title: 'Bodhisattva Sovereign',
+                faction: 'Liang Dynasty (Silk Road)',
+                civilization: 'china',
+                years: '502-549 AD',
+                era: 'early',
+                portrait: 'emperor_wu_china.png',
+                stats: { military: 7, economy: 10, diplomacy: 9 },
+                abilities: [
+                    { name: 'Silk Road Splendor', description: '+50% gold from trade caravans' },
+                    { name: 'Imperial Examination', description: '+30% technology research speed' }
+                ],
+                startingResources: { gold: 2500, manpower: 1200, prestige: 350 },
+                bonuses: { goldIncome: 1.5, researchSpeed: 1.3 }
             }
         ]
     },
@@ -191,6 +327,21 @@ const LEADERS = {
                 ],
                 startingResources: { gold: 1400, manpower: 800, prestige: 200 },
                 bonuses: { mercenaryDiscount: 0.7, eliteBoost: 1.2 }
+            },
+            {
+                id: 'romanos4',
+                name: 'Romanos IV Diogenes',
+                title: 'Emperor of the Romans',
+                years: '1068-1071 AD',
+                era: 'late',
+                portrait: 'romanos_iv.png',
+                stats: { military: 8, economy: 6, diplomacy: 5 },
+                abilities: [
+                    { name: 'Cappadocian Muster', description: '+35% heavy cavalry recruitment' },
+                    { name: 'Imperial Vanguard', description: '+25% Tagmata and Varangian attack' }
+                ],
+                startingResources: { gold: 1100, manpower: 1300, prestige: 180 },
+                bonuses: { cavalryAttack: 1.35, eliteAttack: 1.25 }
             }
         ],
         enemies: [
@@ -210,6 +361,46 @@ const LEADERS = {
                 ],
                 startingResources: { gold: 1300, manpower: 1600, prestige: 350 },
                 bonuses: { antiInfantry: 1.5, cavalrySpeed: 1.3 }
+            }
+        ]
+    },
+
+    // 15th Century (Fall of Constantinople)
+    century15: {
+        byzantine: [
+            {
+                id: 'constantine11',
+                name: 'Constantine XI Palaiologos',
+                title: 'The Marble Emperor',
+                years: '1449-1453 AD',
+                era: 'late',
+                portrait: 'constantine_xi.png',
+                stats: { military: 9, economy: 5, diplomacy: 7 },
+                abilities: [
+                    { name: 'Theodosian Bastion', description: '+60% city defense in Constantinople' },
+                    { name: 'To The Last Breath', description: 'Units fight with +50% morale' }
+                ],
+                startingResources: { gold: 700, manpower: 600, prestige: 300 },
+                bonuses: { cityDefense: 1.6, moraleBoost: 1.5 }
+            }
+        ],
+        enemies: [
+            {
+                id: 'mehmed2',
+                name: 'Mehmed II',
+                title: 'The Conqueror',
+                faction: 'Ottoman Empire',
+                civilization: 'ottoman',
+                years: '1451-1481 AD',
+                era: 'late',
+                portrait: 'mehmed_ii.png',
+                stats: { military: 10, economy: 9, diplomacy: 8 },
+                abilities: [
+                    { name: 'Basilica Cannon', description: '+75% siege and artillery damage' },
+                    { name: 'Overland Fleet', description: '+40% naval speed and amphibious landing' }
+                ],
+                startingResources: { gold: 2500, manpower: 3000, prestige: 400 },
+                bonuses: { siegeDamage: 1.75, navalSpeed: 1.4 }
             }
         ]
     }
