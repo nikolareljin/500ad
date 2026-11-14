@@ -411,7 +411,7 @@ All leaders, units, and historical events are based on actual Byzantine history.
 
 ## Version
 
-**Version 1.21.0** - Map rendering improvements: major rivers (Nile, Danube, Euphrates, Tigris, Volga) render wider with distinct colouring; inland lakes (Caspian Sea, Aral Sea, Lake Van, Dead Sea) now appear as water. Introduces the `ScenarioLoader` class and two bundled historical battle scenarios: Battle of Manzikert (1071) and Fall of Constantinople (1453).
+**Version 1.21.1** - Maintenance release: the site serves the Google Search Console ownership file, CODEOWNERS declares the repository owner, and the `scripts/script-helpers` submodule moves from 0.30.0 to 0.64.1.
 
 ## License
 

@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## Releases
 
+## [1.21.1] - 2026-11-13
+
+### Added
+- `googlefb1695ee9a07673e.html` at the site root, so Google Search Console can verify ownership of the published site.
+
+### Changed
+- `.github/CODEOWNERS` declares the repository owner as code owner.
+- `scripts/script-helpers` advanced from 0.30.0 to **0.64.1**, the `production` branch the submodule tracks. 0.32.0-rc1 to 0.55.x read the submodule's own VERSION in the release-branch pre-commit check, so every commit on a `release/*` branch here was refused. `check_port`, `open_url`, `log_info` and `log_error`, which `scripts/runner.sh` calls, keep their behaviour.
+
 ## [1.21.0] - 2026-05-29
 
 ### Added
